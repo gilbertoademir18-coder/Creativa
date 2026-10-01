@@ -1,0 +1,143 @@
+// Schema do Creativa.
+//
+// A conexão vem de `prisma.config.ts`, que lê DATABASE_URL do `.env` da raiz.
+// Ids são UUID: aparecem em URLs (/projetos/<id>, /assets/<id>) e não devem
+// contar quantos registros existem nem deixar adivinhar o vizinho.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// O que um workflow produz. Só para organizar e filtrar na interface: o
+/// tipo de cada arquivo gerado de fato está em Asset.tipo.
+enum CategoriaWorkflow {
+  VIDEO
+  IMAGEM
+  AUDIO
+  ASSET
+
+  @@map("categoria_workflow")
+}
+
+/// O ciclo de uma execução no ComfyUI.
+enum StatusExecucao {
+  /// Enviada ao ComfyUI, esperando a vez na fila dele.
+  NA_FILA
+  EXECUTANDO
+  CONCLUIDA
+  FALHOU
+  CANCELADA
+
+  @@map("status_execucao")
+}
+
+enum TipoAsset {
+  IMAGEM
+  VIDEO
+  AUDIO
+  /// Qualquer outro arquivo: modelo 3D, máscara, texto...
+  OUTRO
+
+  @@map("tipo_asset")
+}
+
+/// Um workflow do ComfyUI importado para o Creativa.
+model Workflow {
+  id        String            @id @default(uuid()) @db.Uuid
+  nome      String
+  descricao String?
+  categoria CategoriaWorkflow
+  /// O grafo no formato API do ComfyUI ("Export (API)"), o que o
+  /// POST /prompt aceita. Não é o formato de tela, que traz posições e
+  /// links mas não serve para executar.
+  grafo     Json
+  /// Arquivado some das listas, mas continua existindo: as execuções
+  /// antigas apontam para ele. Workflow com histórico não se apaga.
+  arquivado Boolean           @default(false)
+  criadoEm  DateTime          @default(now()) @map("criado_em") @db.Timestamptz
+  editadoEm DateTime          @updatedAt @map("editado_em") @db.Timestamptz
+
+  execucoes Execucao[]
+
+  @@map("workflow")
+}
+
+/// O agrupador do trabalho: "Clipe do canal", "Pack de ícones"...
+model Projeto {
+  id        String   @id @default(uuid()) @db.Uuid
+  nome      String
+  descricao String?
+  arquivado Boolean  @default(false)
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz
+  editadoEm DateTime @updatedAt @map("editado_em") @db.Timestamptz
+
+  execucoes Execucao[]
+  assets    Asset[]
+
+  @@map("projeto")
+}
+
+/// Cada vez que um workflow roda.
+model Execucao {
+  id         String         @id @default(uuid()) @db.Uuid
+  workflowId String         @map("workflow_id") @db.Uuid
+  /// Opcional: dá para testar um workflow sem projeto nenhum.
+  projetoId  String?        @map("projeto_id") @db.Uuid
+  status     StatusExecucao @default(NA_FILA)
+  /// Os valores que o usuário preencheu na interface (prompt, seed...).
+  parametros Json           @default("{}")
+  /// O grafo exatamente como foi enviado, já com os parâmetros aplicados.
+  /// O workflow pode mudar depois; isto é o que de fato rodou, e é o que
+  /// permite repetir uma geração.
+  grafoEnviado Json         @map("grafo_enviado")
+  /// O id que o ComfyUI devolve no POST /prompt; é por ele que se acompanha
+  /// o progresso pelo WebSocket e se buscam as saídas no /history.
+  promptId   String?        @unique @map("prompt_id")
+  erro       String?
+  criadaEm   DateTime       @default(now()) @map("criada_em") @db.Timestamptz
+  /// Início e fim de verdade no ComfyUI, sem o tempo de fila: é a diferença
+  /// entre os dois que mede a geração.
+  iniciadaEm  DateTime?     @map("iniciada_em") @db.Timestamptz
+  concluidaEm DateTime?     @map("concluida_em") @db.Timestamptz
+
+  workflow Workflow @relation(fields: [workflowId], references: [id])
+  projeto  Projeto? @relation(fields: [projetoId], references: [id], onDelete: SetNull)
+  assets   Asset[]
+
+  @@index([workflowId])
+  @@index([projetoId])
+  @@index([status])
+  @@map("execucao")
+}
+
+/// Um arquivo gerado (ou, mais adiante, enviado pelo usuário).
+model Asset {
+  id           String    @id @default(uuid()) @db.Uuid
+  /// Nulo para o que não saiu de uma execução, como um upload.
+  execucaoId   String?   @map("execucao_id") @db.Uuid
+  projetoId    String?   @map("projeto_id") @db.Uuid
+  tipo         TipoAsset
+  nomeArquivo  String    @map("nome_arquivo")
+  /// Onde o arquivo está, relativo à pasta de saídas — e não absoluto, para
+  /// que mover a pasta não invalide o banco inteiro.
+  caminho      String
+  mime         String?
+  tamanhoBytes BigInt?   @map("tamanho_bytes")
+  largura      Int?
+  altura       Int?
+  duracaoSeg   Decimal?  @map("duracao_seg") @db.Decimal(10, 3)
+  favorito     Boolean   @default(false)
+  criadoEm     DateTime  @default(now()) @map("criado_em") @db.Timestamptz
+
+  execucao Execucao? @relation(fields: [execucaoId], references: [id])
+  projeto  Projeto?  @relation(fields: [projetoId], references: [id], onDelete: SetNull)
+
+  @@index([execucaoId])
+  @@index([projetoId])
+  @@map("asset")
+}

@@ -1,0 +1,22 @@
+# dependências
+node_modules/
+
+# builds
+dist/
+*.tsbuildinfo
+
+# .env tem configuração desta máquina (e terá a senha do banco): nunca vai
+# para o git. O modelo é o .env.example.
+.env
+.env.*
+!.env.example
+
+# backups do banco
+backups/
+
+# misc
+.DS_Store
+npm-debug.log*
+
+# Prisma Client gerado no `npm install` (postinstall da API)
+apps/api/src/generated/
