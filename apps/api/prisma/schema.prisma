@@ -1,8 +1,24 @@
 // Schema do Creativa.
 //
 // A conexão vem de `prisma.config.ts`, que lê DATABASE_URL do `.env` da raiz.
-// Ids são UUID: aparecem em URLs (/projetos/<id>, /assets/<id>) e não devem
+// Ids são UUID: aparecem em URLs (/assets/<id>, /cenas/<id>) e não devem
 // contar quantos registros existem nem deixar adivinhar o vizinho.
+//
+// A árvore:
+//
+//   Projeto
+//   ├── Asset ─────────── Referências, Gerações
+//   └── Cena (storyboard)
+//       └── Shot ──────── Referências, Gerações
+//
+//   Geração ── usa Referências e Outputs como entrada ── produz Outputs
+//
+// Asset e Cena podem estar soltos (sem projeto). Shot sempre tem cena.
+//
+// Apagar: o que tem arquivo em disco ou histórico de geração é protegido
+// (Restrict) — o banco recusa, e a tela explica o que remover antes. Só cai
+// em cascata o que não carrega nada sozinho: os shots vazios de uma cena e as
+// entradas de uma geração.
 
 generator client {
   provider = "prisma-client"
@@ -13,8 +29,45 @@ datasource db {
   provider = "postgresql"
 }
 
-/// O que um workflow produz. Só para organizar e filtrar na interface: o
-/// tipo de cada arquivo gerado de fato está em Asset.tipo.
+enum TipoAsset {
+  PERSONAGEM
+  CENARIO
+  OBJETO
+  OUTRO
+
+  @@map("tipo_asset")
+}
+
+enum TipoReferencia {
+  IMAGEM
+  TEXTO
+  VIDEO
+
+  @@map("tipo_referencia")
+}
+
+enum StatusGeracao {
+  /// Cadastrada, ainda não enviada ao ComfyUI.
+  RASCUNHO
+  /// Enviada ao ComfyUI, esperando a vez na fila dele.
+  NA_FILA
+  EXECUTANDO
+  CONCLUIDA
+  FALHOU
+  CANCELADA
+
+  @@map("status_geracao")
+}
+
+enum TipoOutput {
+  IMAGEM
+  VIDEO
+  AUDIO
+  OUTRO
+
+  @@map("tipo_output")
+}
+
 enum CategoriaWorkflow {
   VIDEO
   IMAGEM
@@ -24,120 +77,212 @@ enum CategoriaWorkflow {
   @@map("categoria_workflow")
 }
 
-/// O ciclo de uma execução no ComfyUI.
-enum StatusExecucao {
-  /// Enviada ao ComfyUI, esperando a vez na fila dele.
-  NA_FILA
-  EXECUTANDO
-  CONCLUIDA
-  FALHOU
-  CANCELADA
-
-  @@map("status_execucao")
-}
-
-enum TipoAsset {
-  IMAGEM
-  VIDEO
-  AUDIO
-  /// Qualquer outro arquivo: modelo 3D, máscara, texto...
-  OUTRO
-
-  @@map("tipo_asset")
-}
-
-/// Um workflow do ComfyUI importado para o Creativa.
-model Workflow {
-  id        String            @id @default(uuid()) @db.Uuid
-  nome      String
-  descricao String?
-  categoria CategoriaWorkflow
-  /// O grafo no formato API do ComfyUI ("Export (API)"), o que o
-  /// POST /prompt aceita. Não é o formato de tela, que traz posições e
-  /// links mas não serve para executar.
-  grafo     Json
-  /// Arquivado some das listas, mas continua existindo: as execuções
-  /// antigas apontam para ele. Workflow com histórico não se apaga.
-  arquivado Boolean           @default(false)
-  criadoEm  DateTime          @default(now()) @map("criado_em") @db.Timestamptz
-  editadoEm DateTime          @updatedAt @map("editado_em") @db.Timestamptz
-
-  execucoes Execucao[]
-
-  @@map("workflow")
-}
-
-/// O agrupador do trabalho: "Clipe do canal", "Pack de ícones"...
+/// "Poker de Camila", "Anime Katsuragi"...
 model Projeto {
   id        String   @id @default(uuid()) @db.Uuid
   nome      String
   descricao String?
-  arquivado Boolean  @default(false)
   criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz
   editadoEm DateTime @updatedAt @map("editado_em") @db.Timestamptz
 
-  execucoes Execucao[]
-  assets    Asset[]
+  assets Asset[]
+  cenas  Cena[]
 
   @@map("projeto")
 }
 
-/// Cada vez que um workflow roda.
-model Execucao {
-  id         String         @id @default(uuid()) @db.Uuid
-  workflowId String         @map("workflow_id") @db.Uuid
-  /// Opcional: dá para testar um workflow sem projeto nenhum.
-  projetoId  String?        @map("projeto_id") @db.Uuid
-  status     StatusExecucao @default(NA_FILA)
-  /// Os valores que o usuário preencheu na interface (prompt, seed...).
-  parametros Json           @default("{}")
-  /// O grafo exatamente como foi enviado, já com os parâmetros aplicados.
-  /// O workflow pode mudar depois; isto é o que de fato rodou, e é o que
-  /// permite repetir uma geração.
-  grafoEnviado Json         @map("grafo_enviado")
-  /// O id que o ComfyUI devolve no POST /prompt; é por ele que se acompanha
-  /// o progresso pelo WebSocket e se buscam as saídas no /history.
-  promptId   String?        @unique @map("prompt_id")
-  erro       String?
-  criadaEm   DateTime       @default(now()) @map("criada_em") @db.Timestamptz
-  /// Início e fim de verdade no ComfyUI, sem o tempo de fila: é a diferença
-  /// entre os dois que mede a geração.
-  iniciadaEm  DateTime?     @map("iniciada_em") @db.Timestamptz
-  concluidaEm DateTime?     @map("concluida_em") @db.Timestamptz
+/// Personagem, cenário, objeto... Pode pertencer a um projeto ou estar solto.
+model Asset {
+  id        String    @id @default(uuid()) @db.Uuid
+  /// Apagar o projeto solta o asset, não o apaga.
+  projetoId String?   @map("projeto_id") @db.Uuid
+  tipo      TipoAsset
+  nome      String
+  descricao String?
+  criadoEm  DateTime  @default(now()) @map("criado_em") @db.Timestamptz
+  editadoEm DateTime  @updatedAt @map("editado_em") @db.Timestamptz
 
-  workflow Workflow @relation(fields: [workflowId], references: [id])
-  projeto  Projeto? @relation(fields: [projetoId], references: [id], onDelete: SetNull)
-  assets   Asset[]
+  projeto     Projeto?     @relation(fields: [projetoId], references: [id], onDelete: SetNull)
+  referencias Referencia[]
+  geracoes    Geracao[]
 
-  @@index([workflowId])
   @@index([projetoId])
-  @@index([status])
-  @@map("execucao")
+  @@index([tipo])
+  @@map("asset")
 }
 
-/// Um arquivo gerado (ou, mais adiante, enviado pelo usuário).
-model Asset {
-  id           String    @id @default(uuid()) @db.Uuid
-  /// Nulo para o que não saiu de uma execução, como um upload.
-  execucaoId   String?   @map("execucao_id") @db.Uuid
-  projetoId    String?   @map("projeto_id") @db.Uuid
-  tipo         TipoAsset
-  nomeArquivo  String    @map("nome_arquivo")
-  /// Onde o arquivo está, relativo à pasta de saídas — e não absoluto, para
-  /// que mover a pasta não invalide o banco inteiro.
-  caminho      String
+/// "Cena da ponte", "cena da dança"... Pode pertencer a um projeto ou estar solta.
+model Cena {
+  id         String   @id @default(uuid()) @db.Uuid
+  projetoId  String?  @map("projeto_id") @db.Uuid
+  nome       String
+  descricao  String?
+  /// Texto livre por enquanto: roteiro, planos, intenção da cena.
+  storyboard String   @default("")
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz
+  editadoEm  DateTime @updatedAt @map("editado_em") @db.Timestamptz
+
+  projeto Projeto? @relation(fields: [projetoId], references: [id], onDelete: SetNull)
+  shots   Shot[]
+
+  @@index([projetoId])
+  @@map("cena")
+}
+
+/// Um plano da cena. Toda cena nasce com um; todo shot tem cena.
+model Shot {
+  id        String   @id @default(uuid()) @db.Uuid
+  cenaId    String   @map("cena_id") @db.Uuid
+  nome      String
+  descricao String?
+  /// Posição na cena, a partir de 0.
+  ordem     Int
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz
+  editadoEm DateTime @updatedAt @map("editado_em") @db.Timestamptz
+
+  /// Apagar a cena leva os shots — mas só os vazios: referência e geração
+  /// presas a um shot barram a cascata (Restrict nelas).
+  cena        Cena         @relation(fields: [cenaId], references: [id], onDelete: Cascade)
+  referencias Referencia[]
+  geracoes    Geracao[]
+
+  @@index([cenaId, ordem])
+  @@map("shot")
+}
+
+/// Material externo que o usuário envia: imagem, texto ou vídeo.
+///
+/// Pertence a um asset, a um shot, ou a nenhum (solta) — nunca aos dois; um
+/// CHECK na migração garante.
+model Referencia {
+  id           String         @id @default(uuid()) @db.Uuid
+  assetId      String?        @map("asset_id") @db.Uuid
+  shotId       String?        @map("shot_id") @db.Uuid
+  tipo         TipoReferencia
+  nome         String
+  /// O conteúdo, quando é TEXTO. Texto mora no banco, não em arquivo.
+  texto        String?
+  /// Caminho relativo à pasta de arquivos (ARQUIVOS_DIR), com `/`. Relativo
+  /// para que mudar a pasta de lugar não invalide o banco inteiro.
+  arquivo      String?
+  nomeOriginal String?        @map("nome_original")
   mime         String?
-  tamanhoBytes BigInt?   @map("tamanho_bytes")
+  tamanhoBytes BigInt?        @map("tamanho_bytes")
+  criadoEm     DateTime       @default(now()) @map("criado_em") @db.Timestamptz
+  editadoEm    DateTime       @updatedAt @map("editado_em") @db.Timestamptz
+
+  asset    Asset?           @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  shot     Shot?            @relation(fields: [shotId], references: [id], onDelete: Restrict)
+  /// Uma referência usada numa geração não se apaga: a geração perderia
+  /// o registro do que a alimentou.
+  usadaEm  GeracaoEntrada[]
+
+  @@index([assetId])
+  @@index([shotId])
+  @@index([tipo])
+  @@map("referencia")
+}
+
+/// Um workflow do ComfyUI. Sem tela de cadastro ainda: entra com a
+/// integração do ComfyUI.
+model Workflow {
+  id        String             @id @default(uuid()) @db.Uuid
+  nome      String
+  descricao String?
+  categoria CategoriaWorkflow?
+  /// O grafo no formato API do ComfyUI ("Export (API)"), o que o POST /prompt aceita.
+  grafo     Json
+  arquivado Boolean            @default(false)
+  criadoEm  DateTime           @default(now()) @map("criado_em") @db.Timestamptz
+  editadoEm DateTime           @updatedAt @map("editado_em") @db.Timestamptz
+
+  geracoes Geracao[]
+
+  @@map("workflow")
+}
+
+/// Tudo o que foi usado para gerar algo no ComfyUI: prompt, referências,
+/// workflow e modelo — e o que saiu (Outputs).
+///
+/// Pertence a um asset, a um shot, ou a nenhum — nunca aos dois (CHECK).
+model Geracao {
+  id             String        @id @default(uuid()) @db.Uuid
+  assetId        String?       @map("asset_id") @db.Uuid
+  shotId         String?       @map("shot_id") @db.Uuid
+  /// Opcional: sem nome, a tela mostra o começo do prompt.
+  nome           String?
+  prompt         String        @default("")
+  promptNegativo String?       @map("prompt_negativo")
+  /// O modelo de IA no ComfyUI (checkpoint, unet...), como texto por enquanto.
+  modelo         String?
+  workflowId     String?       @map("workflow_id") @db.Uuid
+  /// O grafo exatamente como foi enviado, já com prompt e referências
+  /// aplicados. O workflow pode mudar depois; isto é o que de fato rodou.
+  grafoEnviado   Json?         @map("grafo_enviado")
+  /// Seed, passos, tamanho... o que mais o workflow expuser.
+  parametros     Json          @default("{}")
+  status         StatusGeracao @default(RASCUNHO)
+  /// O id que o ComfyUI devolve no POST /prompt.
+  promptIdComfy  String?       @unique @map("prompt_id_comfy")
+  erro           String?
+  criadoEm       DateTime      @default(now()) @map("criado_em") @db.Timestamptz
+  editadoEm      DateTime      @updatedAt @map("editado_em") @db.Timestamptz
+  /// Início e fim de verdade no ComfyUI, sem o tempo de fila.
+  iniciadaEm     DateTime?     @map("iniciada_em") @db.Timestamptz
+  concluidaEm    DateTime?     @map("concluida_em") @db.Timestamptz
+
+  asset    Asset?           @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  shot     Shot?            @relation(fields: [shotId], references: [id], onDelete: Restrict)
+  workflow Workflow?        @relation(fields: [workflowId], references: [id], onDelete: Restrict)
+  entradas GeracaoEntrada[]
+  outputs  Output[]
+
+  @@index([assetId])
+  @@index([shotId])
+  @@index([status])
+  @@map("geracao")
+}
+
+/// O que entrou numa geração: uma referência ou um output de outra geração.
+/// Exatamente um dos dois (CHECK).
+model GeracaoEntrada {
+  id           String  @id @default(uuid()) @db.Uuid
+  geracaoId    String  @map("geracao_id") @db.Uuid
+  referenciaId String? @map("referencia_id") @db.Uuid
+  outputId     String? @map("output_id") @db.Uuid
+  ordem        Int
+
+  geracao    Geracao     @relation(fields: [geracaoId], references: [id], onDelete: Cascade)
+  referencia Referencia? @relation(fields: [referenciaId], references: [id], onDelete: Restrict)
+  output     Output?     @relation(fields: [outputId], references: [id], onDelete: Restrict)
+
+  @@unique([geracaoId, referenciaId])
+  @@unique([geracaoId, outputId])
+  @@index([referenciaId])
+  @@index([outputId])
+  @@map("geracao_entrada")
+}
+
+/// Um arquivo que uma geração produziu.
+model Output {
+  id           String     @id @default(uuid()) @db.Uuid
+  /// Geração com outputs não se apaga: eles têm arquivo em disco.
+  geracaoId    String     @map("geracao_id") @db.Uuid
+  tipo         TipoOutput
+  /// Caminho relativo à pasta de arquivos (ARQUIVOS_DIR), com `/`.
+  arquivo      String
+  mime         String?
+  tamanhoBytes BigInt?    @map("tamanho_bytes")
   largura      Int?
   altura       Int?
-  duracaoSeg   Decimal?  @map("duracao_seg") @db.Decimal(10, 3)
-  favorito     Boolean   @default(false)
-  criadoEm     DateTime  @default(now()) @map("criado_em") @db.Timestamptz
+  duracaoSeg   Decimal?   @map("duracao_seg") @db.Decimal(10, 3)
+  favorito     Boolean    @default(false)
+  criadoEm     DateTime   @default(now()) @map("criado_em") @db.Timestamptz
 
-  execucao Execucao? @relation(fields: [execucaoId], references: [id])
-  projeto  Projeto?  @relation(fields: [projetoId], references: [id], onDelete: SetNull)
+  geracao Geracao          @relation(fields: [geracaoId], references: [id], onDelete: Restrict)
+  /// Output usado como entrada de outra geração não se apaga.
+  usadoEm GeracaoEntrada[]
 
-  @@index([execucaoId])
-  @@index([projetoId])
-  @@map("asset")
+  @@index([geracaoId])
+  @@map("output")
 }

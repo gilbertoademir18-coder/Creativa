@@ -1,10 +1,42 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { Inicio } from "./inicio.tsx";
+import { createBrowserRouter, Navigate, RouterProvider } from "react-router";
 import "./app.css";
+import { Layout } from "./componentes/layout.tsx";
+import { PaginaAsset, PaginaAssets } from "./paginas/assets.tsx";
+import { PaginaCena, PaginaCenas } from "./paginas/cenas.tsx";
+import { PaginaGeracao, PaginaGeracoes } from "./paginas/geracoes.tsx";
+import { PaginaProjeto, PaginaProjetos } from "./paginas/projetos.tsx";
+import { PaginaReferencias } from "./paginas/referencias.tsx";
+import { PaginaShot } from "./paginas/shot.tsx";
+
+// Os cinco itens do menu são rotas de primeiro nível; os detalhes ficam
+// debaixo de cada um. O shot tem endereço próprio (/shots/:id) — dá para
+// mandar o link de um shot sem saber a cena.
+const roteador = createBrowserRouter([
+  {
+    path: "/",
+    element: <Layout />,
+    children: [
+      { index: true, element: <Navigate to="/projetos" replace /> },
+      { path: "projetos", element: <PaginaProjetos /> },
+      { path: "projetos/:id", element: <PaginaProjeto /> },
+      { path: "assets", element: <PaginaAssets /> },
+      { path: "assets/:id", element: <PaginaAsset /> },
+      { path: "referencias", element: <PaginaReferencias /> },
+      { path: "cenas", element: <PaginaCenas /> },
+      { path: "cenas/:id", element: <PaginaCena /> },
+      { path: "shots/:id", element: <PaginaShot /> },
+      { path: "geracoes", element: <PaginaGeracoes /> },
+      { path: "geracoes/nova", element: <PaginaGeracao /> },
+      { path: "geracoes/:id", element: <PaginaGeracao /> },
+      { path: "*", element: <Navigate to="/projetos" replace /> },
+    ],
+  },
+]);
 
 createRoot(document.getElementById("raiz")!).render(
   <StrictMode>
-    <Inicio />
+    <RouterProvider router={roteador} />
   </StrictMode>,
 );

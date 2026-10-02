@@ -29,18 +29,49 @@ PostgreSQL desta máquina (porta 5432), banco e usuário `creativa`. O usuário
 é dono só do próprio banco: não é superusuário e não enxerga os bancos dos
 outros projetos.
 
+```
+Projeto
+├── Asset (personagem, cenário, objeto...) ── Referências, Gerações
+└── Cena (storyboard em texto)
+    └── Shot ──────────────────────────────── Referências, Gerações
+
+Geração ── entradas: Referências e Outputs ── produz: Outputs
+```
+
 | Tabela | O que guarda |
 | --- | --- |
-| `workflow` | Workflow do ComfyUI importado, com o grafo no formato API |
-| `projeto` | O agrupador do trabalho |
-| `execucao` | Cada vez que um workflow roda: parâmetros, grafo enviado, `prompt_id`, tempos |
-| `asset` | Cada arquivo gerado, com o caminho relativo à pasta de saídas |
+| `projeto` | O trabalho: "Poker de Camila", "Anime Katsuragi" |
+| `asset` | Personagem, cenário, objeto ou outro. Com projeto ou solto |
+| `cena` | Com projeto ou solta; tem o storyboard |
+| `shot` | Sempre numa cena, em ordem. Toda cena nasce com um e nunca fica sem |
+| `referencia` | Imagem, vídeo ou texto enviado. De um asset, de um shot, ou solta |
+| `geracao` | Prompt, negativo, modelo, workflow, status. De um asset, de um shot, ou solta |
+| `geracao_entrada` | O que entrou numa geração: referências e outputs de outras |
+| `output` | O que uma geração produziu (chega com a integração do ComfyUI) |
+| `workflow` | Workflow do ComfyUI, formato API (sem tela ainda) |
+
+Regras que o banco garante (FKs e `CHECK`s):
+
+- Apagar um projeto **solta** os assets e cenas dele; não apaga.
+- O que tem arquivo ou histórico é protegido: asset, shot ou cena com
+  referência ou geração não se apaga; referência ou output usado como entrada
+  também não; geração com outputs também não. A tela explica o que remover antes.
+- Referência e geração pertencem a um asset **ou** a um shot, nunca aos dois.
+- Geração só se edita em rascunho: depois de rodar, é o registro do que rodou.
 
 A conexão leva `options=-c timezone=UTC`: sem isso o driver grava os
 horários 3 horas deslocados, em silêncio (lição do NihongoHub).
 
-O backup (`npm run backup` ou pelo ícone) é só do banco. Os arquivos gerados
-moram em disco e não entram no dump.
+## Arquivos
+
+Referências enviadas (e, depois, os outputs) ficam em **`D:\Creativa`**,
+configurável por `ARQUIVOS_DIR` no `.env`. O HDD aguenta o volume de vídeo; o
+NVMe fica para os modelos. O banco guarda só o caminho relativo, então mudar
+a pasta é mover os arquivos e trocar o `.env`. A API serve os arquivos em
+`/api/arquivos/<caminho>`.
+
+O backup (`npm run backup` ou pelo ícone) é só do banco: os arquivos em
+`D:\Creativa` não entram no dump.
 
 ## O ícone da bandeja
 
@@ -131,10 +162,13 @@ Já ocupadas nesta máquina por outros projetos: 443/3001, 3002, 3200/8443 (Trim
 ```
 apps/
   api/
-    prisma/schema.prisma  Tabelas e enums
-    src/server.ts         Fastify: /api/saude, /api/banco/estado, /api/comfyui/estado, front
-    src/lib/prisma.ts     Cliente Prisma
-  web/                    React + Vite + Tailwind
+    prisma/schema.prisma  Tabelas, enums e as regras de exclusão
+    src/server.ts         Fastify: registra as rotas, arquivos e o front pronto
+    src/rotas/            projetos, assets, cenas (+ shots), referencias, geracoes
+    src/lib/              prisma, validacao (zod), arquivos (D:\Creativa), filtros
+  web/                    React + Vite + Tailwind, tela cheia (Full HD / QHD)
+    src/paginas/          Uma por item do menu, com a lista e o detalhe
+    src/componentes/      layout, ui, modal, filtros, referencias, geracoes...
     scripts/gerar-icones.mjs
 scripts/
   tray.ps1                Ícone da bandeja

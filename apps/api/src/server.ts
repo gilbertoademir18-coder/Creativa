@@ -1,16 +1,24 @@
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
+import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
 
-// O .env mora na raiz do monorepo e é opcional por enquanto: tudo que se lê
-// dele tem um padrão que funciona nesta máquina.
+// O .env mora na raiz do monorepo. Carregado antes de importar as rotas, que
+// trazem o Prisma — e ele lê DATABASE_URL ao criar o cliente.
 const RAIZ = path.resolve(import.meta.dirname, "../../..");
 try {
   process.loadEnvFile(path.join(RAIZ, ".env"));
 } catch {
-  // Sem .env: valem os padrões.
+  // Sem .env: o erro útil ("DATABASE_URL não está definida") vem do Prisma.
 }
+
+const { rotasProjetos } = await import("./rotas/projetos.ts");
+const { rotasAssets } = await import("./rotas/assets.ts");
+const { rotasCenas, rotasShots } = await import("./rotas/cenas.ts");
+const { rotasReferencias } = await import("./rotas/referencias.ts");
+const { rotasGeracoes, rotasOutputs, rotasWorkflows } = await import("./rotas/geracoes.ts");
+const { pastaArquivos } = await import("./lib/arquivos.ts");
 
 // 3400 é a do app de verdade (a que o ícone da bandeja sobe). O `npm run dev`
 // usa a 3401, para dar para mexer no código com o app do dia a dia no ar.
@@ -25,6 +33,17 @@ const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
 app.setErrorHandler((erro: Error & { statusCode?: number; code?: string }, req, reply) => {
   const status = erro.statusCode ?? 500;
   if (status < 500) return reply.code(status).send({ erro: erro.message });
+
+  // Os erros do Prisma que são culpa do pedido, e não do servidor.
+  // P2003: apagar algo que ainda tem coisas presas a ele (os Restrict do
+  // schema). P2025: o registro não existe. P2002: duplicado.
+  if (erro.code === "P2003") {
+    return reply.code(409).send({
+      erro: "Não dá para excluir: ainda há itens ligados a este registro (referências, gerações ou outputs).",
+    });
+  }
+  if (erro.code === "P2025") return reply.code(404).send({ erro: "Registro não encontrado." });
+  if (erro.code === "P2002") return reply.code(409).send({ erro: "Já existe um registro igual." });
 
   req.log.error(erro);
   // Pelo código, e não pela mensagem: o texto vem do Postgres no idioma da
@@ -75,29 +94,58 @@ app.get("/api/comfyui/estado", async () => {
   }
 });
 
+// Upload de referências: vídeo de referência pode ser grande, daí os 4 GB.
+await app.register(fastifyMultipart, { limits: { fileSize: 4 * 1024 ** 3, files: 50 } });
+
+await app.register(rotasProjetos, { prefix: "/api/projetos" });
+await app.register(rotasAssets, { prefix: "/api/assets" });
+await app.register(rotasCenas, { prefix: "/api/cenas" });
+await app.register(rotasShots, { prefix: "/api/shots" });
+await app.register(rotasReferencias, { prefix: "/api/referencias" });
+await app.register(rotasGeracoes, { prefix: "/api/geracoes" });
+await app.register(rotasOutputs, { prefix: "/api/outputs" });
+await app.register(rotasWorkflows, { prefix: "/api/workflows" });
+
+/*
+ * Os arquivos (referências e outputs), em /api/arquivos/<caminho relativo>.
+ * O nome é um uuid que nunca é reaproveitado, então o navegador pode guardar
+ * em cache para sempre.
+ */
+const PASTA_ARQUIVOS = pastaArquivos();
+mkdirSync(PASTA_ARQUIVOS, { recursive: true });
+await app.register(fastifyStatic, {
+  root: PASTA_ARQUIVOS,
+  prefix: "/api/arquivos/",
+  decorateReply: false,
+  maxAge: "365d",
+  immutable: true,
+});
+
 /*
  * O front pronto (`npm run build`) é servido por este mesmo processo: uma
  * porta só para o Tailscale publicar, sem CORS, sem segundo servidor para o
  * ícone vigiar. Em desenvolvimento quem serve o front é o Vite.
  */
-if (!MODO_DEV && existsSync(WEB_DIST)) {
+const SERVIR_FRONT = !MODO_DEV && existsSync(WEB_DIST);
+if (SERVIR_FRONT) {
   await app.register(fastifyStatic, { root: WEB_DIST, wildcard: false });
-
-  app.setNotFoundHandler((req, reply) => {
-    // Rota da API que não existe é 404 de verdade, em JSON.
-    if (req.url.startsWith("/api/")) {
-      return reply.code(404).send({ erro: "Rota não encontrada." });
-    }
-    // Arquivo que não existe (`.js`, `.png`...) também é 404, e não o
-    // index.html disfarçado de script.
-    if (/^[^?]*\.[a-z0-9]+(\?|$)/i.test(req.url)) {
-      return reply.code(404).send();
-    }
-    return reply.header("Cache-Control", "no-cache").sendFile("index.html");
-  });
 } else if (!MODO_DEV) {
   app.log.warn(`Front não encontrado em ${WEB_DIST} — rode "npm run build". Servindo só a API.`);
 }
+
+app.setNotFoundHandler((req, reply) => {
+  // Rota da API (ou arquivo de /api/arquivos) que não existe é 404 em JSON,
+  // no formato `{ erro }` de todo o resto.
+  if (req.url.startsWith("/api/")) {
+    return reply.code(404).send({ erro: "Não encontrado." });
+  }
+  // Arquivo que não existe (`.js`, `.png`...) também é 404, e não o
+  // index.html disfarçado de script.
+  if (!SERVIR_FRONT || /^[^?]*\.[a-z0-9]+(\?|$)/i.test(req.url)) {
+    return reply.code(404).send();
+  }
+  return reply.header("Cache-Control", "no-cache").sendFile("index.html");
+});
 
 // 0.0.0.0 e não localhost: assim os outros PCs chegam pelo IP do tailnet.
 await app.listen({ port: PORTA, host: "0.0.0.0" });

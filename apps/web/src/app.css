@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@theme {
+  /* Entre o zinc-900 e o zinc-950: o fundo das páginas, um degrau abaixo
+     do menu e um acima dos cartões. */
+  --color-zinc-925: #121215;
+}
+
 :root {
   color-scheme: dark;
 }
