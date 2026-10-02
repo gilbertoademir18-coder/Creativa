@@ -32,7 +32,7 @@ const FiltroAssets = z.object({
 
 /**
  * O que a listagem traz: o projeto, as contagens e a primeira imagem de
- * referência — é ela que vira a capa do cartão.
+ * referência — a capa de quem ainda não tem output (ver `capasDeOutputs`).
  */
 const daListagem = {
   projeto: { select: { id: true, nome: true } },
@@ -45,12 +45,37 @@ const daListagem = {
   },
 };
 
-type DaListagem = { referencias: { arquivo: string | null }[] };
+type DaListagem = { id: string; referencias: { arquivo: string | null }[] };
 
-const comCapa = <T extends DaListagem>({ referencias, ...resto }: T) => ({
-  ...resto,
-  capa: referencias[0]?.arquivo ?? null,
-});
+/**
+ * A imagem que representa cada asset, entre os outputs das gerações dele:
+ * o favorito, senão o mais recente. Uma consulta só para a lista inteira
+ * (DISTINCT ON pega o primeiro de cada asset na ordem do ORDER BY).
+ */
+async function capasDeOutputs(ids: string[]): Promise<Map<string, string>> {
+  if (!ids.length) return new Map();
+  const linhas = await prisma.$queryRaw<{ asset_id: string; arquivo: string }[]>`
+    SELECT DISTINCT ON (g.asset_id) g.asset_id, o.arquivo
+    FROM output o
+    JOIN geracao g ON g.id = o.geracao_id
+    WHERE o.tipo = 'IMAGEM' AND g.asset_id = ANY(${ids}::uuid[])
+    ORDER BY g.asset_id, o.favorito DESC, o.criado_em DESC`;
+  return new Map(linhas.map((l) => [l.asset_id, l.arquivo]));
+}
+
+/**
+ * A capa do asset: um output gerado para ele (é a cara dele de verdade) e,
+ * enquanto não houver nenhum, a primeira imagem de referência.
+ */
+async function comCapas<T extends DaListagem>(assets: T[]) {
+  const deOutputs = await capasDeOutputs(assets.map((a) => a.id));
+  return assets.map(({ referencias, ...resto }) => ({
+    ...resto,
+    capa: deOutputs.get(resto.id) ?? referencias[0]?.arquivo ?? null,
+  }));
+}
+
+const comCapa = async <T extends DaListagem>(asset: T) => (await comCapas([asset]))[0]!;
 
 export async function rotasAssets(app: FastifyInstance) {
   app.get("/", async (req) => {
@@ -64,7 +89,7 @@ export async function rotasAssets(app: FastifyInstance) {
       include: daListagem,
       orderBy: [{ tipo: "asc" }, { nome: "asc" }],
     });
-    return assets.map(comCapa);
+    return comCapas(assets);
   });
 
   app.get("/:id", async (req) => {
@@ -81,14 +106,14 @@ export async function rotasAssets(app: FastifyInstance) {
       },
     });
     if (!asset) throw naoEncontrado("Asset não encontrado.");
-    const capa = asset.referencias.find((r) => r.tipo === "IMAGEM")?.arquivo ?? null;
+    const capa = (await capasDeOutputs([id])).get(id) ?? asset.referencias.find((r) => r.tipo === "IMAGEM")?.arquivo ?? null;
     return { ...asset, capa, referencias: asset.referencias.map(referenciaParaJson) };
   });
 
   app.post("/", async (req, reply) => {
     const dados = validar(CorpoAsset, req.body);
     const asset = await prisma.asset.create({ data: dados, include: daListagem });
-    return reply.code(201).send(comCapa(asset));
+    return reply.code(201).send(await comCapa(asset));
   });
 
   app.put("/:id", async (req) => {

@@ -1,9 +1,9 @@
 import { Plus, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router";
-import { consulta, geracoesApi } from "../api.ts";
+import { consulta, geracoesApi, urlArquivo } from "../api.ts";
 import { useCarregar } from "../hooks.ts";
 import { formatarData, statusGeracao, tituloGeracao } from "../rotulos.ts";
-import type { Geracao, GeracaoResumo, StatusGeracao } from "../tipos.ts";
+import type { Geracao, StatusGeracao } from "../tipos.ts";
 import { DescricaoDono } from "./referencias.tsx";
 import { Aviso, BotaoLink, Carregando, Etiqueta, Secao, Vazio } from "./ui.tsx";
 
@@ -13,10 +13,10 @@ export function EtiquetaStatus({ status }: { status: StatusGeracao }) {
 }
 
 /**
- * Gerações em tabela: é uma lista para ler (prompt, status, data), não uma
- * galeria — a galeria é a dos outputs.
+ * Gerações em tabela: é uma lista para ler (prompt, tipo, status, data),
+ * com a primeira imagem gerada de miniatura.
  */
-export function TabelaGeracoes({ geracoes, mostrarDono }: { geracoes: (Geracao | GeracaoResumo)[]; mostrarDono?: boolean }) {
+export function TabelaGeracoes({ geracoes, mostrarDono }: { geracoes: Geracao[]; mostrarDono?: boolean }) {
   const navegar = useNavigate();
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-800">
@@ -25,8 +25,8 @@ export function TabelaGeracoes({ geracoes, mostrarDono }: { geracoes: (Geracao |
           <tr>
             <th className="px-4 py-2.5 font-medium">Geração</th>
             {mostrarDono && <th className="px-4 py-2.5 font-medium">Pertence a</th>}
+            <th className="px-4 py-2.5 font-medium">Tipo</th>
             <th className="px-4 py-2.5 font-medium">Status</th>
-            {mostrarDono && <th className="px-4 py-2.5 font-medium">Workflow</th>}
             <th className="px-4 py-2.5 text-right font-medium">Outputs</th>
             <th className="px-4 py-2.5 text-right font-medium">Criada</th>
           </tr>
@@ -34,18 +34,25 @@ export function TabelaGeracoes({ geracoes, mostrarDono }: { geracoes: (Geracao |
         <tbody className="divide-y divide-zinc-800">
           {geracoes.map((g) => (
             <tr key={g.id} onClick={() => navegar(`/geracoes/${g.id}`)} className="cursor-pointer hover:bg-zinc-900/60">
-              <td className="max-w-xl truncate px-4 py-3">{tituloGeracao(g)}</td>
-              {mostrarDono && "asset" in g && (
-                <td className="px-4 py-3 text-zinc-400" onClick={(e) => e.stopPropagation()}>
+              <td className="max-w-xl px-4 py-2">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-16 shrink-0 overflow-hidden rounded bg-zinc-900">
+                    {g.capa && <img src={urlArquivo(g.capa)} alt="" loading="lazy" className="size-full object-cover" />}
+                  </div>
+                  <span className="truncate">{tituloGeracao(g)}</span>
+                </div>
+              </td>
+              {mostrarDono && (
+                <td className="px-4 py-2 text-zinc-400" onClick={(e) => e.stopPropagation()}>
                   <DescricaoDono r={g} />
                 </td>
               )}
-              <td className="px-4 py-3">
+              <td className="px-4 py-2 text-zinc-400">{g.tipoNome}</td>
+              <td className="px-4 py-2">
                 <EtiquetaStatus status={g.status} />
               </td>
-              {mostrarDono && "workflow" in g && <td className="px-4 py-3 text-zinc-400">{g.workflow?.nome ?? "—"}</td>}
-              <td className="px-4 py-3 text-right text-zinc-400 tabular-nums">{g._count.outputs}</td>
-              <td className="px-4 py-3 text-right text-zinc-500 tabular-nums">{formatarData(g.criadoEm)}</td>
+              <td className="px-4 py-2 text-right text-zinc-400 tabular-nums">{g._count.outputs}</td>
+              <td className="px-4 py-2 text-right text-zinc-500 tabular-nums">{formatarData(g.criadoEm)}</td>
             </tr>
           ))}
         </tbody>

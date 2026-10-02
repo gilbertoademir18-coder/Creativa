@@ -113,8 +113,9 @@ function CorpoConfirmar({
   const [erro, setErro] = useState<string | null>(null);
   const [apagando, setApagando] = useState(false);
   const [digitado, setDigitado] = useState("");
-  // Exata, em maiúsculas: digitar a palavra de propósito é o ponto.
-  const liberado = !exigirDigitar || digitado.trim() === exigirDigitar;
+  // Maiúsculas ou minúsculas tanto faz: o que conta é digitar a palavra de
+  // propósito, não acertar o Caps Lock.
+  const liberado = !exigirDigitar || digitado.trim().toLowerCase() === exigirDigitar.toLowerCase();
 
   return (
     <form

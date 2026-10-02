@@ -68,15 +68,6 @@ enum TipoOutput {
   @@map("tipo_output")
 }
 
-enum CategoriaWorkflow {
-  VIDEO
-  IMAGEM
-  AUDIO
-  ASSET
-
-  @@map("categoria_workflow")
-}
-
 /// "Poker de Camila", "Anime Katsuragi"...
 model Projeto {
   id        String   @id @default(uuid()) @db.Uuid
@@ -183,26 +174,16 @@ model Referencia {
   @@map("referencia")
 }
 
-/// Um workflow do ComfyUI. Sem tela de cadastro ainda: entra com a
-/// integração do ComfyUI.
-model Workflow {
-  id        String             @id @default(uuid()) @db.Uuid
-  nome      String
-  descricao String?
-  categoria CategoriaWorkflow?
-  /// O grafo no formato API do ComfyUI ("Export (API)"), o que o POST /prompt aceita.
-  grafo     Json
-  arquivado Boolean            @default(false)
-  criadoEm  DateTime           @default(now()) @map("criado_em") @db.Timestamptz
-  editadoEm DateTime           @updatedAt @map("editado_em") @db.Timestamptz
-
-  geracoes Geracao[]
-
-  @@map("workflow")
-}
-
-/// Tudo o que foi usado para gerar algo no ComfyUI: prompt, referências,
-/// workflow e modelo — e o que saiu (Outputs).
+/// Tudo o que foi usado para gerar algo no ComfyUI — e o que saiu (Outputs).
+///
+/// Cada envio ao ComfyUI é uma Rodada: "Gerar" cria a primeira, "Gerar mais"
+/// cria outras com as mesmas configurações e seed nova. Os outputs de todas
+/// as rodadas ficam juntos na geração.
+///
+/// O tipo ("Placa de cenário", "Character sheet"...) e o workflow são chaves
+/// do código (apps/api/src/geracao/), não do banco: cada workflow do ComfyUI
+/// é programado lá, com os campos que expõe e o grafo que monta. Os valores
+/// dos campos ficam em `parametros`.
 ///
 /// Pertence a um asset, a um shot, ou a nenhum — nunca aos dois (CHECK).
 model Geracao {
@@ -211,36 +192,65 @@ model Geracao {
   shotId         String?       @map("shot_id") @db.Uuid
   /// Opcional: sem nome, a tela mostra o começo do prompt.
   nome           String?
+  /// Chave do tipo de geração no código (ex.: "placa-cenario").
+  tipo           String
+  /// Chave do workflow no código (ex.: "placa-cenario-zimage").
+  workflow       String
+  /// Cópia do campo "prompt" dos parâmetros, quando o workflow tem um: é o
+  /// que a busca e a listagem usam.
   prompt         String        @default("")
-  promptNegativo String?       @map("prompt_negativo")
-  /// O modelo de IA no ComfyUI (checkpoint, unet...), como texto por enquanto.
+  /// O modelo principal que o workflow usa, gravado no envio — para saber
+  /// depois com o que a imagem foi feita, mesmo que o código mude.
   modelo         String?
-  workflowId     String?       @map("workflow_id") @db.Uuid
-  /// O grafo exatamente como foi enviado, já com prompt e referências
-  /// aplicados. O workflow pode mudar depois; isto é o que de fato rodou.
-  grafoEnviado   Json?         @map("grafo_enviado")
-  /// Seed, passos, tamanho... o que mais o workflow expuser.
+  /// Os valores dos campos do workflow (prompt, seed, tamanho...), como o
+  /// formulário deixou. A seed sorteada de cada envio fica na Rodada.
   parametros     Json          @default("{}")
+  /// RASCUNHO até o primeiro envio; depois, o resumo das rodadas (alguma na
+  /// fila/executando, ou o resultado da mais recente). Mantido pelo código
+  /// em geracao/execucao.ts.
   status         StatusGeracao @default(RASCUNHO)
-  /// O id que o ComfyUI devolve no POST /prompt.
-  promptIdComfy  String?       @unique @map("prompt_id_comfy")
-  erro           String?
   criadoEm       DateTime      @default(now()) @map("criado_em") @db.Timestamptz
   editadoEm      DateTime      @updatedAt @map("editado_em") @db.Timestamptz
-  /// Início e fim de verdade no ComfyUI, sem o tempo de fila.
-  iniciadaEm     DateTime?     @map("iniciada_em") @db.Timestamptz
-  concluidaEm    DateTime?     @map("concluida_em") @db.Timestamptz
 
   asset    Asset?           @relation(fields: [assetId], references: [id], onDelete: Restrict)
   shot     Shot?            @relation(fields: [shotId], references: [id], onDelete: Restrict)
-  workflow Workflow?        @relation(fields: [workflowId], references: [id], onDelete: Restrict)
   entradas GeracaoEntrada[]
+  rodadas  Rodada[]
   outputs  Output[]
 
   @@index([assetId])
   @@index([shotId])
   @@index([status])
+  @@index([tipo])
   @@map("geracao")
+}
+
+/// Um envio de uma geração ao ComfyUI. A seed "aleatória" é sorteada aqui e
+/// gravada nos parâmetros: dá para saber qual seed fez cada imagem.
+model Rodada {
+  id            String        @id @default(uuid()) @db.Uuid
+  geracaoId     String        @map("geracao_id") @db.Uuid
+  /// NA_FILA → EXECUTANDO → CONCLUIDA / FALHOU / CANCELADA (nunca RASCUNHO).
+  status        StatusGeracao @default(NA_FILA)
+  /// Os valores exatos deste envio, com a seed já sorteada.
+  parametros    Json
+  /// O grafo exatamente como foi enviado. O código do workflow pode mudar
+  /// depois; isto é o que de fato rodou.
+  grafoEnviado  Json          @map("grafo_enviado")
+  /// O id que o ComfyUI devolve no POST /prompt.
+  promptIdComfy String?       @unique @map("prompt_id_comfy")
+  erro          String?
+  criadoEm      DateTime      @default(now()) @map("criado_em") @db.Timestamptz
+  /// Início e fim de verdade no ComfyUI, sem o tempo de fila.
+  iniciadaEm    DateTime?     @map("iniciada_em") @db.Timestamptz
+  concluidaEm   DateTime?     @map("concluida_em") @db.Timestamptz
+
+  geracao Geracao  @relation(fields: [geracaoId], references: [id], onDelete: Cascade)
+  outputs Output[]
+
+  @@index([geracaoId])
+  @@index([status])
+  @@map("rodada")
 }
 
 /// O que entrou numa geração: uma referência ou um output de outra geração.
@@ -268,6 +278,8 @@ model Output {
   id           String     @id @default(uuid()) @db.Uuid
   /// Geração com outputs não se apaga: eles têm arquivo em disco.
   geracaoId    String     @map("geracao_id") @db.Uuid
+  /// A rodada que produziu este output (e, nela, a seed).
+  rodadaId     String?    @map("rodada_id") @db.Uuid
   tipo         TipoOutput
   /// Caminho relativo à pasta de arquivos (ARQUIVOS_DIR), com `/`.
   arquivo      String
@@ -280,9 +292,11 @@ model Output {
   criadoEm     DateTime   @default(now()) @map("criado_em") @db.Timestamptz
 
   geracao Geracao          @relation(fields: [geracaoId], references: [id], onDelete: Restrict)
+  rodada  Rodada?          @relation(fields: [rodadaId], references: [id], onDelete: Restrict)
   /// Output usado como entrada de outra geração não se apaga.
   usadoEm GeracaoEntrada[]
 
   @@index([geracaoId])
+  @@index([rodadaId])
   @@map("output")
 }

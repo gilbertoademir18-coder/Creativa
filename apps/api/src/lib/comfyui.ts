@@ -75,6 +75,8 @@ export async function estadoComfy() {
   return {
     noAr,
     versao,
+    /** Para o link "Abrir o ComfyUI" da barra do topo. */
+    url: configComfy().url,
     iniciando: !!partida && decorrido < PRAZO_MS,
     naoRespondeu: !!partida && decorrido >= PRAZO_MS,
     segundos: partida ? Math.round(decorrido / 1000) : null,

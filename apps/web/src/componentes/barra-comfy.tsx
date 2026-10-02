@@ -1,4 +1,4 @@
-import { LoaderCircle, Play, ScrollText, Square, Unplug } from "lucide-react";
+import { ExternalLink, LoaderCircle, Play, ScrollText, Square, Unplug } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api.ts";
 import { ConfirmarExclusao, Modal } from "./modal.tsx";
@@ -7,6 +7,7 @@ import { Aviso } from "./ui.tsx";
 type EstadoComfy = {
   noAr: boolean;
   versao: string | null;
+  url: string;
   /** Iniciado pelo site e ainda subindo. */
   iniciando: boolean;
   /** Iniciado pelo site e não respondeu no prazo (5 min). */
@@ -97,6 +98,15 @@ export function BarraComfy() {
             ComfyUI conectado
             {estado.versao && <span className="text-zinc-600">v{estado.versao}</span>}
           </span>
+          <a
+            href={estado.url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-7 items-center gap-1.5 rounded-md border border-zinc-700 px-2.5 text-xs text-zinc-300 hover:border-zinc-500 hover:bg-zinc-800 hover:text-zinc-100"
+          >
+            <ExternalLink className="size-3.5" />
+            Abrir o ComfyUI
+          </a>
           <BotaoBarra icone={<ScrollText className="size-3.5" />} onClick={() => setVendoLog(true)}>
             Log
           </BotaoBarra>

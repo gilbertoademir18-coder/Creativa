@@ -33,6 +33,23 @@
 - Filtros moram na URL (`useFiltros`), para dar para voltar, recarregar e
   mandar o link de um filtro pronto.
 
+# Gerações e workflows do ComfyUI
+
+- Tipos de geração e workflows são **programados no código**, em
+  `apps/api/src/geracao/` — não ficam no banco. A geração guarda só as chaves
+  (`tipo`, `workflow`) e os valores dos campos (`parametros`).
+- Workflow novo = um arquivo em `geracao/workflows/` + uma linha em
+  `geracao/registro.ts`. Para escrever:
+  1. Leia o `.json` em `C:\AI\ComfyUI\ComfyUI\user\default\workflows` (formato
+     de tela) — inclusive as notas (MarkdownNote): elas dizem o que é fixo e por quê.
+  2. Confira os nomes de entrada de cada nó em `GET /object_info/<Classe>` do
+     ComfyUI. Não chute: o widget de tela nem sempre bate com o nome do input.
+  3. Traduza para o formato API mantendo os ids dos nós do arquivo; exponha
+     como `campos` só o que muda de geração para geração.
+  4. Teste mandando o grafo montado direto ao `POST /prompt` (sem gravar no
+     banco) e confira a imagem. Apague o output de teste depois.
+- Tipo sem workflow nenhum não aparece na tela.
+
 # Git
 
 - Um dev e um usuário só: o dono do projeto. **Sem branches e sem PRs** —

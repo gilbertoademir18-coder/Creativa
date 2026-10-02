@@ -89,24 +89,23 @@ export type GeracaoResumo = {
   assetId: string | null;
   shotId: string | null;
   nome: string | null;
+  tipo: string;
+  workflow: string;
   prompt: string;
   status: StatusGeracao;
   criadoEm: string;
   _count: { outputs: number };
 };
 
-export type WorkflowResumo = { id: string; nome: string; categoria: string | null };
-
-export type Geracao = Omit<GeracaoResumo, "_count"> &
+/** Como a listagem devolve: com os nomes do tipo e do workflow e a miniatura. */
+export type Geracao = GeracaoResumo &
   DonoDetalhado & {
-    promptNegativo: string | null;
+    tipoNome: string;
+    workflowNome: string;
     modelo: string | null;
-    workflowId: string | null;
-    workflow: { id: string; nome: string } | null;
+    parametros: Record<string, unknown>;
     editadoEm: string;
-    iniciadaEm: string | null;
-    concluidaEm: string | null;
-    erro: string | null;
+    capa?: string | null;
     _count: { outputs: number; entradas: number };
   };
 
@@ -123,6 +122,22 @@ export type Output = {
   favorito: boolean;
   criadoEm: string;
   geracao?: { id: string; nome: string | null; prompt: string };
+  /** A seed da rodada que gerou este output (no detalhe da geração). */
+  seed?: number | null;
+};
+
+/** Um envio da geração ao ComfyUI. */
+export type Rodada = {
+  id: string;
+  status: Exclude<StatusGeracao, "RASCUNHO">;
+  parametros: Record<string, unknown>;
+  seed: number | null;
+  erro: string | null;
+  criadoEm: string;
+  iniciadaEm: string | null;
+  concluidaEm: string | null;
+  /** Passo atual no ComfyUI (do WebSocket), enquanto executa. */
+  progresso: { valor: number; max: number } | null;
 };
 
 export type GeracaoEntrada = {
@@ -134,4 +149,49 @@ export type GeracaoEntrada = {
   output: Output | null;
 };
 
-export type GeracaoDetalhe = Geracao & { entradas: GeracaoEntrada[]; outputs: Output[] };
+export type GeracaoDetalhe = Geracao & {
+  entradas: GeracaoEntrada[];
+  outputs: Output[];
+  /** Da mais recente para a mais antiga. */
+  rodadas: Rodada[];
+};
+
+/*
+ * O catálogo de tipos de geração e workflows, como a API descreve.
+ * Espelha apps/api/src/geracao/definicoes.ts (sem a função que monta o grafo).
+ */
+
+export type AvisoCampo = { quando: "falta" | "tem"; padrao: string; mensagem: string };
+
+export type CampoWorkflow =
+  | {
+      tipo: "texto";
+      chave: string;
+      rotulo: string;
+      linhas?: number;
+      obrigatorio?: boolean;
+      dica?: string;
+      padrao?: string;
+      palavras?: { min: number; max: number };
+      avisos?: AvisoCampo[];
+    }
+  | { tipo: "opcoes"; chave: string; rotulo: string; opcoes: { valor: string; rotulo: string }[]; padrao: string; dica?: string }
+  | { tipo: "seed"; chave: string; rotulo: string };
+
+export type WorkflowCatalogo = {
+  chave: string;
+  tipo: string;
+  nome: string;
+  descricao: string;
+  arquivoComfy: string;
+  modelo: string;
+  campos: CampoWorkflow[];
+};
+
+export type TipoCatalogo = {
+  chave: string;
+  nome: string;
+  descricao: string;
+  saida: "IMAGEM" | "VIDEO";
+  workflows: WorkflowCatalogo[];
+};

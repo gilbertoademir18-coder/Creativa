@@ -13,3 +13,16 @@
 body {
   @apply bg-zinc-950 text-zinc-100 antialiased;
 }
+
+/*
+ * O Tailwind 4 tira o cursor de mãozinha dos botões (preflight). Num app
+ * usado com mouse, ele é a dica de que dá para clicar — volta para todo
+ * botão habilitado e para as listas de escolha.
+ */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  select:not(:disabled) {
+    cursor: pointer;
+  }
+}

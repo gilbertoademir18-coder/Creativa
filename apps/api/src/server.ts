@@ -17,7 +17,8 @@ const { rotasProjetos } = await import("./rotas/projetos.ts");
 const { rotasAssets } = await import("./rotas/assets.ts");
 const { rotasCenas, rotasShots } = await import("./rotas/cenas.ts");
 const { rotasReferencias } = await import("./rotas/referencias.ts");
-const { rotasGeracoes, rotasOutputs, rotasWorkflows } = await import("./rotas/geracoes.ts");
+const { rotasGeracoes, rotasOutputs } = await import("./rotas/geracoes.ts");
+const { iniciarAcompanhamento } = await import("./geracao/execucao.ts");
 const { rotasComfy } = await import("./rotas/comfyui.ts");
 const { pastaArquivos } = await import("./lib/arquivos.ts");
 
@@ -88,7 +89,6 @@ await app.register(rotasShots, { prefix: "/api/shots" });
 await app.register(rotasReferencias, { prefix: "/api/referencias" });
 await app.register(rotasGeracoes, { prefix: "/api/geracoes" });
 await app.register(rotasOutputs, { prefix: "/api/outputs" });
-await app.register(rotasWorkflows, { prefix: "/api/workflows" });
 await app.register(rotasComfy, { prefix: "/api/comfyui" });
 
 /*
@@ -134,3 +134,6 @@ app.setNotFoundHandler((req, reply) => {
 
 // 0.0.0.0 e não localhost: assim os outros PCs chegam pelo IP do tailnet.
 await app.listen({ port: PORTA, host: "0.0.0.0" });
+
+// Retoma e acompanha as gerações que estão no ComfyUI (ver geracao/execucao.ts).
+iniciarAcompanhamento(app.log);

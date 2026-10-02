@@ -12,8 +12,8 @@ import type {
   StatusGeracao,
   TipoAsset,
   TipoReferencia,
+  TipoCatalogo,
   Vinculo,
-  WorkflowResumo,
 } from "./tipos.ts";
 
 /**
@@ -61,11 +61,9 @@ export type CenaNova = { nome: string; projetoId: string | null; descricao: stri
 export type ShotNovo = { nome: string; descricao: string | null };
 export type GeracaoNova = Dono & {
   nome: string | null;
-  prompt: string;
-  promptNegativo: string | null;
-  modelo: string | null;
-  workflowId: string | null;
-  entradas: ({ referenciaId: string } | { outputId: string })[];
+  tipo: string;
+  workflow: string;
+  parametros: Record<string, unknown>;
 };
 
 type Filtro = Record<string, string | undefined>;
@@ -143,21 +141,26 @@ export const geracoesApi = {
       projeto?: string;
       status?: StatusGeracao | "";
       vinculo?: Vinculo | "";
+      tipo?: string;
       asset?: string;
       shot?: string;
       busca?: string;
     } = {},
   ) => api<Geracao[]>(`/geracoes${consulta(f)}`),
+  /** Os tipos de geração (com workflows e campos) que valem para um dono. */
+  catalogo: (dono: Dono) =>
+    api<TipoCatalogo[]>(`/geracoes/catalogo${consulta({ asset: dono.assetId, shot: dono.shotId })}`),
   ler: (id: string) => api<GeracaoDetalhe>(`/geracoes/${id}`),
   criar: (g: GeracaoNova) => api<Geracao>("/geracoes", { method: "POST", corpo: g }),
   salvar: (id: string, g: GeracaoNova) => api<Geracao>(`/geracoes/${id}`, { method: "PUT", corpo: g }),
   apagar: (id: string) => api<void>(`/geracoes/${id}`, { method: "DELETE" }),
+  /** Manda `quantidade` rodadas ao ComfyUI. Depois da primeira, cada uma com seed nova. */
+  gerar: (id: string, quantidade = 1) => api<{ ok: true }>(`/geracoes/${id}/gerar`, { method: "POST", corpo: { quantidade } }),
+  cancelar: (id: string) => api<{ ok: true }>(`/geracoes/${id}/cancelar`, { method: "POST" }),
+  duplicar: (id: string) => api<Geracao>(`/geracoes/${id}/duplicar`, { method: "POST" }),
 };
 
 export const outputsApi = {
   listar: (f: { projeto?: string } = {}) => api<Output[]>(`/outputs${consulta(f)}`),
 };
 
-export const workflowsApi = {
-  listar: () => api<WorkflowResumo[]>("/workflows"),
-};
