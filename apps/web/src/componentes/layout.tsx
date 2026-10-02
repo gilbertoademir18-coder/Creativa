@@ -2,6 +2,7 @@ import { Clapperboard, FolderKanban, Images, Shapes, Sparkles } from "lucide-rea
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router";
 import { BarraComfy } from "./barra-comfy.tsx";
+import { BarraFila } from "./barra-fila.tsx";
 
 /*
  * Tela cheia, feita para Full HD e QHD: menu fixo à esquerda, a barra do
@@ -45,11 +46,12 @@ export function Layout() {
           <SeloBanco />
         </div>
       </aside>
-      <div className="grid min-w-0 grid-rows-[auto_1fr] overflow-hidden">
+      <div className="grid min-w-0 grid-rows-[auto_1fr_auto] overflow-hidden">
         <BarraComfy />
         <main className="min-w-0 overflow-y-auto bg-zinc-925">
           <Outlet />
         </main>
+        <BarraFila />
       </div>
     </div>
   );

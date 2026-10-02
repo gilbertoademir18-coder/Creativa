@@ -119,34 +119,47 @@ export async function enviar(id: string, quantidade: number): Promise<void> {
   garantirWebSocket();
 }
 
-/**
- * Cancela as rodadas em andamento de uma geração: tira da fila as que ainda
- * não começaram; interrompe a que está rodando. O /interrupt do ComfyUI para
- * o que estiver executando — por isso só é chamado quando a vez é nossa.
- */
+/** Cancela todas as rodadas em andamento de uma geração. */
 export async function cancelar(id: string): Promise<void> {
   const ativas = await prisma.rodada.findMany({ where: { geracaoId: id, status: { in: ["NA_FILA", "EXECUTANDO"] } } });
   if (!ativas.length) throw new ErroHttp(409, "Não há nada desta geração na fila ou executando.");
+  await cancelarRodadas(ativas);
+}
+
+/** Cancela uma rodada só — o "×" de cada item da fila global. */
+export async function cancelarRodada(id: string): Promise<void> {
+  const r = await prisma.rodada.findUnique({ where: { id } });
+  if (!r) throw new ErroHttp(404, "Rodada não encontrada.");
+  if (r.status !== "NA_FILA" && r.status !== "EXECUTANDO") throw new ErroHttp(409, "Esta rodada já terminou.");
+  await cancelarRodadas([r]);
+}
+
+/**
+ * Tira da fila do ComfyUI as que ainda não começaram e interrompe a que
+ * está rodando. O /interrupt para o que estiver executando — por isso só é
+ * chamado quando a vez é de uma destas rodadas.
+ */
+async function cancelarRodadas(rodadas: { id: string; geracaoId: string; promptIdComfy: string | null }[]): Promise<void> {
   const url = configComfy().url;
   const fila = await lerFila(url).catch(() => null);
-  const pids = ativas.map((r) => r.promptIdComfy).filter((p): p is string => !!p);
+  const pids = rodadas.map((r) => r.promptIdComfy).filter((p): p is string => !!p);
 
   const esperando = pids.filter((p) => !fila?.rodando.includes(p));
   if (esperando.length) await postar(`${url}/queue`, { delete: esperando });
   if (pids.some((p) => fila?.rodando.includes(p))) await postar(`${url}/interrupt`, {});
 
   await prisma.rodada.updateMany({
-    where: { id: { in: ativas.map((r) => r.id) } },
+    where: { id: { in: rodadas.map((r) => r.id) } },
     data: { status: "CANCELADA", concluidaEm: new Date() },
   });
-  await resumirStatus(id);
+  for (const g of new Set(rodadas.map((r) => r.geracaoId))) await resumirStatus(g);
 }
 
 const postar = (url: string, corpo: unknown) =>
   fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo), signal: AbortSignal.timeout(5_000) }).catch(() => {});
 
 /** A fila do ComfyUI: os prompt_id rodando e os esperando. */
-async function lerFila(url: string): Promise<{ rodando: string[]; esperando: string[] }> {
+export async function lerFila(url: string): Promise<{ rodando: string[]; esperando: string[] }> {
   const r = await fetch(`${url}/queue`, { signal: AbortSignal.timeout(5_000) });
   const j = (await r.json()) as { queue_running: unknown[][]; queue_pending: unknown[][] };
   // Cada item é [número, prompt_id, grafo, extra, saídas].
