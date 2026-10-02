@@ -1,11 +1,12 @@
 import { Clapperboard, FolderKanban, Images, Shapes, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router";
+import { BarraComfy } from "./barra-comfy.tsx";
 
 /*
- * Tela cheia, feita para Full HD e QHD: menu fixo à esquerda e a página
- * ocupando todo o resto, com rolagem própria. Não há versão de celular —
- * o Creativa roda em monitor.
+ * Tela cheia, feita para Full HD e QHD: menu fixo à esquerda, a barra do
+ * ComfyUI fixa no topo, e a página ocupando todo o resto, com rolagem
+ * própria. Não há versão de celular — o Creativa roda em monitor.
  */
 
 const MENU = [
@@ -40,43 +41,56 @@ export function Layout() {
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto flex flex-col gap-1.5 border-t border-zinc-800 px-5 py-4">
-          <Selo rota="/api/comfyui/estado" nome="ComfyUI" />
-          <Selo rota="/api/banco/estado" nome="Banco" />
+        <div className="mt-auto border-t border-zinc-800 px-5 py-4">
+          <SeloBanco />
         </div>
       </aside>
-      <main className="min-w-0 overflow-y-auto bg-zinc-925">
-        <Outlet />
-      </main>
+      <div className="grid min-w-0 grid-rows-[auto_1fr] overflow-hidden">
+        <BarraComfy />
+        <main className="min-w-0 overflow-y-auto bg-zinc-925">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
 
-/** Pergunta à API, a cada 10 segundos, se uma dependência está no ar. */
-function Selo({ rota, nome }: { rota: string; nome: string }) {
-  const [noAr, setNoAr] = useState<boolean | null>(null);
+type Estado = { noAr: boolean };
+
+/**
+ * Pergunta à API, de tempos em tempos, se uma dependência está no ar.
+ * `null` enquanto a primeira resposta não chega.
+ */
+function useEstado(rota: string, intervaloMs: number): Estado | null {
+  const [estado, setEstado] = useState<Estado | null>(null);
   useEffect(() => {
     let vivo = true;
     const consultar = async () => {
       try {
         const r = await fetch(rota);
-        const j = (await r.json()) as { noAr: boolean };
-        if (vivo) setNoAr(j.noAr);
+        const j = (await r.json()) as Estado;
+        if (vivo) setEstado(j);
       } catch {
-        if (vivo) setNoAr(false);
+        // Sem resposta da nossa API: daqui não dá para saber do ComfyUI.
+        if (vivo) setEstado({ noAr: false });
       }
     };
     consultar();
-    const id = setInterval(consultar, 10_000);
+    const id = setInterval(consultar, intervaloMs);
     return () => {
       vivo = false;
       clearInterval(id);
     };
-  }, [rota]);
+  }, [rota, intervaloMs]);
+  return estado;
+}
+
+function SeloBanco() {
+  const banco = useEstado("/api/banco/estado", 10_000);
   return (
     <div className="flex items-center gap-2 text-xs text-zinc-500">
-      <span className={`size-2 rounded-full ${noAr === null ? "bg-zinc-600" : noAr ? "bg-emerald-500" : "bg-red-500"}`} />
-      {nome} {noAr === null ? "..." : noAr ? "no ar" : "fora do ar"}
+      <span className={`size-2 rounded-full ${banco === null ? "bg-zinc-600" : banco.noAr ? "bg-emerald-500" : "bg-red-500"}`} />
+      Banco {banco === null ? "..." : banco.noAr ? "no ar" : "fora do ar"}
     </div>
   );
 }

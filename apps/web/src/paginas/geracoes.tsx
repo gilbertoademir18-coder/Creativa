@@ -2,7 +2,7 @@ import { ArrowLeft, Check, ImagePlus, Plus, Sparkles, Trash, X } from "lucide-re
 import { useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { geracoesApi, outputsApi, referenciasApi, workflowsApi, type Dono, type GeracaoNova } from "../api.ts";
-import { FiltroBusca, FiltroProjeto } from "../componentes/filtros.tsx";
+import { FiltroBusca, FiltroProjeto, FiltroSelecao } from "../componentes/filtros.tsx";
 import { EtiquetaStatus, TabelaGeracoes } from "../componentes/geracoes.tsx";
 import { Miniatura } from "../componentes/midia.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
@@ -54,14 +54,13 @@ export function PaginaGeracoes() {
       />
       <BarraFiltros>
         <FiltroProjeto valor={f.projeto} aoMudar={(v) => mudar("projeto", v)} />
-        <Seletor value={f.status} onChange={(e) => mudar("status", e.target.value)} className="w-44">
-          <option value="">Qualquer status</option>
+        <FiltroSelecao valor={f.status} aoMudar={(v) => mudar("status", v)} todos="Qualquer status" largura="w-48">
           {STATUS_GERACAO.map((s) => (
             <option key={s.valor} value={s.valor}>
               {s.rotulo}
             </option>
           ))}
-        </Seletor>
+        </FiltroSelecao>
         <Pilulas
           valor={f.vinculo}
           aoMudar={(v) => mudar("vinculo", v)}

@@ -17,6 +17,22 @@
 - Prisma fixado em `^7.10.0` — a tag `latest` é um RC da v8.
 - Antes de concluir: `npm run typecheck` e `npm run build`.
 
+# Interface
+
+- Tela cheia, só desktop: monitores Full HD e QHD. Sem versão de celular.
+- **O estado do ComfyUI fica sempre à vista**, na barra do topo (`BarraComfy`
+  em `componentes/layout.tsx`), em todas as páginas. Nenhuma tela esconde ou
+  cobre essa barra.
+- **Filtros: todo campo de filtro com valor mostra um × à direita que limpa
+  aquele filtro com um clique** — texto ou lista de escolha. A pessoa tem que
+  conseguir desfazer qualquer filtro só com o mouse. Use os componentes de
+  `apps/web/src/componentes/filtros.tsx` (`FiltroBusca`, `FiltroSelecao`,
+  `FiltroProjeto`), que já fazem isso; nunca monte um filtro com
+  `Entrada`/`Seletor` direto. Filtro de pílulas (`Pilulas`) não precisa: a
+  opção "Todos" já está à vista.
+- Filtros moram na URL (`useFiltros`), para dar para voltar, recarregar e
+  mandar o link de um filtro pronto.
+
 # Git
 
 - Um dev e um usuário só: o dono do projeto. **Sem branches e sem PRs** —

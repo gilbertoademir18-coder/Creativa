@@ -192,6 +192,7 @@ export function PaginaProjeto() {
       <ConfirmarExclusao
         aberto={excluindo}
         titulo="Excluir projeto"
+        exigirDigitar="EXCLUIR"
         texto={
           <>
             O projeto <b>{p.nome}</b> será excluído. Os assets e as cenas dele <b>não</b> são apagados: ficam soltos,

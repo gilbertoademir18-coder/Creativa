@@ -18,6 +18,7 @@ const { rotasAssets } = await import("./rotas/assets.ts");
 const { rotasCenas, rotasShots } = await import("./rotas/cenas.ts");
 const { rotasReferencias } = await import("./rotas/referencias.ts");
 const { rotasGeracoes, rotasOutputs, rotasWorkflows } = await import("./rotas/geracoes.ts");
+const { rotasComfy } = await import("./rotas/comfyui.ts");
 const { pastaArquivos } = await import("./lib/arquivos.ts");
 
 // 3400 é a do app de verdade (a que o ícone da bandeja sobe). O `npm run dev`
@@ -25,7 +26,6 @@ const { pastaArquivos } = await import("./lib/arquivos.ts");
 const MODO_DEV = process.argv.includes("--dev");
 const PORTA = Number(process.env.PORT ?? (MODO_DEV ? 3401 : 3400));
 const WEB_DIST = path.join(RAIZ, "apps/web/dist");
-const COMFYUI_URL = process.env.COMFYUI_URL ?? "http://127.0.0.1:8188";
 
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
 
@@ -78,22 +78,6 @@ app.get("/api/banco/estado", async (req) => {
   }
 });
 
-/*
- * O ComfyUI está no ar? O front pergunta aqui, e não direto ao ComfyUI: de
- * outro PC pelo Tailscale, "127.0.0.1:8188" seria a máquina errada — quem
- * alcança o ComfyUI é este servidor.
- */
-app.get("/api/comfyui/estado", async () => {
-  try {
-    const r = await fetch(`${COMFYUI_URL}/system_stats`, { signal: AbortSignal.timeout(3000) });
-    if (!r.ok) return { noAr: false };
-    const stats = (await r.json()) as { system?: { comfyui_version?: string } };
-    return { noAr: true, versao: stats.system?.comfyui_version ?? null };
-  } catch {
-    return { noAr: false };
-  }
-});
-
 // Upload de referências: vídeo de referência pode ser grande, daí os 4 GB.
 await app.register(fastifyMultipart, { limits: { fileSize: 4 * 1024 ** 3, files: 50 } });
 
@@ -105,6 +89,7 @@ await app.register(rotasReferencias, { prefix: "/api/referencias" });
 await app.register(rotasGeracoes, { prefix: "/api/geracoes" });
 await app.register(rotasOutputs, { prefix: "/api/outputs" });
 await app.register(rotasWorkflows, { prefix: "/api/workflows" });
+await app.register(rotasComfy, { prefix: "/api/comfyui" });
 
 /*
  * Os arquivos (referências e outputs), em /api/arquivos/<caminho relativo>.

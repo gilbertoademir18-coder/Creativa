@@ -115,6 +115,20 @@ menor. São relidos a cada partida: edite e pare/inicie o ComfyUI pelo menu,
 sem reiniciar o tray. Com o fp16 ligado, o `comfyui.log` traz a linha
 `Enabled fp16 accumulation.`
 
+### O ComfyUI pelo site
+
+A barra do topo do app mostra sempre o estado do ComfyUI e tem **Iniciar**,
+**Parar** (com confirmação: interrompe uma geração em andamento) e **Log**
+(as últimas linhas, atualizando sozinho). Funciona de qualquer PC do
+tailnet: quem liga e desliga é o servidor do Creativa, nesta máquina.
+
+Usa a mesma configuração do tray (`COMFYUI_DIR`, `COMFYUI_URL`,
+`COMFYUI_ARGS`) e o mesmo `comfyui.log`. O ComfyUI sobe por um `cmd start`
+que sai na hora, e fica órfão de propósito: assim o **Reiniciar o servidor**
+do tray, que derruba a árvore de processos do servidor, não leva o ComfyUI
+junto no meio de uma geração. "Parar" derruba quem estiver ouvindo na porta,
+tenha sido iniciado pelo site, pelo tray ou pelo `.bat`.
+
 Um ComfyUI aberto por fora (pelo `.bat`) também é reconhecido — o estado
 segue a porta. Ao **Sair**, o ícone só derruba o ComfyUI que ele mesmo
 iniciou: o oculto não teria outro jeito de ser fechado.

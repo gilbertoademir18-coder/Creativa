@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Aviso, Botao } from "./ui.tsx";
+import { Aviso, Botao, Entrada } from "./ui.tsx";
 
 /**
  * A janela modal do app, sobre o `<dialog>` nativo (veio do Trimly).
@@ -64,64 +64,92 @@ export function Modal({
   );
 }
 
-/** Pergunta antes de apagar. Mostra o erro do servidor (ex.: 409) sem fechar. */
+/**
+ * Pergunta antes de apagar. Mostra o erro do servidor (ex.: 409) sem fechar.
+ *
+ * Com `exigirDigitar`, o botão só acende depois que a pessoa digita a
+ * palavra (ex.: "EXCLUIR") — para o que é caro de desfazer, um clique
+ * distraído não basta.
+ */
 export function ConfirmarExclusao({
   aberto,
   titulo,
   texto,
+  exigirDigitar,
+  rotuloConfirmar = "Excluir",
   aoConfirmar,
   aoFechar,
 }: {
   aberto: boolean;
   titulo: string;
   texto: React.ReactNode;
+  exigirDigitar?: string;
+  /** O texto do botão vermelho. */
+  rotuloConfirmar?: string;
   aoConfirmar: () => Promise<void>;
   aoFechar: () => void;
 }) {
   return (
     <Modal aberto={aberto} titulo={titulo} aoFechar={aoFechar}>
-      <CorpoConfirmar texto={texto} aoConfirmar={aoConfirmar} aoFechar={aoFechar} />
+      <CorpoConfirmar texto={texto} exigirDigitar={exigirDigitar} rotuloConfirmar={rotuloConfirmar} aoConfirmar={aoConfirmar} aoFechar={aoFechar} />
     </Modal>
   );
 }
 
-
 function CorpoConfirmar({
   texto,
+  exigirDigitar,
+  rotuloConfirmar = "Excluir",
   aoConfirmar,
   aoFechar,
 }: {
   texto: React.ReactNode;
+  exigirDigitar?: string;
+  /** O texto do botão vermelho. */
+  rotuloConfirmar?: string;
   aoConfirmar: () => Promise<void>;
   aoFechar: () => void;
 }) {
   const [erro, setErro] = useState<string | null>(null);
   const [apagando, setApagando] = useState(false);
+  const [digitado, setDigitado] = useState("");
+  // Exata, em maiúsculas: digitar a palavra de propósito é o ponto.
+  const liberado = !exigirDigitar || digitado.trim() === exigirDigitar;
+
   return (
-    <div className="flex flex-col gap-4">
+    <form
+      className="flex flex-col gap-4"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (!liberado) return;
+        setApagando(true);
+        setErro(null);
+        try {
+          await aoConfirmar();
+        } catch (er) {
+          setErro((er as Error).message);
+          setApagando(false);
+        }
+      }}
+    >
       <div className="text-sm text-zinc-300">{texto}</div>
+      {exigirDigitar && (
+        <label className="flex flex-col gap-1.5 text-sm text-zinc-400">
+          <span>
+            Para confirmar, digite <b className="font-mono text-red-300">{exigirDigitar}</b>:
+          </span>
+          <Entrada value={digitado} onChange={(e) => setDigitado(e.target.value)} autoFocus autoComplete="off" spellCheck={false} />
+        </label>
+      )}
       {erro && <Aviso>{erro}</Aviso>}
       <div className="flex justify-end gap-2">
         <Botao variante="fantasma" onClick={aoFechar}>
           Cancelar
         </Botao>
-        <Botao
-          variante="perigo"
-          carregando={apagando}
-          onClick={async () => {
-            setApagando(true);
-            setErro(null);
-            try {
-              await aoConfirmar();
-            } catch (e) {
-              setErro((e as Error).message);
-              setApagando(false);
-            }
-          }}
-        >
-          Excluir
+        <Botao type="submit" variante="perigo" carregando={apagando} disabled={!liberado}>
+          {rotuloConfirmar}
         </Botao>
       </div>
-    </div>
+    </form>
   );
 }
