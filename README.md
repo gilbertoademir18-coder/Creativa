@@ -62,6 +62,42 @@ Regras que o banco garante (FKs e `CHECK`s):
 A conexão leva `options=-c timezone=UTC`: sem isso o driver grava os
 horários 3 horas deslocados, em silêncio (lição do NihongoHub).
 
+### Desenvolver de outra máquina do tailnet
+
+Dá para mexer no código de outro PC e deixar o banco e a GPU aqui: a API do
+notebook fala com este Postgres pela porta 5432 do tailnet, e com este
+ComfyUI pela 8445. Nada de pasta compartilhada — tudo é HTTP e WebSocket.
+
+No notebook, o `DATABASE_URL` aponta para o IP do tailnet desta máquina:
+
+```
+DATABASE_URL="postgresql://creativa:<senha>@100.65.76.22:5432/creativa?options=-c%20timezone%3DUTC"
+```
+
+O IP, e não o nome MagicDNS: o nome depende do DNS do Tailscale, que às vezes
+não sobe no Windows, e o IP de um nó é estável.
+
+**Aqui**, uma vez, rode `.\scripts\liberar-banco-no-tailnet.ps1` como
+Administrador: o `criar-banco.ps1` deixa o `pg_hba.conf` só com 127.0.0.1, e
+sem essa linha a conexão é recusada antes de olhar a senha —
+`nenhuma entrada em pg_hba.conf para o hospedeiro "100.x.y.z"`.
+
+As instruções prontas para isso estão em
+[`scripts/liberar-banco-no-tailnet.md`](scripts/liberar-banco-no-tailnet.md) —
+feitas para colar no Claude Code da máquina do banco, com o que ele pode e o
+que ele não pode mexer. O Trimly tem o mesmo problema (banco `trimly`, no
+mesmo servidor), e o script atende os dois: `-Banco trimly`.
+
+Duas coisas não funcionam do outro PC:
+
+- **Iniciar e Parar o ComfyUI** pela barra do topo — procuram o
+  `python_embeded` e a porta na máquina de onde a API roda. Deixe o ComfyUI
+  ligado aqui, pelo ícone da bandeja ou pelo app em 8444.
+- **Os arquivos.** O `/view` baixa os outputs para o `ARQUIVOS_DIR` do outro
+  PC, mas o registro vai para este banco: a imagem fica lá e aqui dá 404. Para
+  os dois lados combinarem, compartilhe `D:\Creativa` e aponte o
+  `ARQUIVOS_DIR` do outro PC para o compartilhamento.
+
 ## Arquivos
 
 Referências enviadas (e, depois, os outputs) ficam em **`D:\Creativa`**,
@@ -212,4 +248,7 @@ scripts/
   backup-banco.ps1        pg_dump com verificação
   publicar.ps1            Confere e faz backup antes de publicar (tray)
   publicar-no-tailnet.ps1 tailscale serve: Creativa 8444, ComfyUI 8445
+  liberar-banco-no-tailnet.ps1
+                          pg_hba: deixa outro PC do tailnet usar o banco
+                          (.md: instruções para o Claude da máquina do banco)
 ```
