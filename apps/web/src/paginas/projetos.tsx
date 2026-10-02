@@ -116,6 +116,8 @@ export function PaginaProjeto() {
   if (projeto.erro) return <div className="p-8"><Aviso>{projeto.erro}</Aviso></div>;
   if (!projeto.dados) return <Carregando />;
   const p = projeto.dados;
+  /** Quem sai daqui para um asset ou cena volta para cá. */
+  const volta = { para: `/projetos/${p.id}`, rotulo: p.nome };
 
   return (
     <>
@@ -154,7 +156,7 @@ export function PaginaProjeto() {
           {!!assets.dados?.length && (
             <div className={GRADE}>
               {assets.dados.map((a) => (
-                <CartaoAsset key={a.id} a={a} />
+                <CartaoAsset key={a.id} a={a} volta={volta} />
               ))}
             </div>
           )}
@@ -174,7 +176,7 @@ export function PaginaProjeto() {
           {!!cenas.dados?.length && (
             <div className={GRADE}>
               {cenas.dados.map((c) => (
-                <CartaoCena key={c.id} c={c} />
+                <CartaoCena key={c.id} c={c} volta={volta} />
               ))}
             </div>
           )}
@@ -209,13 +211,13 @@ export function PaginaProjeto() {
         aberto={novoAsset}
         projetoInicial={p.id}
         aoFechar={() => setNovoAsset(false)}
-        aoSalvar={(a) => navegar(`/assets/${a.id}`)}
+        aoSalvar={(a) => navegar(`/assets/${a.id}`, { state: { volta } })}
       />
       <ModalCena
         aberto={novaCena}
         projetoInicial={p.id}
         aoFechar={() => setNovaCena(false)}
-        aoSalvar={(c) => navegar(`/cenas/${c.id}`)}
+        aoSalvar={(c) => navegar(`/cenas/${c.id}`, { state: { volta } })}
       />
     </>
   );

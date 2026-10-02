@@ -1,4 +1,4 @@
-import { LoaderCircle } from "lucide-react";
+import { ArrowLeft, LoaderCircle } from "lucide-react";
 import { Link } from "react-router";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 
@@ -83,6 +83,15 @@ export function Campo({ rotulo, dica, children }: { rotulo: string; dica?: strin
       {children}
       {dica && <span className="text-xs text-zinc-500">{dica}</span>}
     </label>
+  );
+}
+
+/** O "← Algum lugar" acima do título das páginas de detalhe. */
+export function LinkVoltar({ para, rotulo }: { para: string; rotulo: string }) {
+  return (
+    <Link to={para} className="inline-flex items-center gap-1.5 hover:text-zinc-100">
+      <ArrowLeft className="size-4" /> {rotulo}
+    </Link>
   );
 }
 

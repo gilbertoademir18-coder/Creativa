@@ -1,9 +1,9 @@
-import { ArrowLeft, Box, Mountain, Pencil, Plus, Shapes, Trash, User } from "lucide-react";
+import { Box, Mountain, Pencil, Plus, Shapes, Trash, User } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { assetsApi, urlArquivo } from "../api.ts";
 import { EscolhaProjeto, FiltroBusca, FiltroProjeto } from "../componentes/filtros.tsx";
-import { PainelGeracoes } from "../componentes/geracoes.tsx";
+import { useGeracaoNoLugar } from "../componentes/geracao-no-lugar.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
 import { PainelReferencias } from "../componentes/referencias.tsx";
 import {
@@ -17,11 +17,12 @@ import {
   Entrada,
   Etiqueta,
   GRADE,
+  LinkVoltar,
   Pilulas,
   Seletor,
   Vazio,
 } from "../componentes/ui.tsx";
-import { useCarregar, useFiltros } from "../hooks.ts";
+import { useCarregar, useFiltros, useVolta, type Volta } from "../hooks.ts";
 import { rotuloTipoAsset, TIPOS_ASSET } from "../rotulos.ts";
 import type { Asset, TipoAsset } from "../tipos.ts";
 
@@ -96,11 +97,13 @@ export function PaginaAssets() {
   );
 }
 
-export function CartaoAsset({ a, mostrarProjeto }: { a: Asset; mostrarProjeto?: boolean }) {
+/** `volta`: de onde se está abrindo o asset, para o "voltar" de lá trazer de volta. */
+export function CartaoAsset({ a, mostrarProjeto, volta }: { a: Asset; mostrarProjeto?: boolean; volta?: Volta }) {
   const Icone = ICONE_TIPO[a.tipo];
   return (
     <Link
       to={`/assets/${a.id}`}
+      state={volta && { volta }}
       className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition-colors hover:border-violet-500/60"
     >
       <div className="aspect-square overflow-hidden bg-zinc-950">
@@ -132,6 +135,9 @@ export function PaginaAsset() {
   const { id = "" } = useParams();
   const navegar = useNavigate();
   const { dados: a, erro, setDados } = useCarregar(() => assetsApi.ler(id), [id]);
+  const volta = useVolta();
+  // A geração aberta aparece aqui mesmo, num bloco acima da lista de gerações.
+  const geracoes = useGeracaoNoLugar({ assetId: id, shotId: null });
   const [editando, setEditando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
 
@@ -142,9 +148,12 @@ export function PaginaAsset() {
     <>
       <Cabecalho
         voltar={
-          <Link to={a.projeto ? `/assets?projeto=${a.projeto.id}` : "/assets"} className="inline-flex items-center gap-1.5 hover:text-zinc-100">
-            <ArrowLeft className="size-4" /> Assets{a.projeto ? ` de ${a.projeto.nome}` : ""}
-          </Link>
+          <LinkVoltar
+            {...(volta ?? {
+              para: a.projeto ? `/assets?projeto=${a.projeto.id}` : "/assets",
+              rotulo: `Assets${a.projeto ? ` de ${a.projeto.nome}` : ""}`,
+            })}
+          />
         }
         titulo={
           <span className="flex items-center gap-3">
@@ -175,8 +184,9 @@ export function PaginaAsset() {
         }
       />
       <div className="flex flex-col gap-10 p-8">
+        {geracoes.Aberta()}
+        {geracoes.Lista()}
         <PainelReferencias dono={{ assetId: a.id, shotId: null }} />
-        <PainelGeracoes asset={a.id} />
       </div>
       <ModalAsset
         aberto={editando}

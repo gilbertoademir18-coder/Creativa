@@ -5,7 +5,7 @@ import { useCarregar } from "../hooks.ts";
 import { formatarData, statusGeracao, tituloGeracao } from "../rotulos.ts";
 import type { Geracao, StatusGeracao } from "../tipos.ts";
 import { DescricaoDono } from "./referencias.tsx";
-import { Aviso, BotaoLink, Carregando, Etiqueta, Secao, Vazio } from "./ui.tsx";
+import { Aviso, Botao, BotaoLink, Carregando, Etiqueta, Secao, Vazio } from "./ui.tsx";
 
 export function EtiquetaStatus({ status }: { status: StatusGeracao }) {
   const s = statusGeracao(status);
@@ -16,7 +16,18 @@ export function EtiquetaStatus({ status }: { status: StatusGeracao }) {
  * Gerações em tabela: é uma lista para ler (prompt, tipo, status, data),
  * com a primeira imagem gerada de miniatura.
  */
-export function TabelaGeracoes({ geracoes, mostrarDono }: { geracoes: Geracao[]; mostrarDono?: boolean }) {
+export function TabelaGeracoes({
+  geracoes,
+  mostrarDono,
+  aoAbrir,
+  selecionada,
+}: {
+  geracoes: Geracao[];
+  mostrarDono?: boolean;
+  /** Abrir no lugar (embutida) em vez de ir para /geracoes/:id. */
+  aoAbrir?: (id: string) => void;
+  selecionada?: string | null;
+}) {
   const navegar = useNavigate();
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-800">
@@ -33,7 +44,11 @@ export function TabelaGeracoes({ geracoes, mostrarDono }: { geracoes: Geracao[];
         </thead>
         <tbody className="divide-y divide-zinc-800">
           {geracoes.map((g) => (
-            <tr key={g.id} onClick={() => navegar(`/geracoes/${g.id}`)} className="cursor-pointer hover:bg-zinc-900/60">
+            <tr
+              key={g.id}
+              onClick={() => (aoAbrir ? aoAbrir(g.id) : navegar(`/geracoes/${g.id}`))}
+              className={`cursor-pointer ${g.id === selecionada ? "bg-violet-600/10 hover:bg-violet-600/15" : "hover:bg-zinc-900/60"}`}
+            >
               <td className="max-w-xl px-4 py-2">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-16 shrink-0 overflow-hidden rounded bg-zinc-900">
@@ -61,17 +76,39 @@ export function TabelaGeracoes({ geracoes, mostrarDono }: { geracoes: Geracao[];
   );
 }
 
-/** O bloco de gerações de um asset ou shot. */
-export function PainelGeracoes({ asset, shot }: { asset?: string; shot?: string }) {
-  const { dados, erro, carregando } = useCarregar(() => geracoesApi.listar({ asset, shot }), [asset, shot]);
+/**
+ * O bloco de gerações de um asset ou shot. Com `aoAbrir`, clicar numa
+ * geração (ou em "Nova geração") abre ela no lugar, na própria página.
+ * `versao`: quem embute muda o número para a lista recarregar.
+ */
+export function PainelGeracoes({
+  asset,
+  shot,
+  aoAbrir,
+  selecionada,
+  versao = 0,
+}: {
+  asset?: string;
+  shot?: string;
+  aoAbrir?: (id: string | "nova") => void;
+  selecionada?: string | null;
+  versao?: number;
+}) {
+  const { dados, erro, carregando } = useCarregar(() => geracoesApi.listar({ asset, shot }), [asset, shot, versao]);
   const nova = `/geracoes/nova${consulta({ asset, shot })}`;
   return (
     <Secao
       titulo={`Gerações${dados ? ` (${dados.length})` : ""}`}
       acoes={
-        <BotaoLink para={nova} variante="primario" icone={<Plus className="size-4" />}>
-          Nova geração
-        </BotaoLink>
+        aoAbrir ? (
+          <Botao variante="primario" icone={<Plus className="size-4" />} onClick={() => aoAbrir("nova")}>
+            Nova geração
+          </Botao>
+        ) : (
+          <BotaoLink para={nova} variante="primario" icone={<Plus className="size-4" />}>
+            Nova geração
+          </BotaoLink>
+        )
       }
     >
       {erro && <Aviso>{erro}</Aviso>}
@@ -79,7 +116,7 @@ export function PainelGeracoes({ asset, shot }: { asset?: string; shot?: string 
       {dados?.length === 0 && (
         <Vazio icone={<Sparkles />} titulo="Nenhuma geração ainda" texto="Uma geração junta prompt, referências, workflow e modelo." />
       )}
-      {!!dados?.length && <TabelaGeracoes geracoes={dados} />}
+      {!!dados?.length && <TabelaGeracoes geracoes={dados} aoAbrir={aoAbrir} selecionada={selecionada} />}
     </Secao>
   );
 }

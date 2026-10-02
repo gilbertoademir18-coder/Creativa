@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronDown, ChevronUp, Clapperboard, Pencil, Plus, Trash } from "lucide-react";
+import { ChevronDown, ChevronUp, Clapperboard, Pencil, Plus, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { cenasApi } from "../api.ts";
@@ -14,10 +14,11 @@ import {
   Carregando,
   Entrada,
   GRADE,
+  LinkVoltar,
   Secao,
   Vazio,
 } from "../componentes/ui.tsx";
-import { useCarregar, useFiltros } from "../hooks.ts";
+import { useCarregar, useFiltros, useVolta, type Volta } from "../hooks.ts";
 import type { Cena, ShotResumo } from "../tipos.ts";
 
 export function PaginaCenas() {
@@ -77,10 +78,12 @@ export function PaginaCenas() {
   );
 }
 
-export function CartaoCena({ c, mostrarProjeto }: { c: Cena; mostrarProjeto?: boolean }) {
+/** `volta`: de onde se está abrindo a cena, para o "voltar" de lá trazer de volta. */
+export function CartaoCena({ c, mostrarProjeto, volta }: { c: Cena; mostrarProjeto?: boolean; volta?: Volta }) {
   return (
     <Link
       to={`/cenas/${c.id}`}
+      state={volta && { volta }}
       className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-5 transition-colors hover:border-violet-500/60"
     >
       <div className="flex items-center gap-2.5">
@@ -104,6 +107,7 @@ export function PaginaCena() {
   const { id = "" } = useParams();
   const navegar = useNavigate();
   const { dados: c, erro, setDados } = useCarregar(() => cenasApi.ler(id), [id]);
+  const volta = useVolta();
   const [editando, setEditando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
 
@@ -114,9 +118,12 @@ export function PaginaCena() {
     <>
       <Cabecalho
         voltar={
-          <Link to={c.projeto ? `/cenas?projeto=${c.projeto.id}` : "/cenas"} className="inline-flex items-center gap-1.5 hover:text-zinc-100">
-            <ArrowLeft className="size-4" /> Cenas{c.projeto ? ` de ${c.projeto.nome}` : ""}
-          </Link>
+          <LinkVoltar
+            {...(volta ?? {
+              para: c.projeto ? `/cenas?projeto=${c.projeto.id}` : "/cenas",
+              rotulo: `Cenas${c.projeto ? ` de ${c.projeto.nome}` : ""}`,
+            })}
+          />
         }
         titulo={c.nome}
         subtitulo={

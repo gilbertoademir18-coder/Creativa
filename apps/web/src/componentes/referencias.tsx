@@ -1,4 +1,4 @@
-import { FileText, Images, Trash, Upload } from "lucide-react";
+import { FileText, Trash, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { referenciasApi, urlArquivo, type Dono } from "../api.ts";
@@ -8,7 +8,7 @@ import type { Referencia } from "../tipos.ts";
 import { ICONE_TIPO_REFERENCIA, Miniatura } from "./midia.tsx";
 import { ConfirmarExclusao, Modal } from "./modal.tsx";
 import { SeletorDono } from "./seletor-dono.tsx";
-import { AreaTexto, Aviso, Botao, Campo, Carregando, Entrada, GRADE, Secao, Vazio } from "./ui.tsx";
+import { AreaTexto, Aviso, Botao, Campo, Carregando, Entrada, GRADE, Secao } from "./ui.tsx";
 
 /** De onde uma referência é: "Asset Camila", "Cena da ponte › Shot 2", ou solta. */
 export function DescricaoDono({ r }: { r: Pick<Referencia, "asset" | "shot"> }) {
@@ -299,9 +299,6 @@ export function PainelReferencias({ dono }: { dono: Dono }) {
       <ZonaUpload dono={dono} aoEnviar={() => recarregar()} />
       {erro && <Aviso>{erro}</Aviso>}
       {carregando && !dados && <Carregando />}
-      {dados?.length === 0 && (
-        <Vazio icone={<Images />} titulo="Nenhuma referência ainda" texto="Imagens, vídeos e textos que guiam as gerações." />
-      )}
       {!!dados?.length && (
         <div className={GRADE}>
           {dados.map((r) => (

@@ -1,6 +1,6 @@
-import { ArrowLeft, ChevronLeft, ChevronRight, Copy, LoaderCircle, Play, Plus, Sparkles, Square, Trash, TriangleAlert } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Play, Plus, Sparkles, Square, Trash, TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { geracoesApi, urlArquivo, type Dono, type GeracaoNova } from "../api.ts";
 import { FiltroBusca, FiltroProjeto, FiltroSelecao } from "../componentes/filtros.tsx";
 import { EtiquetaStatus, TabelaGeracoes } from "../componentes/geracoes.tsx";
@@ -17,6 +17,7 @@ import {
   Campo,
   Carregando,
   Entrada,
+  LinkVoltar,
   Pilulas,
   Secao,
   Seletor,
@@ -24,7 +25,7 @@ import {
 } from "../componentes/ui.tsx";
 import { useCarregar, useFiltros } from "../hooks.ts";
 import { formatarData, STATUS_GERACAO, tituloGeracao } from "../rotulos.ts";
-import type { CampoWorkflow, GeracaoDetalhe, Output, Rodada, StatusGeracao, TipoCatalogo, Vinculo } from "../tipos.ts";
+import type { CampoWorkflow, GeracaoDetalhe, Output, StatusGeracao, TipoCatalogo, Vinculo } from "../tipos.ts";
 
 export function PaginaGeracoes() {
   const [f, mudar] = useFiltros(["projeto", "status", "vinculo", "busca"] as const);
@@ -84,21 +85,101 @@ export function PaginaGeracoes() {
 /** `/geracoes/nova` (com `?asset=` ou `?shot=` opcionais) e `/geracoes/:id`. */
 export function PaginaGeracao() {
   const { id } = useParams();
-  const { dados, erro, setDados, recarregar } = useCarregar(() => (id ? geracoesApi.ler(id) : Promise.resolve(null)), [id]);
+  const navegar = useNavigate();
+  return (
+    <GeracaoCarregada
+      id={id ?? null}
+      abrir={(novo, substituir) => navegar(`/geracoes/${novo}`, { replace: substituir })}
+      aoExcluir={() => navegar("/geracoes")}
+    />
+  );
+}
+
+/** Quando a geração aparece dentro de outra página (a do asset, a do shot). */
+export type Embutida = {
+  /** Algo mudou (salvou, gerou, terminou): quem embute atualiza a lista dele. */
+  aoAlterar?: () => void;
+};
+
+/**
+ * Carrega a geração (ou nenhuma, para "nova") e a mantém atualizada
+ * enquanto está no ComfyUI. É o que a página `/geracoes/:id` mostra, e o
+ * que as páginas do asset e do shot embutem acima das referências.
+ *
+ * `abrir` e `aoExcluir` dizem para onde ir: na página é navegar; embutida,
+ * é trocar a geração aberta no bloco.
+ */
+export function GeracaoCarregada({
+  id,
+  donoInicial,
+  abrir,
+  aoExcluir,
+  embutida,
+}: {
+  id: string | null;
+  donoInicial?: Dono;
+  abrir: (id: string, substituir?: boolean) => void;
+  aoExcluir: () => void;
+  embutida?: Embutida;
+}) {
+  const { dados, erro, recarregar } = useCarregar(() => (id ? geracoesApi.ler(id) : Promise.resolve(null)), [id]);
   const ativa = dados?.status === "NA_FILA" || dados?.status === "EXECUTANDO";
 
-  // Enquanto está no ComfyUI, a página se atualiza sozinha (progresso, outputs).
+  // Enquanto está no ComfyUI, atualiza sozinha (progresso, outputs).
   useEffect(() => {
     if (!ativa) return;
     const t = setInterval(recarregar, 1_000);
     return () => clearInterval(t);
   }, [ativa, recarregar]);
 
-  if (erro) return <div className="p-8"><Aviso>{erro}</Aviso></div>;
+  // Mudou o status ou chegou output: a lista de quem embute fica sabendo.
+  const assinatura = dados ? `${dados.id}:${dados.status}:${dados.outputs.length}` : "";
+  useEffect(() => {
+    if (assinatura) embutida?.aoAlterar?.();
+  }, [assinatura]);
+
+  if (erro) return <div className={embutida ? "" : "p-8"}><Aviso>{erro}</Aviso></div>;
   if (id && !dados) return <Carregando />;
   // `key` com o status: ao sair do rascunho o formulário recomeça com o que
-  // foi de fato enviado (a seed sorteada, por exemplo).
-  return <FormGeracao key={`${id ?? "nova"}:${dados?.status === "RASCUNHO"}`} geracao={dados} aoMudar={setDados} recarregar={recarregar} />;
+  // foi de fato enviado.
+  return (
+    <FormGeracao
+      key={`${id ?? "nova"}:${dados?.status === "RASCUNHO"}`}
+      geracao={dados}
+      recarregar={recarregar}
+      donoInicial={donoInicial}
+      abrir={abrir}
+      aoExcluir={aoExcluir}
+      embutida={embutida}
+    />
+  );
+}
+
+/**
+ * O topo da geração. Na página, o cabeçalho de sempre (com "← Gerações");
+ * embutida, uma faixa compacta — trocar de geração é clicar em outra na lista.
+ */
+function TopoGeracao({
+  embutida,
+  titulo,
+  subtitulo,
+  acoes,
+}: {
+  embutida?: Embutida;
+  titulo: React.ReactNode;
+  subtitulo?: React.ReactNode;
+  acoes: React.ReactNode;
+}) {
+  if (!embutida) return <Cabecalho voltar={<LinkVoltar para="/geracoes" rotulo="Gerações" />} titulo={titulo} subtitulo={subtitulo} acoes={acoes} />;
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-zinc-800 px-6 py-4">
+      <div className="min-w-0">
+        <div className="text-xs font-medium tracking-wide text-violet-300/80 uppercase">Geração</div>
+        <h2 className="truncate text-lg font-semibold">{titulo}</h2>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">{acoes}</div>
+    </div>
+  );
 }
 
 function valoresPadrao(campos: CampoWorkflow[], atuais: Record<string, unknown>): Record<string, unknown> {
@@ -113,19 +194,26 @@ function valoresPadrao(campos: CampoWorkflow[], atuais: Record<string, unknown>)
 
 function FormGeracao({
   geracao: g,
-  aoMudar,
   recarregar,
+  donoInicial,
+  abrir,
+  aoExcluir,
+  embutida,
 }: {
   geracao: GeracaoDetalhe | null;
-  aoMudar: (g: GeracaoDetalhe) => void;
   recarregar: () => Promise<void>;
+  donoInicial?: Dono;
+  abrir: (id: string, substituir?: boolean) => void;
+  aoExcluir: () => void;
+  embutida?: Embutida;
 }) {
-  const navegar = useNavigate();
   const [params] = useSearchParams();
   const rascunho = !g || g.status === "RASCUNHO";
   const ativa = g?.status === "NA_FILA" || g?.status === "EXECUTANDO";
 
-  const [dono, setDono] = useState<Dono>(g ? { assetId: g.assetId, shotId: g.shotId } : { assetId: params.get("asset"), shotId: params.get("shot") });
+  const [dono, setDono] = useState<Dono>(
+    g ? { assetId: g.assetId, shotId: g.shotId } : (donoInicial ?? { assetId: params.get("asset"), shotId: params.get("shot") }),
+  );
   const [nome, setNome] = useState(g?.nome ?? "");
   const [tipo, setTipo] = useState(g?.tipo ?? "");
   const [workflow, setWorkflow] = useState(g?.workflow ?? "");
@@ -190,15 +278,11 @@ function FormGeracao({
   const ultimaFalha = ultimaEncerrada?.status === "FALHOU" ? ultimaEncerrada : undefined;
 
   return (
-    <>
-      <Cabecalho
-        voltar={
-          <Link to="/geracoes" className="inline-flex items-center gap-1.5 hover:text-zinc-100">
-            <ArrowLeft className="size-4" /> Gerações
-          </Link>
-        }
+    <div className={embutida ? "overflow-hidden rounded-xl border border-violet-500/30 bg-zinc-900/40" : ""}>
+      <TopoGeracao
+        embutida={embutida}
         titulo={g ? tituloGeracao(g) : "Nova geração"}
-        subtitulo={g && <DescricaoDono r={g} />}
+        subtitulo={g && !embutida && <DescricaoDono r={g} />}
         acoes={
           <>
             {g && !ativa && (
@@ -210,7 +294,7 @@ function FormGeracao({
               <Botao
                 icone={<Copy className="size-4" />}
                 carregando={ocupado === "duplicar"}
-                onClick={() => acao("duplicar", async () => navegar(`/geracoes/${(await geracoesApi.duplicar(g.id)).id}`))}
+                onClick={() => acao("duplicar", async () => abrir((await geracoesApi.duplicar(g.id)).id))}
               >
                 Nova variação
               </Botao>
@@ -253,7 +337,8 @@ function FormGeracao({
                   disabled={!workflow || !!ocupado}
                   onClick={() => acao("salvar", async () => {
                     const id = await salvar();
-                    if (!g) navegar(`/geracoes/${id}`, { replace: true });
+                    if (!g) abrir(id, true);
+                    else embutida?.aoAlterar?.();
                   })}
                 >
                   Salvar rascunho
@@ -269,8 +354,8 @@ function FormGeracao({
                     try {
                       await geracoesApi.gerar(id, quantidade);
                     } finally {
-                      // Mesmo se o ComfyUI recusar, o rascunho já foi salvo: vai para a página dele.
-                      if (!g) navegar(`/geracoes/${id}`, { replace: true });
+                      // Mesmo se o ComfyUI recusar, o rascunho já foi salvo: abre ele.
+                      if (!g) abrir(id, true);
                     }
                     if (g) await recarregar();
                   })}
@@ -287,11 +372,21 @@ function FormGeracao({
         Os dados da geração numa faixa sob o título: quem, o quê, com qual
         workflow. Embaixo, a largura toda fica para os campos e os outputs.
       */}
-      <section className="border-b border-zinc-800 bg-zinc-950/40 px-8 py-5">
-        <fieldset disabled={!rascunho} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.9fr)] items-start gap-6">
-          <Campo rotulo="Pertence a">
-            <SeletorDono valor={dono} aoMudar={setDono} />
-          </Campo>
+      <section className={`border-b border-zinc-800 bg-zinc-950/40 py-5 ${embutida ? "px-6" : "px-8"}`}>
+        {/* Embutida (no asset ou no shot), o dono é a própria página: sem "Pertence a". */}
+        <fieldset
+          disabled={!rascunho}
+          className={`grid items-start gap-6 ${
+            embutida
+              ? "grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.9fr)]"
+              : "grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.9fr)]"
+          }`}
+        >
+          {!embutida && (
+            <Campo rotulo="Pertence a">
+              <SeletorDono valor={dono} aoMudar={setDono} />
+            </Campo>
+          )}
           <Campo rotulo="Tipo de geração" dica={tipoAtual?.descricao}>
             <Seletor value={tipo} onChange={(e) => setTipo(e.target.value)}>
               <option value="">{tipos.length ? "— Escolha —" : "— Nenhum para este dono —"}</option>
@@ -338,19 +433,12 @@ function FormGeracao({
         )}
       </section>
 
-      <div className="flex flex-col gap-8 p-8">
+      <div className={`flex flex-col gap-8 ${embutida ? "p-6" : "p-8"}`}>
           {erro && <Aviso>{erro}</Aviso>}
           {ultimaFalha && (
             <Aviso>
               <b>A última rodada falhou:</b> {ultimaFalha.erro}
             </Aviso>
-          )}
-          {rodadasAtivas.length > 0 && (
-            <div className="flex flex-col gap-2">
-              {rodadasAtivas.map((r, i) => (
-                <Andamento key={r.id} r={r} posicao={rodadasAtivas.length > 1 ? `${i + 1}/${rodadasAtivas.length}` : null} />
-              ))}
-            </div>
           )}
 
           {g && !rascunho && (
@@ -417,11 +505,11 @@ function FormGeracao({
           aoFechar={() => setExcluindo(false)}
           aoConfirmar={async () => {
             await geracoesApi.apagar(g.id);
-            navegar("/geracoes");
+            aoExcluir();
           }}
         />
       )}
-    </>
+    </div>
   );
 }
 
@@ -487,32 +575,6 @@ function BotaoSeta({ lado, onClick }: { lado: "esquerda" | "direita"; onClick: (
     >
       <Icone className="size-7" />
     </button>
-  );
-}
-
-/** Uma rodada na fila ou executando: a barra de progresso do ComfyUI (passo X de Y). */
-function Andamento({ r, posicao }: { r: Rodada; posicao: string | null }) {
-  const p = r.progresso;
-  const pct = r.status === "EXECUTANDO" && p && p.max ? Math.round((p.valor / p.max) * 100) : null;
-  return (
-    <div className="flex flex-col gap-2 rounded-xl border border-sky-900/60 bg-sky-950/30 p-4">
-      <div className="flex items-center justify-between text-sm">
-        <span className="flex items-center gap-2 font-medium text-sky-200">
-          <LoaderCircle className={`size-4 ${r.status === "EXECUTANDO" ? "animate-spin" : ""}`} />
-          {posicao && <span className="text-sky-300/60 tabular-nums">{posicao}</span>}
-          {r.status === "NA_FILA" ? "Na fila do ComfyUI..." : pct !== null ? `Gerando — passo ${p!.valor} de ${p!.max}` : "Carregando o modelo..."}
-        </span>
-        <span className="flex items-center gap-4 text-xs text-sky-300/70">
-          {r.seed != null && <span className="font-mono">seed {r.seed}</span>}
-          {pct !== null && <span className="text-sm text-sky-300 tabular-nums">{pct}%</span>}
-        </span>
-      </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-sky-950">
-        {r.status === "EXECUTANDO" && (
-          <div className={`h-full bg-sky-400 transition-all ${pct === null ? "w-1/3 animate-pulse" : ""}`} style={pct === null ? undefined : { width: `${pct}%` }} />
-        )}
-      </div>
-    </div>
   );
 }
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router";
+import { useLocation, useSearchParams } from "react-router";
 
 /**
  * Carrega algo da API e recarrega quando as dependências mudam.
@@ -34,6 +34,42 @@ export function useCarregar<T>(buscar: () => Promise<T>, deps: unknown[]) {
   }, [recarregar]);
 
   return { dados, erro, carregando, recarregar, setDados };
+}
+
+/** Para onde o "voltar" de uma página leva, e com que nome. */
+export type Volta = { para: string; rotulo: string };
+
+/**
+ * A origem que veio junto na navegação (`<Link state={{ volta }}>`), ou
+ * null. É o que faz o "voltar" de um asset aberto pelo projeto levar de
+ * volta ao projeto, e não à lista de assets. Fica no histórico do
+ * navegador: sobrevive ao recarregar a página.
+ */
+export function useVolta(): Volta | null {
+  const estado = useLocation().state as { volta?: Volta } | null;
+  return estado?.volta ?? null;
+}
+
+/**
+ * A geração aberta no lugar, nas páginas do asset e do shot: mora na URL
+ * (`?geracao=<id>` ou `?geracao=nova`), para o voltar do navegador fechar
+ * o bloco e o link poder ser mandado com a geração já aberta. O estado da
+ * navegação (o "voltar" para o projeto) é preservado ao trocar.
+ */
+export function useGeracaoAberta() {
+  const [params, setParams] = useSearchParams();
+  const aberta = params.get("geracao");
+  const abrir = (id: string | null, substituir = false) =>
+    setParams(
+      (atual) => {
+        const novo = new URLSearchParams(atual);
+        if (id) novo.set("geracao", id);
+        else novo.delete("geracao");
+        return novo;
+      },
+      { replace: substituir, preventScrollReset: true, state: window.history.state?.usr },
+    );
+  return [aberta, abrir] as const;
 }
 
 /**
