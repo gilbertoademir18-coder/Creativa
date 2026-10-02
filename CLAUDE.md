@@ -13,7 +13,7 @@
 - Código, nomes e comentários em português.
 - Versões muito novas (TypeScript 7, Vite 8): confira a API em `node_modules` antes de assumir.
 - Scripts `.ps1` precisam ser salvos em UTF-8 **com BOM**, senão o PowerShell 5.1 estraga os acentos.
-- Portas: 3400 app (tray), 3401/3410 dev, 8444 tailnet. Outros projetos usam 3001, 3002, 3200, 8443, 8787.
+- Portas: 3400 app (tray), 3401/3410 dev, 8444 tailnet (Creativa), 8445 tailnet (ComfyUI). Outros projetos usam 3001, 3002, 3200, 8443, 8787.
 - Prisma fixado em `^7.10.0` — a tag `latest` é um RC da v8.
 - Antes de concluir: `npm run typecheck` e `npm run build`.
 

@@ -48,6 +48,26 @@ export function configComfy() {
   };
 }
 
+/*
+ * O endereço do ComfyUI no tailnet (scriptspublicar-no-tailnet.ps1), para o
+ * botão "Abrir o ComfyUI" de quem acessa o Creativa de outro PC — lá,
+ * 127.0.0.1 seria o próprio PC. Vem do nome da máquina no Tailscale, lido
+ * uma vez e guardado; sem Tailscale, fica null.
+ */
+let tailnet: { url: string | null } | null = null;
+
+async function urlTailnetComfy(): Promise<string | null> {
+  if (tailnet) return tailnet.url;
+  try {
+    const { stdout } = await exec("tailscale", ["status", "--json"], { windowsHide: true, timeout: 5_000 });
+    const nome = (JSON.parse(stdout) as { Self?: { DNSName?: string } }).Self?.DNSName?.replace(/\.$/, "");
+    tailnet = { url: nome ? `https://${nome}:${lerEnv("COMFYUI_PORTA_TAILNET", "8445")}` : null };
+  } catch {
+    tailnet = { url: null };
+  }
+  return tailnet.url;
+}
+
 /** Pergunta ao próprio ComfyUI se ele está no ar, e qual a versão. */
 export async function consultarComfy(): Promise<{ noAr: boolean; versao: string | null }> {
   try {
@@ -75,8 +95,9 @@ export async function estadoComfy() {
   return {
     noAr,
     versao,
-    /** Para o link "Abrir o ComfyUI" da barra do topo. */
+    /** Para o link "Abrir o ComfyUI" da barra do topo: o local e o do tailnet. */
     url: configComfy().url,
+    urlTailnet: await urlTailnetComfy(),
     iniciando: !!partida && decorrido < PRAZO_MS,
     naoRespondeu: !!partida && decorrido >= PRAZO_MS,
     segundos: partida ? Math.round(decorrido / 1000) : null,

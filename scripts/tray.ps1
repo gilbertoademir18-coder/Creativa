@@ -52,9 +52,10 @@ $RAIZ  = Split-Path -Parent $PSScriptRoot
 $PORTA = 3400
 $URL   = "http://localhost:$PORTA"
 
-# A porta HTTPS que o `tailscale serve` publica (ver scripts\publicar-no-tailnet.ps1).
+# As portas HTTPS que o `tailscale serve` publica (ver scripts\publicar-no-tailnet.ps1).
 # A 443 desta máquina já é de outro app e a 8443 é do Trimly.
-$PORTA_TAILNET = 8444
+$PORTA_TAILNET       = 8444
+$PORTA_TAILNET_COMFY = 8445
 
 # O log vai para fora do projeto: um arquivo de log dentro da árvore
 # versionada só serviria para sujar o git status.
@@ -185,12 +186,12 @@ function E-O-Creativa {
     } catch { return $false }
 }
 
-<# O endereço HTTPS do app no tailnet, ou $null sem Tailscale. #>
-function Url-Tailnet {
+<# O endereço HTTPS no tailnet de uma porta publicada, ou $null sem Tailscale. #>
+function Url-Tailnet([int]$porta = $PORTA_TAILNET) {
     try {
         $status = & tailscale status --json 2>$null | ConvertFrom-Json
         $nome = $status.Self.DNSName.TrimEnd(".")
-        if ($nome) { return "https://${nome}:$PORTA_TAILNET" }
+        if ($nome) { return "https://${nome}:$porta" }
     } catch { }
     return $null
 }
@@ -466,6 +467,8 @@ $itemAbrir.Font = New-Object System.Drawing.Font($menu.Font, [System.Drawing.Fon
 $itemLink = $menu.Items.Add("Copiar link do tailnet")
 $itemCode = $menu.Items.Add("Abrir no VS Code")
 $itemPasta = $menu.Items.Add("Abrir a pasta do projeto")
+$menu.Items.Add("-") | Out-Null
+$itemPublicar = $menu.Items.Add("Publicar a versão nova")
 $itemReiniciar = $menu.Items.Add("Reiniciar o servidor")
 $menu.Items.Add("-") | Out-Null
 
@@ -474,6 +477,7 @@ $itemComfy = New-Object System.Windows.Forms.ToolStripMenuItem "ComfyUI"
 $menu.Items.Add($itemComfy) | Out-Null
 $itemComfyAbrir  = $itemComfy.DropDownItems.Add("Abrir o ComfyUI")
 $itemComfyLigar  = $itemComfy.DropDownItems.Add("Iniciar o ComfyUI")
+$itemComfyLink   = $itemComfy.DropDownItems.Add("Copiar link do tailnet")
 $itemComfyPasta  = $itemComfy.DropDownItems.Add("Abrir a pasta do ComfyUI")
 $itemComfyLog    = $itemComfy.DropDownItems.Add("Ver o log do ComfyUI")
 
@@ -487,6 +491,18 @@ $menu.Items.Add("-") | Out-Null
 $itemSair = $menu.Items.Add("Sair")
 
 $script:estado = "parado"
+
+# A janela do publicar.ps1 enquanto ela está aberta; o relógio espera ela sair.
+$script:publicando = $null
+# Liga quando o reinício veio de uma publicação, para avisar quando subir.
+$script:avisarPublicado = $false
+
+<# Reiniciar e publicar não fazem sentido no meio de outro dos dois. #>
+function Atualizar-Itens {
+    $livre = ($script:estado -ne "subindo") -and -not $script:publicando
+    $itemReiniciar.Enabled = $livre
+    $itemPublicar.Enabled  = $livre
+}
 
 <#
     A dica do ícone fala dos dois — passando o mouse já se sabe se dá para
@@ -512,9 +528,13 @@ function Marcar([string]$novo) {
     switch ($novo) {
         "subindo" { $bandeja.Icon = $iconeSubindo }
         "no-ar"   { $bandeja.Icon = $iconeNoAr }
-        "parado"  { $bandeja.Icon = $iconeParado }
+        "parado"  {
+            # Caiu no reinício da publicação: o aviso de erro já basta.
+            $script:avisarPublicado = $false
+            $bandeja.Icon = $iconeParado
+        }
     }
-    $itemReiniciar.Enabled = ($novo -ne "subindo")
+    Atualizar-Itens
     Atualizar-Dica
 }
 
@@ -591,6 +611,22 @@ $itemPasta.add_Click({
     Start-Process explorer.exe -ArgumentList "`"$RAIZ`""
 })
 
+<#
+    Publicar = conferir antes, reiniciar depois. As conferências rodam numa
+    janela visível com o servidor antigo ainda no ar; o reinício acontece no
+    relógio, quando a janela sai com 0. Ver scripts\publicar.ps1.
+#>
+$itemPublicar.add_Click({
+    $script:publicando = Start-Process powershell.exe -PassThru -ArgumentList @(
+        "-NoProfile", "-ExecutionPolicy", "Bypass",
+        "-File", "`"$(Join-Path $RAIZ 'scripts\publicar.ps1')`"", "-DaBandeja"
+    ) -WorkingDirectory $RAIZ
+    # No PowerShell 5.1 o ExitCode só fica legível se o handle foi aberto
+    # enquanto o processo vivia; pedir o Handle agora garante isso.
+    $null = $script:publicando.Handle
+    Atualizar-Itens
+})
+
 $itemReiniciar.add_Click({
     Parar-Servidor
     $script:abrirAoSubir = $false
@@ -604,6 +640,16 @@ $itemComfyAbrir.add_Click({
 
 $itemComfyLigar.add_Click({
     if ($script:comfyEstado -eq "no-ar") { Parar-Comfy } else { Iniciar-Comfy }
+})
+
+$itemComfyLink.add_Click({
+    $link = Url-Tailnet $PORTA_TAILNET_COMFY
+    if (-not $link) {
+        Avisar "Não consegui falar com o Tailscale. Ele está rodando?" "Error"
+        return
+    }
+    [System.Windows.Forms.Clipboard]::SetText($link)
+    Avisar "Copiado: $link`nAbra em outro PC do tailnet." "Info"
 })
 
 $itemComfyPasta.add_Click({
@@ -668,6 +714,10 @@ function Vigiar-Servidor {
     if ($script:estado -eq "subindo") {
         if ($ouvindo) {
             Marcar "no-ar"
+            if ($script:avisarPublicado) {
+                $script:avisarPublicado = $false
+                Avisar "Versão nova no ar. Recarregue o Creativa no navegador para pegá-la." "Info"
+            }
             if ($script:abrirAoSubir) {
                 Abrir-Navegador $URL
                 $script:abrirAoSubir = $false
@@ -728,6 +778,19 @@ function Vigiar-Comfy {
 $relogio = New-Object System.Windows.Forms.Timer
 $relogio.Interval = 1000
 $relogio.add_Tick({
+    if ($script:publicando -and $script:publicando.HasExited) {
+        $codigo = $script:publicando.ExitCode
+        $script:publicando = $null
+        if ($codigo -eq 0) {
+            Parar-Servidor
+            $script:abrirAoSubir = $false
+            $script:avisarPublicado = $true
+            Iniciar-Servidor
+            return
+        }
+        Atualizar-Itens
+        Avisar "Publicação interrompida — a versão antiga segue no ar." "Warning"
+    }
     Vigiar-Servidor
     Vigiar-Comfy
 })

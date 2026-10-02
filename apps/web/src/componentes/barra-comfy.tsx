@@ -8,12 +8,24 @@ type EstadoComfy = {
   noAr: boolean;
   versao: string | null;
   url: string;
+  /** O ComfyUI publicado no tailnet, para quem acessa de outro PC. */
+  urlTailnet: string | null;
   /** Iniciado pelo site e ainda subindo. */
   iniciando: boolean;
   /** Iniciado pelo site e não respondeu no prazo (5 min). */
   naoRespondeu: boolean;
   segundos: number | null;
 };
+
+/**
+ * O endereço do ComfyUI para quem está olhando: nesta máquina, o local;
+ * de outro PC (acessando pelo tailnet), o publicado no tailnet — lá,
+ * 127.0.0.1 seria o próprio PC.
+ */
+function urlParaAbrir(e: EstadoComfy): string {
+  const local = ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
+  return local || !e.urlTailnet ? e.url : e.urlTailnet;
+}
 
 /**
  * O estado do ComfyUI, sempre à vista no topo de toda página — é ele que
@@ -99,7 +111,7 @@ export function BarraComfy() {
             {estado.versao && <span className="text-zinc-600">v{estado.versao}</span>}
           </span>
           <a
-            href={estado.url}
+            href={urlParaAbrir(estado)}
             target="_blank"
             rel="noreferrer"
             className="inline-flex h-7 items-center gap-1.5 rounded-md border border-zinc-700 px-2.5 text-xs text-zinc-300 hover:border-zinc-500 hover:bg-zinc-800 hover:text-zinc-100"

@@ -12,7 +12,7 @@ estão o ComfyUI e o banco) e é acessível dos outros PCs pelo Tailscale.
 ```powershell
 npm install
 .\scripts\criar-banco.ps1          # uma vez: pede a senha do usuário postgres
-.\scripts\publicar-no-tailnet.ps1  # uma vez: HTTPS no tailnet, porta 8444
+.\scripts\publicar-no-tailnet.ps1  # uma vez: HTTPS no tailnet (Creativa 8444, ComfyUI 8445)
 ```
 
 Depois, **dê dois cliques em `Creativa.cmd`**. O servidor não fica numa
@@ -85,8 +85,9 @@ porta é mesmo o Creativa.
 | Copiar link do tailnet | Copia a URL HTTPS para abrir de outro PC |
 | Abrir no VS Code | Abre `Creativa.code-workspace` |
 | Abrir a pasta do projeto | Abre a pasta do código-fonte no Explorer |
+| **Publicar a versão nova** | Confere, faz backup e só então reinicia — ver abaixo |
 | Reiniciar o servidor | Aplica migrações pendentes, recompila o front e sobe de novo |
-| **ComfyUI — _estado_** | Submenu: abrir, iniciar/parar, pasta e log do ComfyUI |
+| **ComfyUI — _estado_** | Submenu: abrir, iniciar/parar, copiar o link do tailnet, pasta e log |
 | Fazer backup do banco | Roda `scripts\backup-banco.ps1` numa janela |
 | Iniciar com o Windows | Liga e desliga a subida automática no login |
 | Ver o log | `%LOCALAPPDATA%\Creativa\servidor.log` no Bloco de Notas |
@@ -133,6 +134,26 @@ Um ComfyUI aberto por fora (pelo `.bat`) também é reconhecido — o estado
 segue a porta. Ao **Sair**, o ícone só derruba o ComfyUI que ele mesmo
 iniciou: o oculto não teria outro jeito de ser fechado.
 
+### Publicar uma versão nova
+
+Depois de mexer no código (ou de um `git pull`), use **Publicar a versão
+nova**. Ele abre uma janela que roda `scripts\publicar.ps1`: TypeScript, um
+build de conferência e o backup do banco — tudo com a versão antiga ainda no
+ar. Só se tudo passar o tray reinicia o servidor, e o reinício aplica as
+migrações. Se algo falha, a janela fica aberta com o erro e o site nem
+percebe. (Veio do Trimly; aqui sem a etapa de testes, que o Creativa ainda
+não tem.)
+
+Gerações rodando no ComfyUI não se perdem: o ComfyUI não depende do servidor,
+e o acompanhamento retoma as rodadas quando ele volta.
+
+**Reiniciar** sozinho derruba o servidor antes de compilar: um erro ali deixa
+o site fora do ar até ser consertado. Serve para destravar, não para publicar.
+
+O build de conferência vai para uma pasta temporária, e não para
+`apps\web\dist`: é dali que o servidor no ar serve o site, e o Vite esvazia a
+pasta antes de escrever.
+
 ### O tray roda o app "de verdade", não o de desenvolvimento
 
 O ícone sobe `npm run servir`: aplica as migrações, compila o front e sobe a
@@ -153,6 +174,7 @@ tailnet.
 | 3401 | API em `npm run dev` |
 | 3410 | Vite em `npm run dev` |
 | 8444 | HTTPS no tailnet (`tailscale serve` → 3400) |
+| 8445 | ComfyUI no tailnet (`tailscale serve` → 8188) |
 | 8188 | ComfyUI |
 | 5432 | PostgreSQL (compartilhado; banco `creativa`) |
 
@@ -188,5 +210,6 @@ scripts/
   tray.ps1                Ícone da bandeja
   criar-banco.ps1         Usuário + banco + .env + migrações
   backup-banco.ps1        pg_dump com verificação
-  publicar-no-tailnet.ps1 tailscale serve na 8444
+  publicar.ps1            Confere e faz backup antes de publicar (tray)
+  publicar-no-tailnet.ps1 tailscale serve: Creativa 8444, ComfyUI 8445
 ```
