@@ -6,6 +6,22 @@
 - Use linguagem natural, como um colega de equipe.
 - Seja proativo ao sugerir melhorias.
 
+# Mantenha este arquivo em dia (sempre, sem pedir licença)
+
+Este arquivo é a memória do projeto entre uma sessão e outra. **Sempre que
+aprender algo relevante durante uma tarefa, registre aqui na mesma tarefa** —
+e diga na resposta final o que acrescentou ou mudou.
+
+- **Registre:** decisões e conceitos novos do usuário (como "não existe cadastro
+  de geração"), regras de interface, caminhos e versões da máquina que mudaram,
+  pegadinhas que custaram tempo (e como contornar), o jeito certo de verificar
+  algo sem escrever no banco.
+- **Não registre:** o que o código ou o README já dizem por si, detalhes de uma
+  tarefa só, histórico do que foi feito (isso é o `git log`).
+- **Corrija e apague o que ficou velho** — uma linha errada aqui engana a
+  próxima sessão. Mudou um caminho, uma porta, um nome: troque em todo lugar.
+- Curto e direto, na seção que combina. Seção nova só se nenhuma servir.
+
 # Projeto
 
 - Plataforma para criar vídeos, imagens, sons e assets com IA chamando workflows do ComfyUI (portátil em `C:\IA\ComfyUI`, porta 8188).
@@ -16,6 +32,12 @@
 - Portas: 3400 app (tray), 3401/3410 dev, 8444 tailnet (Creativa), 8445 tailnet (ComfyUI), 11434 Ollama. Outros projetos usam 3001, 3002, 3200, 8443, 8787.
 - Prisma fixado em `^7.10.0` — a tag `latest` é um RC da v8.
 - Antes de concluir: `npm run typecheck` e `npm run build`.
+- **O app da 3400 roda o código de quando subiu.** O `npm run build` troca na
+  hora o front que ele serve, mas a API continua a velha: depois de mudar API ou
+  schema, avise o usuário para usar "Reiniciar o servidor" (ou "Publicar a
+  versão nova") no ícone da bandeja. Até lá, front novo + API velha podem quebrar.
+- Assistentes de prompt prontos para importar ficam em `docs/assistentes/`
+  (um `.md` por assistente, cabeçalho de skill `name`/`description`).
 
 # Interface
 
@@ -112,6 +134,9 @@ O que isso muda nas escolhas:
 - Não presuma que uma linha é resíduo de teste.
 - Migrações podem ser criadas e aplicadas normalmente (mudam o schema, não os
   dados). Só o `reset` é que está fora.
+- **Migração que move ou apaga dados** (drop de tabela ou coluna com conteúdo)
+  é diferente: pergunte antes. E escreva à mão, no estilo das que já existem —
+  primeiro copia, confere (um `RAISE EXCEPTION` se faltar algo), só então apaga.
 - Antes de qualquer operação de risco que o usuário autorize: `npm run backup`.
 - Arquivos gerados (imagens, vídeos, sons) seguem a mesma regra: não apague.
 
@@ -119,4 +144,37 @@ O que isso muda nas escolhas:
 
 - `npm run typecheck` e `npm run build`.
 - Requisições `GET` à API — leem e não mexem em nada (`/api/banco/estado` faz só `SELECT 1`).
+- Pedidos que a API **recusa** (validação 400) também não gravam — servem para
+  testar rotas de escrita.
+- **Ensaiar uma migração:** um script (no scratchpad) com o `pg` do
+  `node_modules` que roda o SQL entre `BEGIN` e `ROLLBACK`, consulta o
+  resultado e desfaz. Depois de aplicar, confira que não sobrou diferença:
+  `npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script`
+  (em `apps/api`) tem que dizer "empty migration".
+- **Testar o assistente de prompt sem banco:** script que importa
+  `montarSistema`/`campoAssistivel` (`rotas/assistentes.ts`) e `gerarTexto`
+  (`lib/ollama.ts`), monta o sistema com um `.md` de `docs/assistentes/` e
+  confere palavras e avisos do campo. Depois, `descarregar()` para devolver a VRAM.
 - **Diga explicitamente o que você não conseguiu verificar.**
+
+# Pegadinhas do terminal nesta máquina
+
+Coisas que já custaram tempo — e o contorno:
+
+- **API de dev em segundo plano:** suba com
+  `node --import tsx src/server.ts --dev` (em `apps/api`, com `exec` na frente),
+  não com `npx tsx`. Com `npx`, parar a tarefa mata só o `npx` e o filho do
+  `tsx` fica órfão na 3401 rodando código velho. Depois de parar, confira que a
+  porta 3401 ficou livre.
+- **Barras invertidas:** o Git Bash estraga caminhos do Windows em `sed` e em
+  `node -e '...'`. Para editar texto com `C:\...`, escreva um script `.cjs` no
+  scratchpad e rode com `node`.
+- **Scripts de teste fora do projeto:** use extensão `.mts` (fora do pacote
+  `"type": "module"` o `tsx` trata `.ts` como CommonJS), importe o projeto por
+  `file:///C:/Projetos/Creativa/...` e rode de `apps/api` com
+  `node --env-file=../../.env --import tsx <script>`.
+- **Ollama:** abra o app com `explorer.exe "<...>\ollama app.exe"`. Lançado
+  direto do terminal do Claude, ele não consegue criar o processo do servidor
+  (fica sem a porta 11434 e sem erro no log).
+- **`.ps1`:** depois de editar, confira que os 3 primeiros bytes continuam
+  `EF BB BF` (o BOM).
