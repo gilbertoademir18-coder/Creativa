@@ -91,6 +91,9 @@ feitas para colar no Claude Code da máquina do banco, com o que ele pode e o
 que ele não pode mexer. O script atende qualquer projeto no mesmo servidor
 com banco e usuário de mesmo nome: `-Banco trimly`, `-Banco nihongohub`.
 
+Para começar um projeto novo no mesmo molde (tray, atalhos, portas, banco e
+acesso pelo tailnet), veja [`docs/padrao-de-projeto.md`](docs/padrao-de-projeto.md).
+
 Duas coisas não funcionam do outro PC:
 
 - **Iniciar e Parar o ComfyUI** pela barra do topo — procuram o
@@ -245,6 +248,8 @@ apps/
     src/paginas/          Uma por item do menu, com a lista e o detalhe
     src/componentes/      layout, ui, modal, filtros, referencias, geracoes...
     scripts/gerar-icones.mjs
+docs/
+  padrao-de-projeto.md    Como montar um projeto novo no mesmo molde
 scripts/
   tray.ps1                Ícone da bandeja
   criar-banco.ps1         Usuário + banco + .env + migrações
