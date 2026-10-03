@@ -36,7 +36,7 @@ const CorpoShot = z.object({
 
 const shotsResumidos = {
   orderBy: { ordem: "asc" as const },
-  include: { _count: { select: { referencias: true, geracoes: true } } },
+  include: { _count: { select: { referencias: true, outputs: true } } },
 };
 
 const daCena = {
@@ -139,7 +139,6 @@ export async function rotasShots(app: FastifyInstance) {
           },
         },
         referencias: { orderBy: { criadoEm: "asc" } },
-        geracoes: { orderBy: { criadoEm: "desc" }, include: { _count: { select: { outputs: true } } } },
       },
     });
     if (!shot) throw naoEncontrado("Shot não encontrado.");

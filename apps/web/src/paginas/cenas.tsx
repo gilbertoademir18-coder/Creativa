@@ -263,7 +263,7 @@ function Shots({ cena, aoMudar }: { cena: Cena; aoMudar: (s: ShotResumo[]) => vo
             setErro(null);
             try {
               const novo = await cenasApi.novoShot(cena.id);
-              aoMudar([...shots, { ...novo, _count: { referencias: 0, geracoes: 0 } }]);
+              aoMudar([...shots, { ...novo, _count: { referencias: 0, outputs: 0 } }]);
             } catch (e) {
               setErro((e as Error).message);
             } finally {
@@ -284,7 +284,7 @@ function Shots({ cena, aoMudar }: { cena: Cena; aoMudar: (s: ShotResumo[]) => vo
               <span className="truncate font-medium">{s.nome}</span>
               {s.descricao && <span className="line-clamp-2 text-sm text-zinc-400">{s.descricao}</span>}
               <span className="text-xs text-zinc-500">
-                {s._count.referencias} referências · {s._count.geracoes} gerações
+                {s._count.referencias} referências · {s._count.outputs} outputs
               </span>
             </Link>
             <div className="flex flex-col border-l border-zinc-800">

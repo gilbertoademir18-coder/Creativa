@@ -33,11 +33,16 @@
 - Filtros moram na URL (`useFiltros`), para dar para voltar, recarregar e
   mandar o link de um filtro pronto.
 
-# Gerações e workflows do ComfyUI
+# O Gerador e os workflows do ComfyUI
 
+- **Não existe cadastro de geração.** O Gerador é um recurso do sistema que
+  aparece dentro do asset e do shot; cada imagem gerada é um `Output` do
+  dono, e **o output guarda tudo o que foi usado para gerá-lo** (tipo,
+  workflow, modelo, prompt, seed, `parametros`, `grafo_enviado`). A tabela
+  `execucao` é só a fila do ComfyUI, não um cadastro.
 - Tipos de geração e workflows são **programados no código**, em
-  `apps/api/src/geracao/` — não ficam no banco. A geração guarda só as chaves
-  (`tipo`, `workflow`) e os valores dos campos (`parametros`).
+  `apps/api/src/geracao/` — não ficam no banco. O output guarda as chaves
+  (`tipo_geracao`, `workflow`) e os valores dos campos (`parametros`).
 - Workflow novo = um arquivo em `geracao/workflows/` + uma linha em
   `geracao/registro.ts`. Para escrever:
   1. Leia o `.json` em `C:\AI\ComfyUI\ComfyUI\user\default\workflows` (formato

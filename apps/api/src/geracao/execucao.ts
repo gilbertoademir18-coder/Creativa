@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { open } from "node:fs/promises";
 import { Readable } from "node:stream";
 import type { FastifyBaseLogger } from "fastify";
-import type { StatusGeracao } from "../generated/prisma/enums.ts";
+import type { Execucao } from "../generated/prisma/client.ts";
 import { apagar, caminhoAbsoluto, gravar } from "../lib/arquivos.ts";
 import { configComfy, consultarComfy } from "../lib/comfyui.ts";
 import { prisma } from "../lib/prisma.ts";
@@ -10,19 +10,22 @@ import { ErroHttp } from "../lib/validacao.ts";
 import { acharWorkflow, prepararParaEnvio, validarValores } from "./registro.ts";
 
 /**
- * Enviar gerações ao ComfyUI e acompanhar até o fim.
+ * O Gerador manda trabalho ao ComfyUI e acompanha até o fim.
  *
- * Cada envio é uma Rodada: "Gerar" cria a primeira, "Gerar mais" cria outras
- * com as mesmas configurações e seed nova. Uma rodada vai NA_FILA →
- * EXECUTANDO → CONCLUIDA (com Outputs) ou FALHOU; a geração resume as suas
- * rodadas (`resumirStatus`). O estado mora no banco, não na memória: se o
- * servidor reiniciar no meio, o acompanhamento retoma as rodadas em andamento.
+ * Cada "Gerar" vira uma ou mais Execuções (uma por imagem pedida). Uma
+ * execução vai NA_FILA → EXECUTANDO → CONCLUIDA (com Outputs) ou FALHOU. O
+ * estado mora no banco, não na memória: se o servidor reiniciar no meio, o
+ * acompanhamento retoma as execuções em andamento.
+ *
+ * Cada Output nasce com tudo o que foi usado para gerá-lo (tipo, workflow,
+ * modelo, parâmetros com a seed, grafo): não depende da execução para se
+ * explicar.
  *
  * Duas fontes, cada uma no que faz bem:
  * - fila (/queue) e histórico (/history): a verdade sobre em que pé está cada
- *   prompt, consultada a cada 1,5 s enquanto houver rodada em andamento;
+ *   prompt, consultada a cada 1,5 s enquanto houver execução em andamento;
  * - WebSocket (/ws): o progresso passo a passo (passo 3 de 8...), que só
- *   existe ali. Se cair, perde-se a barra de progresso, não a geração.
+ *   existe ali. Se cair, perde-se a barra de progresso, não a imagem.
  */
 
 /** Identifica o Creativa para o ComfyUI: as mensagens do WebSocket vêm para este id. */
@@ -33,7 +36,7 @@ const progresso = new Map<string, { valor: number; max: number }>();
 
 export const progressoDe = (promptId: string | null) => (promptId ? (progresso.get(promptId) ?? null) : null);
 
-/** Quantas rodadas um clique pode pedir de uma vez. A GPU é uma só: elas vão para a fila. */
+/** Quantas imagens um clique pode pedir de uma vez. A GPU é uma só: elas vão para a fila. */
 export const MAX_POR_ENVIO = 4;
 
 type ErroComfyApi = {
@@ -51,49 +54,37 @@ function mensagemDoComfy(j: ErroComfyApi): string {
   return partes.join(" | ") || "O ComfyUI recusou o workflow.";
 }
 
-/**
- * O status da geração a partir das rodadas: alguma rodando ganha, depois
- * alguma na fila; senão vale o resultado da mais recente. Sem rodada, é
- * rascunho.
- */
-export async function resumirStatus(geracaoId: string): Promise<void> {
-  const rodadas = await prisma.rodada.findMany({ where: { geracaoId }, select: { status: true }, orderBy: { criadoEm: "desc" } });
-  const tem = (s: StatusGeracao) => rodadas.some((r) => r.status === s);
-  const status: StatusGeracao = !rodadas.length
-    ? "RASCUNHO"
-    : tem("EXECUTANDO")
-      ? "EXECUTANDO"
-      : tem("NA_FILA")
-        ? "NA_FILA"
-        : rodadas[0]!.status;
-  await prisma.geracao.update({ where: { id: geracaoId }, data: { status } });
-}
+/** O pedido do Gerador: de quem, com que workflow e quais valores. */
+export type Pedido = {
+  assetId: string | null;
+  shotId: string | null;
+  tipo: string;
+  workflow: string;
+  parametros: Record<string, unknown>;
+  quantidade: number;
+};
 
 /**
- * Manda `quantidade` rodadas para a fila do ComfyUI.
+ * Manda `quantidade` execuções para a fila do ComfyUI. Quem chama já
+ * conferiu o pedido contra o catálogo (`conferir`).
  *
- * Da primeira vez (rascunho), a primeira rodada respeita a seed do
- * formulário; as demais — e todas as de "Gerar mais" — sorteiam seed nova:
- * gerar mais da mesma seed daria a mesma imagem.
+ * A primeira respeita a seed do formulário; as demais sorteiam seed nova —
+ * pedir 4 da mesma seed daria 4 imagens iguais. Com seed aleatória, cada
+ * uma sorteia a sua.
  *
  * Erro de validação do ComfyUI (modelo que não existe, valor fora da faixa)
- * volta como 400. Se acontecer na primeira rodada, a geração continua em
- * rascunho, para corrigir e tentar de novo.
+ * volta como 400. As que já foram para a fila antes do erro ficam.
  */
-export async function enviar(id: string, quantidade: number): Promise<void> {
-  const g = await prisma.geracao.findUnique({ where: { id } });
-  if (!g) throw new ErroHttp(404, "Geração não encontrada.");
-  const w = acharWorkflow(g.workflow);
-  if (!w) throw new ErroHttp(400, `O workflow ${g.workflow} não existe mais no código.`);
+export async function executar(pedido: Pedido): Promise<void> {
+  const w = acharWorkflow(pedido.workflow);
+  if (!w) throw new ErroHttp(400, `O workflow ${pedido.workflow} não existe no código.`);
   if (!(await consultarComfy()).noAr) throw new ErroHttp(409, "O ComfyUI está desconectado. Inicie pela barra do topo.");
 
-  const base = validarValores(w, g.parametros, false);
-  const primeira = g.status === "RASCUNHO";
+  const base = validarValores(w, pedido.parametros);
   const seeds = w.campos.filter((c) => c.tipo === "seed").map((c) => c.chave);
 
-  for (let i = 0; i < quantidade; i++) {
-    const usarSeedDoFormulario = primeira && i === 0;
-    const valores = prepararParaEnvio(w, usarSeedDoFormulario ? base : { ...base, ...Object.fromEntries(seeds.map((s) => [s, null])) });
+  for (let i = 0; i < pedido.quantidade; i++) {
+    const valores = prepararParaEnvio(w, i === 0 ? base : { ...base, ...Object.fromEntries(seeds.map((s) => [s, null])) });
     const grafo = w.montar(valores);
 
     const r = await fetch(`${configComfy().url}/prompt`, {
@@ -103,56 +94,51 @@ export async function enviar(id: string, quantidade: number): Promise<void> {
       signal: AbortSignal.timeout(15_000),
     });
     const j = (await r.json().catch(() => ({}))) as ErroComfyApi & { prompt_id?: string };
-    if (!r.ok || !j.prompt_id) {
-      // As rodadas que já foram para a fila ficam; esta e as seguintes não.
-      if (i > 0) await resumirStatus(id);
-      throw new ErroHttp(400, `ComfyUI: ${mensagemDoComfy(j)}`);
-    }
+    if (!r.ok || !j.prompt_id) throw new ErroHttp(400, `ComfyUI: ${mensagemDoComfy(j)}`);
 
-    await prisma.rodada.create({
-      data: { geracaoId: id, status: "NA_FILA", parametros: valores, grafoEnviado: grafo as object, promptIdComfy: j.prompt_id },
+    await prisma.execucao.create({
+      data: {
+        assetId: pedido.assetId,
+        shotId: pedido.shotId,
+        tipo: pedido.tipo,
+        workflow: w.chave,
+        modelo: w.modelo,
+        status: "NA_FILA",
+        parametros: valores,
+        grafoEnviado: grafo as object,
+        promptIdComfy: j.prompt_id,
+      },
     });
   }
-
-  await prisma.geracao.update({ where: { id }, data: { modelo: w.modelo } });
-  await resumirStatus(id);
   garantirWebSocket();
 }
 
-/** Cancela todas as rodadas em andamento de uma geração. */
-export async function cancelar(id: string): Promise<void> {
-  const ativas = await prisma.rodada.findMany({ where: { geracaoId: id, status: { in: ["NA_FILA", "EXECUTANDO"] } } });
-  if (!ativas.length) throw new ErroHttp(409, "Não há nada desta geração na fila ou executando.");
-  await cancelarRodadas(ativas);
-}
-
-/** Cancela uma rodada só — o "×" de cada item da fila global. */
-export async function cancelarRodada(id: string): Promise<void> {
-  const r = await prisma.rodada.findUnique({ where: { id } });
-  if (!r) throw new ErroHttp(404, "Rodada não encontrada.");
-  if (r.status !== "NA_FILA" && r.status !== "EXECUTANDO") throw new ErroHttp(409, "Esta rodada já terminou.");
-  await cancelarRodadas([r]);
+/** Cancela uma execução — o "×" da fila e do Gerador. */
+export async function cancelarExecucao(id: string): Promise<void> {
+  const e = await prisma.execucao.findUnique({ where: { id } });
+  if (!e) throw new ErroHttp(404, "Execução não encontrada.");
+  if (e.status !== "NA_FILA" && e.status !== "EXECUTANDO") throw new ErroHttp(409, "Esta execução já terminou.");
+  await cancelarExecucoes([e]);
 }
 
 /**
  * Tira da fila do ComfyUI as que ainda não começaram e interrompe a que
  * está rodando. O /interrupt para o que estiver executando — por isso só é
- * chamado quando a vez é de uma destas rodadas.
+ * chamado quando a vez é de uma destas execuções.
  */
-async function cancelarRodadas(rodadas: { id: string; geracaoId: string; promptIdComfy: string | null }[]): Promise<void> {
+async function cancelarExecucoes(execucoes: { id: string; promptIdComfy: string | null }[]): Promise<void> {
   const url = configComfy().url;
   const fila = await lerFila(url).catch(() => null);
-  const pids = rodadas.map((r) => r.promptIdComfy).filter((p): p is string => !!p);
+  const pids = execucoes.map((e) => e.promptIdComfy).filter((p): p is string => !!p);
 
   const esperando = pids.filter((p) => !fila?.rodando.includes(p));
   if (esperando.length) await postar(`${url}/queue`, { delete: esperando });
   if (pids.some((p) => fila?.rodando.includes(p))) await postar(`${url}/interrupt`, {});
 
-  await prisma.rodada.updateMany({
-    where: { id: { in: rodadas.map((r) => r.id) } },
+  await prisma.execucao.updateMany({
+    where: { id: { in: execucoes.map((e) => e.id) } },
     data: { status: "CANCELADA", concluidaEm: new Date() },
   });
-  for (const g of new Set(rodadas.map((r) => r.geracaoId))) await resumirStatus(g);
 }
 
 const postar = (url: string, corpo: unknown) =>
@@ -185,10 +171,11 @@ async function tamanhoPng(absoluto: string): Promise<{ largura: number; altura: 
 }
 
 /**
- * Traz as imagens de uma rodada concluída para a pasta do Creativa e cria
- * os Outputs. Se algo falha no meio, apaga o que já tinha copiado.
+ * Traz as imagens de uma execução concluída para a pasta do Creativa e cria
+ * os Outputs, cada um com a cópia de tudo o que a execução usou. Se algo
+ * falha no meio, apaga o que já tinha copiado.
  */
-async function coletar(rodada: { id: string; geracaoId: string }, h: Historico, saidas: string[]): Promise<void> {
+async function coletar(e: Execucao, h: Historico, saidas: string[]): Promise<void> {
   const url = configComfy().url;
   const copiados: { relativo: string; tamanho: number; mime: string; largura: number | null; altura: number | null }[] = [];
   try {
@@ -204,12 +191,22 @@ async function coletar(rodada: { id: string; geracaoId: string }, h: Historico, 
       }
     }
     if (copiados.length === 0) throw new Error("o ComfyUI terminou sem gerar imagem nenhuma");
+    const p = e.parametros as Record<string, unknown>;
+    const seed = seedDe(e.workflow, p);
     await prisma.$transaction([
       ...copiados.map((c) =>
         prisma.output.create({
           data: {
-            geracaoId: rodada.geracaoId,
-            rodadaId: rodada.id,
+            assetId: e.assetId,
+            shotId: e.shotId,
+            execucaoId: e.id,
+            tipoGeracao: e.tipo,
+            workflow: e.workflow,
+            modelo: e.modelo,
+            prompt: typeof p.prompt === "string" ? p.prompt : "",
+            seed: seed === null ? null : BigInt(seed),
+            parametros: e.parametros as object,
+            grafoEnviado: e.grafoEnviado as object,
             tipo: "IMAGEM",
             arquivo: c.relativo,
             mime: c.mime,
@@ -219,12 +216,19 @@ async function coletar(rodada: { id: string; geracaoId: string }, h: Historico, 
           },
         }),
       ),
-      prisma.rodada.update({ where: { id: rodada.id }, data: { status: "CONCLUIDA", concluidaEm: new Date() } }),
+      prisma.execucao.update({ where: { id: e.id }, data: { status: "CONCLUIDA", concluidaEm: new Date() } }),
     ]);
-  } catch (e) {
+  } catch (erro) {
     await Promise.all(copiados.map((c) => apagar(c.relativo)));
-    throw e;
+    throw erro;
   }
+}
+
+/** A seed usada, pelo campo de seed do workflow (null se ele não tiver). */
+export function seedDe(workflow: string, parametros: Record<string, unknown>): number | null {
+  const chave = acharWorkflow(workflow)?.campos.find((c) => c.tipo === "seed")?.chave;
+  const v = chave ? parametros[chave] : null;
+  return typeof v === "number" ? v : null;
 }
 
 /** A mensagem de erro de uma execução que falhou, tirada do histórico. */
@@ -237,18 +241,17 @@ function erroDoHistorico(h: Historico): string {
 }
 
 const falhar = (id: string, erro: string) =>
-  prisma.rodada.update({ where: { id }, data: { status: "FALHOU", erro, concluidaEm: new Date() } });
+  prisma.execucao.update({ where: { id }, data: { status: "FALHOU", erro, concluidaEm: new Date() } });
 
 let ocupado = false;
 
-/** Uma volta do acompanhamento: confere cada rodada em andamento contra a fila e o histórico. */
+/** Uma volta do acompanhamento: confere cada execução em andamento contra a fila e o histórico. */
 async function acompanhar(log: FastifyBaseLogger): Promise<void> {
   if (ocupado) return;
   ocupado = true;
   try {
-    const ativas = await prisma.rodada.findMany({
+    const ativas = await prisma.execucao.findMany({
       where: { status: { in: ["NA_FILA", "EXECUTANDO"] }, promptIdComfy: { not: null } },
-      select: { id: true, geracaoId: true, status: true, promptIdComfy: true, iniciadaEm: true, geracao: { select: { workflow: true } } },
       orderBy: { criadoEm: "asc" },
     });
     if (ativas.length === 0) return;
@@ -262,31 +265,28 @@ async function acompanhar(log: FastifyBaseLogger): Promise<void> {
       return; // ComfyUI fora do ar: espera ele voltar, sem mexer em nada.
     }
 
-    const mexidas = new Set<string>();
     for (const r of ativas) {
       const pid = r.promptIdComfy!;
       if (fila.rodando.includes(pid)) {
         if (r.status !== "EXECUTANDO" || !r.iniciadaEm) {
-          await prisma.rodada.update({ where: { id: r.id }, data: { status: "EXECUTANDO", iniciadaEm: r.iniciadaEm ?? new Date() } });
-          mexidas.add(r.geracaoId);
+          await prisma.execucao.update({ where: { id: r.id }, data: { status: "EXECUTANDO", iniciadaEm: r.iniciadaEm ?? new Date() } });
         }
         continue;
       }
       if (fila.esperando.includes(pid)) continue;
 
       // Nem rodando nem esperando: terminou (ou sumiu).
-      mexidas.add(r.geracaoId);
       const resp = await fetch(`${url}/history/${pid}`, { signal: AbortSignal.timeout(5_000) });
       const h = ((await resp.json()) as Record<string, Historico>)[pid];
       progresso.delete(pid);
       if (!h) {
-        await falhar(r.id, "A rodada sumiu da fila do ComfyUI — ele foi reiniciado no meio?");
+        await falhar(r.id, "A execução sumiu da fila do ComfyUI — ele foi reiniciado no meio?");
       } else if (h.status?.status_str === "error") {
         await falhar(r.id, erroDoHistorico(h));
       } else if (h.status?.completed) {
         // Começou e terminou entre duas voltas (geração rápida): ainda conta o início.
-        if (!r.iniciadaEm) await prisma.rodada.update({ where: { id: r.id }, data: { iniciadaEm: new Date() } });
-        const w = acharWorkflow(r.geracao.workflow);
+        if (!r.iniciadaEm) await prisma.execucao.update({ where: { id: r.id }, data: { iniciadaEm: new Date() } });
+        const w = acharWorkflow(r.workflow);
         try {
           await coletar(r, h, w?.saidas ?? Object.keys(h.outputs ?? {}));
         } catch (e) {
@@ -295,9 +295,8 @@ async function acompanhar(log: FastifyBaseLogger): Promise<void> {
         }
       }
     }
-    for (const g of mexidas) await resumirStatus(g);
   } catch (e) {
-    log.warn({ err: e }, "acompanhamento das gerações falhou nesta volta");
+    log.warn({ err: e }, "acompanhamento das execuções falhou nesta volta");
   } finally {
     ocupado = false;
   }
@@ -305,7 +304,7 @@ async function acompanhar(log: FastifyBaseLogger): Promise<void> {
 
 /*
  * O WebSocket do ComfyUI, só para o progresso. Abre sob demanda (quando há
- * rodada em andamento) e se reabre sozinho se cair.
+ * execução em andamento) e se reabre sozinho se cair.
  */
 let ws: WebSocket | null = null;
 

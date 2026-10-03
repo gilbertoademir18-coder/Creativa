@@ -2,14 +2,13 @@ import type {
   Asset,
   AssetDetalhe,
   Cena,
-  Geracao,
-  GeracaoDetalhe,
+  Execucao,
   Output,
+  OutputDetalhe,
   Projeto,
   Referencia,
   ShotDetalhe,
   ShotResumo,
-  StatusGeracao,
   TipoAsset,
   TipoReferencia,
   TipoCatalogo,
@@ -52,18 +51,19 @@ export function consulta(params: Record<string, string | undefined | null>): str
 /** O endereço de um arquivo guardado (referência ou output). */
 export const urlArquivo = (relativo: string) => `/api/arquivos/${relativo}`;
 
-/** Dono de uma referência ou geração: um asset, um shot, ou nenhum. */
+/** Dono de uma referência ou output: um asset, um shot, ou nenhum. */
 export type Dono = { assetId: string | null; shotId: string | null };
 
 export type ProjetoNovo = { nome: string; descricao: string | null };
 export type AssetNovo = { nome: string; tipo: TipoAsset; projetoId: string | null; descricao: string | null };
 export type CenaNova = { nome: string; projetoId: string | null; descricao: string | null; storyboard: string };
 export type ShotNovo = { nome: string; descricao: string | null };
-export type GeracaoNova = Dono & {
-  nome: string | null;
+/** O que o Gerador manda ao clicar em "Gerar". */
+export type Pedido = Dono & {
   tipo: string;
   workflow: string;
   parametros: Record<string, unknown>;
+  quantidade: number;
 };
 
 type Filtro = Record<string, string | undefined>;
@@ -135,32 +135,33 @@ export const referenciasApi = {
   apagar: (id: string) => api<void>(`/referencias/${id}`, { method: "DELETE" }),
 };
 
-export const geracoesApi = {
+/** O Gerador de um asset ou shot: o catálogo, o "Gerar" e o que está na fila. */
+export const geradorApi = {
+  /** Os tipos de geração (com workflows e campos) que valem para o dono, o primeiro já escolhido. */
+  catalogo: (dono: Dono) =>
+    api<TipoCatalogo[]>(`/gerador/catalogo${consulta({ asset: dono.assetId, shot: dono.shotId })}`),
+  /** Manda `quantidade` execuções ao ComfyUI. A primeira usa a seed do formulário; as outras, seed nova. */
+  executar: (p: Pedido) => api<{ ok: true }>("/gerador/executar", { method: "POST", corpo: p }),
+  execucoes: (dono: Dono) =>
+    api<Execucao[]>(`/gerador/execucoes${consulta({ asset: dono.assetId, shot: dono.shotId })}`),
+  cancelar: (id: string) => api<{ ok: true }>(`/gerador/execucoes/${id}/cancelar`, { method: "POST" }),
+};
+
+export const outputsApi = {
   listar: (
     f: {
       projeto?: string;
-      status?: StatusGeracao | "";
       vinculo?: Vinculo | "";
       tipo?: string;
       asset?: string;
       shot?: string;
+      favoritos?: string;
       busca?: string;
     } = {},
-  ) => api<Geracao[]>(`/geracoes${consulta(f)}`),
-  /** Os tipos de geração (com workflows e campos) que valem para um dono. */
-  catalogo: (dono: Dono) =>
-    api<TipoCatalogo[]>(`/geracoes/catalogo${consulta({ asset: dono.assetId, shot: dono.shotId })}`),
-  ler: (id: string) => api<GeracaoDetalhe>(`/geracoes/${id}`),
-  criar: (g: GeracaoNova) => api<Geracao>("/geracoes", { method: "POST", corpo: g }),
-  salvar: (id: string, g: GeracaoNova) => api<Geracao>(`/geracoes/${id}`, { method: "PUT", corpo: g }),
-  apagar: (id: string) => api<void>(`/geracoes/${id}`, { method: "DELETE" }),
-  /** Manda `quantidade` rodadas ao ComfyUI. Depois da primeira, cada uma com seed nova. */
-  gerar: (id: string, quantidade = 1) => api<{ ok: true }>(`/geracoes/${id}/gerar`, { method: "POST", corpo: { quantidade } }),
-  cancelar: (id: string) => api<{ ok: true }>(`/geracoes/${id}/cancelar`, { method: "POST" }),
-  duplicar: (id: string) => api<Geracao>(`/geracoes/${id}/duplicar`, { method: "POST" }),
+  ) => api<Output[]>(`/outputs${consulta(f)}`),
+  /** Os tipos de geração que existem nos outputs, para o filtro. */
+  tipos: () => api<{ chave: string; nome: string }[]>("/outputs/tipos"),
+  ler: (id: string) => api<OutputDetalhe>(`/outputs/${id}`),
+  favoritar: (id: string, favorito: boolean) => api<{ ok: true }>(`/outputs/${id}/favorito`, { method: "PUT", corpo: { favorito } }),
+  apagar: (id: string) => api<void>(`/outputs/${id}`, { method: "DELETE" }),
 };
-
-export const outputsApi = {
-  listar: (f: { projeto?: string } = {}) => api<Output[]>(`/outputs${consulta(f)}`),
-};
-

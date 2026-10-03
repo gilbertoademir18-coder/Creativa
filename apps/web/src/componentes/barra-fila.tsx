@@ -3,24 +3,23 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { api, urlArquivo } from "../api.ts";
 
-type GeracaoDaFila = { id: string; titulo: string; tipoNome: string; dono: string | null };
+/** O que a barra mostra de cada execução: o começo do prompt, o tipo, e de quem é (com o link para lá). */
+type Resumo = { titulo: string; tipoNome: string; dono: string | null; link: string | null };
 
-type ItemFila = {
-  rodadaId: string;
+type ItemFila = Resumo & {
+  execucaoId: string;
   status: "NA_FILA" | "EXECUTANDO";
   criadoEm: string;
   iniciadaEm: string | null;
   progresso: { valor: number; max: number } | null;
-  geracao: GeracaoDaFila;
 };
 
-type Recente = {
-  rodadaId: string;
+type Recente = Resumo & {
+  execucaoId: string;
   status: "CONCLUIDA" | "FALHOU" | "CANCELADA";
   concluidaEm: string;
   erro: string | null;
   capa: string | null;
-  geracao: GeracaoDaFila;
 };
 
 type Fila = { itens: ItemFila[]; recentes: Recente[]; externos: number | null };
@@ -37,11 +36,11 @@ function lerAberta(): boolean {
 }
 
 /**
- * A fila global de gerações, fixa no rodapé de toda página: dá para ir
- * enfileirando gerações e seguir trabalhando, de olho no que está rodando.
+ * A fila global do Gerador, fixa no rodapé de toda página: dá para ir
+ * enfileirando e seguir trabalhando, de olho no que está rodando.
  *
  * Recolhida, é uma linha: quantas gerando/esperando e o progresso da atual.
- * Aberta, mostra cada rodada (com link e cancelar) e o que terminou nos
+ * Aberta, mostra cada execução (com link para o dono e cancelar) e o que terminou nos
  * últimos 10 minutos, com a miniatura do resultado.
  */
 export function BarraFila() {
@@ -80,9 +79,9 @@ export function BarraFila() {
     });
   }
 
-  async function cancelar(rodadaId: string) {
+  async function cancelar(execucaoId: string) {
     try {
-      await api(`/fila/${rodadaId}/cancelar`, { method: "POST" });
+      await api(`/fila/${execucaoId}/cancelar`, { method: "POST" });
     } finally {
       consultar();
     }
@@ -103,14 +102,14 @@ export function BarraFila() {
               <h3 className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">Na fila ({itens.length})</h3>
               {itens.length === 0 && <p className="text-sm text-zinc-500">Nada esperando. Gere à vontade — cada “Gerar” entra aqui.</p>}
               {itens.map((i, n) => (
-                <ItemNaFila key={i.rodadaId} item={i} posicao={n + 1} aoCancelar={() => cancelar(i.rodadaId)} />
+                <ItemNaFila key={i.execucaoId} item={i} posicao={n + 1} aoCancelar={() => cancelar(i.execucaoId)} />
               ))}
             </div>
             <div className="flex flex-col gap-2">
               <h3 className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">Terminaram há pouco</h3>
               {recentes.length === 0 && <p className="text-sm text-zinc-500">Nada nos últimos 10 minutos.</p>}
               {recentes.map((r) => (
-                <ItemRecente key={r.rodadaId} r={r} />
+                <ItemRecente key={r.execucaoId} r={r} />
               ))}
             </div>
           </div>
@@ -132,7 +131,7 @@ export function BarraFila() {
             </span>
             {atual && (
               <span className="flex min-w-0 items-center gap-3">
-                <span className="truncate text-zinc-400">{atual.geracao.titulo}</span>
+                <span className="truncate text-zinc-400">{atual.titulo}</span>
                 <Progresso item={atual} largura="w-48" />
               </span>
             )}
@@ -173,18 +172,18 @@ function ItemNaFila({ item, posicao, aoCancelar }: { item: ItemFila; posicao: nu
     <div className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${executando ? "border-sky-900/70 bg-sky-950/30" : "border-zinc-800 bg-zinc-900/50"}`}>
       <span className="w-5 shrink-0 text-center text-xs text-zinc-500 tabular-nums">{posicao}</span>
       {executando ? <LoaderCircle className="size-4 shrink-0 animate-spin text-sky-300" /> : <span className="size-4 shrink-0 rounded-full border-2 border-zinc-700" />}
-      <Link to={`/geracoes/${item.geracao.id}`} className="flex min-w-0 flex-1 flex-col hover:text-violet-300">
-        <span className="truncate text-sm">{item.geracao.titulo}</span>
+      <Link to={item.link ?? "/outputs"} className="flex min-w-0 flex-1 flex-col hover:text-violet-300">
+        <span className="truncate text-sm">{item.titulo}</span>
         <span className="truncate text-xs text-zinc-500">
-          {item.geracao.tipoNome}
-          {item.geracao.dono && ` · ${item.geracao.dono}`}
+          {item.tipoNome}
+          {item.dono && ` · ${item.dono}`}
           {!executando && " · esperando a vez"}
         </span>
       </Link>
       {executando && <Progresso item={item} largura="w-28" />}
       <button
         type="button"
-        title={executando ? "Interromper esta rodada" : "Tirar da fila"}
+        title={executando ? "Interromper esta execução" : "Tirar da fila"}
         disabled={cancelando}
         onClick={async () => {
           setCancelando(true);
@@ -202,7 +201,7 @@ function ItemRecente({ r }: { r: Recente }) {
   const minutos = Math.max(0, Math.round((Date.now() - +new Date(r.concluidaEm)) / 60_000));
   return (
     <Link
-      to={`/geracoes/${r.geracao.id}`}
+      to={r.link ?? "/outputs"}
       title={r.erro ?? undefined}
       className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 hover:border-zinc-600"
     >
@@ -210,10 +209,10 @@ function ItemRecente({ r }: { r: Recente }) {
         {r.capa && <img src={urlArquivo(r.capa)} alt="" className="size-full object-cover" />}
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-sm">{r.geracao.titulo}</span>
+        <span className="truncate text-sm">{r.titulo}</span>
         <span className="truncate text-xs text-zinc-500">
-          {r.geracao.tipoNome}
-          {r.geracao.dono && ` · ${r.geracao.dono}`}
+          {r.tipoNome}
+          {r.dono && ` · ${r.dono}`}
         </span>
       </span>
       <span className="flex shrink-0 items-center gap-1.5 text-xs">

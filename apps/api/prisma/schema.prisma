@@ -7,18 +7,21 @@
 // A árvore:
 //
 //   Projeto
-//   ├── Asset ─────────── Referências, Gerações
+//   ├── Asset ─────────── Referências, Outputs
 //   └── Cena (storyboard)
-//       └── Shot ──────── Referências, Gerações
+//       └── Shot ──────── Referências, Outputs
 //
-//   Geração ── usa Referências e Outputs como entrada ── produz Outputs
+// Não há cadastro de "geração": o Gerador é um recurso do código
+// (src/geracao/), usado de dentro do asset ou do shot. Cada clique em
+// "Gerar" vira Execuções na fila do ComfyUI, e cada imagem que sai é um
+// Output que guarda tudo o que foi usado para gerá-la.
 //
 // Asset e Cena podem estar soltos (sem projeto). Shot sempre tem cena.
 //
 // Apagar: o que tem arquivo em disco ou histórico de geração é protegido
 // (Restrict) — o banco recusa, e a tela explica o que remover antes. Só cai
-// em cascata o que não carrega nada sozinho: os shots vazios de uma cena e as
-// entradas de uma geração.
+// em cascata o que não carrega nada sozinho: os shots vazios de uma cena e o
+// histórico da fila (execuções).
 
 generator client {
   provider = "prisma-client"
@@ -46,9 +49,7 @@ enum TipoReferencia {
   @@map("tipo_referencia")
 }
 
-enum StatusGeracao {
-  /// Cadastrada, ainda não enviada ao ComfyUI.
-  RASCUNHO
+enum StatusExecucao {
   /// Enviada ao ComfyUI, esperando a vez na fila dele.
   NA_FILA
   EXECUTANDO
@@ -56,7 +57,7 @@ enum StatusGeracao {
   FALHOU
   CANCELADA
 
-  @@map("status_geracao")
+  @@map("status_execucao")
 }
 
 enum TipoOutput {
@@ -95,7 +96,8 @@ model Asset {
 
   projeto     Projeto?     @relation(fields: [projetoId], references: [id], onDelete: SetNull)
   referencias Referencia[]
-  geracoes    Geracao[]
+  execucoes   Execucao[]
+  outputs     Output[]
 
   @@index([projetoId])
   @@index([tipo])
@@ -131,11 +133,12 @@ model Shot {
   criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz
   editadoEm DateTime @updatedAt @map("editado_em") @db.Timestamptz
 
-  /// Apagar a cena leva os shots — mas só os vazios: referência e geração
-  /// presas a um shot barram a cascata (Restrict nelas).
+  /// Apagar a cena leva os shots — mas só os vazios: referência e output
+  /// presos a um shot barram a cascata (Restrict neles).
   cena        Cena         @relation(fields: [cenaId], references: [id], onDelete: Cascade)
   referencias Referencia[]
-  geracoes    Geracao[]
+  execucoes   Execucao[]
+  outputs     Output[]
 
   @@index([cenaId, ordem])
   @@map("shot")
@@ -162,11 +165,8 @@ model Referencia {
   criadoEm     DateTime       @default(now()) @map("criado_em") @db.Timestamptz
   editadoEm    DateTime       @updatedAt @map("editado_em") @db.Timestamptz
 
-  asset    Asset?           @relation(fields: [assetId], references: [id], onDelete: Restrict)
-  shot     Shot?            @relation(fields: [shotId], references: [id], onDelete: Restrict)
-  /// Uma referência usada numa geração não se apaga: a geração perderia
-  /// o registro do que a alimentou.
-  usadaEm  GeracaoEntrada[]
+  asset Asset? @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  shot  Shot?  @relation(fields: [shotId], references: [id], onDelete: Restrict)
 
   @@index([assetId])
   @@index([shotId])
@@ -174,112 +174,61 @@ model Referencia {
   @@map("referencia")
 }
 
-/// Tudo o que foi usado para gerar algo no ComfyUI — e o que saiu (Outputs).
+/// Um envio ao ComfyUI pelo Gerador de um asset ou shot — a fila.
 ///
-/// Cada envio ao ComfyUI é uma Rodada: "Gerar" cria a primeira, "Gerar mais"
-/// cria outras com as mesmas configurações e seed nova. Os outputs de todas
-/// as rodadas ficam juntos na geração.
+/// Não é um cadastro: é o motor que leva um pedido do botão "Gerar" até as
+/// imagens. NA_FILA → EXECUTANDO → CONCLUIDA (com Outputs) / FALHOU /
+/// CANCELADA. O estado mora no banco para o acompanhamento retomar se o
+/// servidor reiniciar no meio (ver geracao/execucao.ts).
 ///
-/// O tipo ("Placa de cenário", "Character sheet"...) e o workflow são chaves
-/// do código (apps/api/src/geracao/), não do banco: cada workflow do ComfyUI
-/// é programado lá, com os campos que expõe e o grafo que monta. Os valores
-/// dos campos ficam em `parametros`.
-///
-/// Pertence a um asset, a um shot, ou a nenhum — nunca aos dois (CHECK).
-model Geracao {
-  id             String        @id @default(uuid()) @db.Uuid
-  assetId        String?       @map("asset_id") @db.Uuid
-  shotId         String?       @map("shot_id") @db.Uuid
-  /// Opcional: sem nome, a tela mostra o começo do prompt.
-  nome           String?
+/// Pertence a um asset ou a um shot — exatamente um (CHECK).
+model Execucao {
+  id            String         @id @default(uuid()) @db.Uuid
+  assetId       String?        @map("asset_id") @db.Uuid
+  shotId        String?        @map("shot_id") @db.Uuid
   /// Chave do tipo de geração no código (ex.: "placa-cenario").
-  tipo           String
+  tipo          String
   /// Chave do workflow no código (ex.: "placa-cenario-zimage").
-  workflow       String
-  /// Cópia do campo "prompt" dos parâmetros, quando o workflow tem um: é o
-  /// que a busca e a listagem usam.
-  prompt         String        @default("")
-  /// O modelo principal que o workflow usa, gravado no envio — para saber
-  /// depois com o que a imagem foi feita, mesmo que o código mude.
-  modelo         String?
-  /// Os valores dos campos do workflow (prompt, seed, tamanho...), como o
-  /// formulário deixou. A seed sorteada de cada envio fica na Rodada.
-  parametros     Json          @default("{}")
-  /// RASCUNHO até o primeiro envio; depois, o resumo das rodadas (alguma na
-  /// fila/executando, ou o resultado da mais recente). Mantido pelo código
-  /// em geracao/execucao.ts.
-  status         StatusGeracao @default(RASCUNHO)
-  criadoEm       DateTime      @default(now()) @map("criado_em") @db.Timestamptz
-  editadoEm      DateTime      @updatedAt @map("editado_em") @db.Timestamptz
+  workflow      String
+  modelo        String?
+  status        StatusExecucao @default(NA_FILA)
+  /// Os valores exatos deste envio, com a seed já sorteada.
+  parametros    Json
+  /// O grafo exatamente como foi enviado.
+  grafoEnviado  Json           @map("grafo_enviado")
+  /// O id que o ComfyUI devolve no POST /prompt.
+  promptIdComfy String?        @unique @map("prompt_id_comfy")
+  erro          String?
+  criadoEm      DateTime       @default(now()) @map("criado_em") @db.Timestamptz
+  /// Início e fim de verdade no ComfyUI, sem o tempo de fila.
+  iniciadaEm    DateTime?      @map("iniciada_em") @db.Timestamptz
+  concluidaEm   DateTime?      @map("concluida_em") @db.Timestamptz
 
-  asset    Asset?           @relation(fields: [assetId], references: [id], onDelete: Restrict)
-  shot     Shot?            @relation(fields: [shotId], references: [id], onDelete: Restrict)
-  entradas GeracaoEntrada[]
-  rodadas  Rodada[]
-  outputs  Output[]
+  /// Apagar o asset ou o shot leva o histórico da fila junto; os outputs,
+  /// que têm arquivo, é que barram (Restrict neles).
+  asset   Asset?   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  shot    Shot?    @relation(fields: [shotId], references: [id], onDelete: Cascade)
+  outputs Output[]
 
   @@index([assetId])
   @@index([shotId])
   @@index([status])
-  @@index([tipo])
-  @@map("geracao")
+  @@map("execucao")
 }
 
-/// Um envio de uma geração ao ComfyUI. A seed "aleatória" é sorteada aqui e
-/// gravada nos parâmetros: dá para saber qual seed fez cada imagem.
-model Rodada {
-  id            String        @id @default(uuid()) @db.Uuid
-  geracaoId     String        @map("geracao_id") @db.Uuid
-  /// NA_FILA → EXECUTANDO → CONCLUIDA / FALHOU / CANCELADA (nunca RASCUNHO).
-  status        StatusGeracao @default(NA_FILA)
-  /// Os valores exatos deste envio, com a seed já sorteada.
-  parametros    Json
-  /// O grafo exatamente como foi enviado. O código do workflow pode mudar
-  /// depois; isto é o que de fato rodou.
-  grafoEnviado  Json          @map("grafo_enviado")
-  /// O id que o ComfyUI devolve no POST /prompt.
-  promptIdComfy String?       @unique @map("prompt_id_comfy")
-  erro          String?
-  criadoEm      DateTime      @default(now()) @map("criado_em") @db.Timestamptz
-  /// Início e fim de verdade no ComfyUI, sem o tempo de fila.
-  iniciadaEm    DateTime?     @map("iniciada_em") @db.Timestamptz
-  concluidaEm   DateTime?     @map("concluida_em") @db.Timestamptz
-
-  geracao Geracao  @relation(fields: [geracaoId], references: [id], onDelete: Cascade)
-  outputs Output[]
-
-  @@index([geracaoId])
-  @@index([status])
-  @@map("rodada")
-}
-
-/// O que entrou numa geração: uma referência ou um output de outra geração.
-/// Exatamente um dos dois (CHECK).
-model GeracaoEntrada {
-  id           String  @id @default(uuid()) @db.Uuid
-  geracaoId    String  @map("geracao_id") @db.Uuid
-  referenciaId String? @map("referencia_id") @db.Uuid
-  outputId     String? @map("output_id") @db.Uuid
-  ordem        Int
-
-  geracao    Geracao     @relation(fields: [geracaoId], references: [id], onDelete: Cascade)
-  referencia Referencia? @relation(fields: [referenciaId], references: [id], onDelete: Restrict)
-  output     Output?     @relation(fields: [outputId], references: [id], onDelete: Restrict)
-
-  @@unique([geracaoId, referenciaId])
-  @@unique([geracaoId, outputId])
-  @@index([referenciaId])
-  @@index([outputId])
-  @@map("geracao_entrada")
-}
-
-/// Um arquivo que uma geração produziu.
+/// Um arquivo gerado para um asset ou shot — e tudo o que foi usado para
+/// gerá-lo. Cada output se explica sozinho: tipo, workflow, modelo, prompt,
+/// a seed e os demais campos, e o grafo enviado ao ComfyUI. O código dos
+/// workflows pode mudar depois; isto é o que de fato rodou.
+///
+/// Pertence a um asset ou a um shot — exatamente um (CHECK).
 model Output {
   id           String     @id @default(uuid()) @db.Uuid
-  /// Geração com outputs não se apaga: eles têm arquivo em disco.
-  geracaoId    String     @map("geracao_id") @db.Uuid
-  /// A rodada que produziu este output (e, nela, a seed).
-  rodadaId     String?    @map("rodada_id") @db.Uuid
+  assetId      String?    @map("asset_id") @db.Uuid
+  shotId       String?    @map("shot_id") @db.Uuid
+  /// A execução que o produziu. Só o vínculo com a fila: os metadados
+  /// moram aqui, então limpar o histórico da fila não apaga nada.
+  execucaoId   String?    @map("execucao_id") @db.Uuid
   tipo         TipoOutput
   /// Caminho relativo à pasta de arquivos (ARQUIVOS_DIR), com `/`.
   arquivo      String
@@ -289,14 +238,31 @@ model Output {
   altura       Int?
   duracaoSeg   Decimal?   @map("duracao_seg") @db.Decimal(10, 3)
   favorito     Boolean    @default(false)
+
+  /// Chave do tipo de geração no código (ex.: "placa-cenario").
+  tipoGeracao  String     @map("tipo_geracao")
+  /// Chave do workflow no código (ex.: "placa-cenario-zimage").
+  workflow     String
+  /// O modelo principal que o workflow usou.
+  modelo       String?
+  /// Cópia do campo "prompt" dos parâmetros: é o que a busca usa.
+  prompt       String     @default("")
+  /// A seed que fez esta imagem — repetir ela repete a imagem.
+  seed         BigInt?
+  /// Os valores de todos os campos do workflow, como foram enviados.
+  parametros   Json
+  /// O grafo exatamente como foi enviado ao ComfyUI.
+  grafoEnviado Json       @map("grafo_enviado")
   criadoEm     DateTime   @default(now()) @map("criado_em") @db.Timestamptz
 
-  geracao Geracao          @relation(fields: [geracaoId], references: [id], onDelete: Restrict)
-  rodada  Rodada?          @relation(fields: [rodadaId], references: [id], onDelete: Restrict)
-  /// Output usado como entrada de outra geração não se apaga.
-  usadoEm GeracaoEntrada[]
+  /// Output tem arquivo em disco: barra apagar o asset ou o shot.
+  asset    Asset?    @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  shot     Shot?     @relation(fields: [shotId], references: [id], onDelete: Restrict)
+  execucao Execucao? @relation(fields: [execucaoId], references: [id], onDelete: SetNull)
 
-  @@index([geracaoId])
-  @@index([rodadaId])
+  @@index([assetId])
+  @@index([shotId])
+  @@index([execucaoId])
+  @@index([tipoGeracao])
   @@map("output")
 }

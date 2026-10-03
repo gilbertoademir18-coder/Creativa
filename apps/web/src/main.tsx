@@ -5,7 +5,7 @@ import "./app.css";
 import { Layout } from "./componentes/layout.tsx";
 import { PaginaAsset, PaginaAssets } from "./paginas/assets.tsx";
 import { PaginaCena, PaginaCenas } from "./paginas/cenas.tsx";
-import { PaginaGeracao, PaginaGeracoes } from "./paginas/geracoes.tsx";
+import { PaginaOutputs } from "./paginas/outputs.tsx";
 import { PaginaProjeto, PaginaProjetos } from "./paginas/projetos.tsx";
 import { PaginaReferencias } from "./paginas/referencias.tsx";
 import { PaginaShot } from "./paginas/shot.tsx";
@@ -27,9 +27,9 @@ const roteador = createBrowserRouter([
       { path: "cenas", element: <PaginaCenas /> },
       { path: "cenas/:id", element: <PaginaCena /> },
       { path: "shots/:id", element: <PaginaShot /> },
-      { path: "geracoes", element: <PaginaGeracoes /> },
-      { path: "geracoes/nova", element: <PaginaGeracao /> },
-      { path: "geracoes/:id", element: <PaginaGeracao /> },
+      { path: "outputs", element: <PaginaOutputs /> },
+      // Links antigos, de antes do Gerador.
+      { path: "geracoes/*", element: <Navigate to="/outputs" replace /> },
       { path: "*", element: <Navigate to="/projetos" replace /> },
     ],
   },

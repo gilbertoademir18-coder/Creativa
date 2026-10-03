@@ -2,7 +2,7 @@ import { ArrowLeft, Pencil, Trash } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { shotsApi } from "../api.ts";
-import { useGeracaoNoLugar } from "../componentes/geracao-no-lugar.tsx";
+import { PainelGerador } from "../componentes/gerador.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
 import { PainelReferencias } from "../componentes/referencias.tsx";
 import { AreaTexto, Aviso, Botao, Cabecalho, Campo, Carregando, Entrada } from "../componentes/ui.tsx";
@@ -13,8 +13,6 @@ export function PaginaShot() {
   const { id = "" } = useParams();
   const navegar = useNavigate();
   const { dados: s, erro, setDados } = useCarregar(() => shotsApi.ler(id), [id]);
-  // A geração aberta aparece aqui mesmo, num bloco acima da lista de gerações.
-  const geracoes = useGeracaoNoLugar({ assetId: null, shotId: id });
   const [editando, setEditando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
 
@@ -65,8 +63,7 @@ export function PaginaShot() {
         ))}
       </nav>
       <div className="flex flex-col gap-10 p-8">
-        {geracoes.Aberta()}
-        {geracoes.Lista()}
+        <PainelGerador dono={{ assetId: null, shotId: s.id }} />
         <PainelReferencias dono={{ assetId: null, shotId: s.id }} />
       </div>
       <Modal aberto={editando} titulo="Editar shot" aoFechar={() => setEditando(false)}>
@@ -87,7 +84,7 @@ export function PaginaShot() {
         titulo="Excluir shot"
         texto={
           <>
-            O shot <b>{s.nome}</b> será excluído. Se ele tiver referências ou gerações, exclua-as antes.
+            O shot <b>{s.nome}</b> será excluído. Se ele tiver referências ou outputs, exclua-os antes.
           </>
         }
         aoFechar={() => setExcluindo(false)}

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { assetsApi, urlArquivo } from "../api.ts";
 import { EscolhaProjeto, FiltroBusca, FiltroProjeto } from "../componentes/filtros.tsx";
-import { useGeracaoNoLugar } from "../componentes/geracao-no-lugar.tsx";
+import { PainelGerador } from "../componentes/gerador.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
 import { PainelReferencias } from "../componentes/referencias.tsx";
 import {
@@ -41,7 +41,7 @@ export function PaginaAssets() {
     <>
       <Cabecalho
         titulo="Assets"
-        subtitulo="Personagens, cenários e objetos — com as referências e as gerações de cada um."
+        subtitulo="Personagens, cenários e objetos — cada um com o seu Gerador, os outputs e as referências."
         acoes={
           <Botao variante="primario" icone={<Plus className="size-4" />} onClick={() => setNovo(true)}>
             Novo asset
@@ -123,7 +123,7 @@ export function CartaoAsset({ a, mostrarProjeto, volta }: { a: Asset; mostrarPro
         <div className="flex justify-between gap-2 text-xs text-zinc-500">
           <span className="truncate">{mostrarProjeto ? (a.projeto?.nome ?? "Sem projeto") : ""}</span>
           <span className="shrink-0">
-            {a._count.referencias} ref · {a._count.geracoes} ger
+            {a._count.referencias} ref · {a._count.outputs} out
           </span>
         </div>
       </div>
@@ -136,8 +136,6 @@ export function PaginaAsset() {
   const navegar = useNavigate();
   const { dados: a, erro, setDados } = useCarregar(() => assetsApi.ler(id), [id]);
   const volta = useVolta();
-  // A geração aberta aparece aqui mesmo, num bloco acima da lista de gerações.
-  const geracoes = useGeracaoNoLugar({ assetId: id, shotId: null });
   const [editando, setEditando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
 
@@ -184,8 +182,7 @@ export function PaginaAsset() {
         }
       />
       <div className="flex flex-col gap-10 p-8">
-        {geracoes.Aberta()}
-        {geracoes.Lista()}
+        <PainelGerador dono={{ assetId: a.id, shotId: null }} />
         <PainelReferencias dono={{ assetId: a.id, shotId: null }} />
       </div>
       <ModalAsset
@@ -202,7 +199,7 @@ export function PaginaAsset() {
         titulo="Excluir asset"
         texto={
           <>
-            O asset <b>{a.nome}</b> será excluído. Se ele tiver referências ou gerações, exclua-as antes.
+            O asset <b>{a.nome}</b> será excluído. Se ele tiver referências ou outputs, exclua-os antes.
           </>
         }
         aoFechar={() => setExcluindo(false)}

@@ -1,7 +1,7 @@
 import type { TipoAsset } from "../generated/prisma/enums.ts";
 
 /*
- * Os formatos do registro de gerações.
+ * Os formatos do Gerador — o catálogo do que dá para gerar.
  *
  * Um TIPO de geração ("Placa de cenário", "Character sheet", "First
  * frame"...) diz o que se quer produzir e para quem faz sentido. Um WORKFLOW
@@ -14,14 +14,12 @@ import type { TipoAsset } from "../generated/prisma/enums.ts";
  * em `workflows/`, registrado em `registro.ts`.
  */
 
-/** Para quem um tipo de geração aparece. */
+/** Em que Gerador um tipo de geração aparece: no de quais assets, e no dos shots. */
 export type Donos = {
   /** Assets destes tipos (ex.: só CENARIO). */
   assets?: TipoAsset[];
   /** Shots. */
   shot?: boolean;
-  /** Geração solta, sem dono. */
-  solta?: boolean;
 };
 
 export type DefTipo = {
@@ -82,7 +80,7 @@ export type DefWorkflow = {
   descricao: string;
   /** O arquivo de origem no ComfyUI (user/default/workflows), só como referência. */
   arquivoComfy: string;
-  /** O modelo principal, gravado na geração no envio. */
+  /** O modelo principal, gravado em cada output. */
   modelo: string;
   campos: Campo[];
   montar: (v: Valores) => GrafoApi;

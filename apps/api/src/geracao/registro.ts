@@ -27,18 +27,18 @@ export const WORKFLOWS: DefWorkflow[] = [placaCenarioZImage];
 export const acharTipo = (chave: string) => TIPOS.find((t) => t.chave === chave);
 export const acharWorkflow = (chave: string) => WORKFLOWS.find((w) => w.chave === chave);
 
-/** O dono de uma geração, como o catálogo enxerga: o tipo do asset, shot, ou solta. */
-export type DonoGeracao = { asset: TipoAsset } | { shot: true } | { solta: true };
+/** De quem é o Gerador, como o catálogo enxerga: o tipo do asset importa (só Cenário tem Placa...). */
+export type DonoGeracao = { asset: TipoAsset } | { shot: true };
 
 function aceita(t: DefTipo, dono: DonoGeracao): boolean {
   if ("asset" in dono) return !!t.donos.assets?.includes(dono.asset);
-  if ("shot" in dono) return !!t.donos.shot;
-  return !!t.donos.solta;
+  return !!t.donos.shot;
 }
 
 /**
- * Os tipos (com os workflows) que valem para um dono — o que a tela de nova
- * geração oferece. Sem `montar`: o front só precisa da descrição.
+ * Os tipos (com os workflows) que valem para um dono — o que o Gerador
+ * daquele asset ou shot oferece, na ordem do catálogo: o primeiro já vem
+ * escolhido. Sem `montar`: o front só precisa da descrição.
  */
 export function catalogoPara(dono: DonoGeracao) {
   return TIPOS.filter((t) => aceita(t, dono))
@@ -59,12 +59,12 @@ export function conferir(tipo: string, workflow: string, dono: DonoGeracao): Def
   return w;
 }
 
-/** O validador zod de um campo. `rascunho`: obrigatório vazio passa (dá para salvar pela metade). */
-function esquemaCampo(c: Campo, rascunho: boolean) {
+/** O validador zod de um campo. */
+function esquemaCampo(c: Campo) {
   switch (c.tipo) {
     case "texto": {
       const base = z.string().max(50_000, "texto longo demais");
-      return c.obrigatorio && !rascunho ? base.trim().min(1, "não pode ficar vazio") : base.default(c.padrao ?? "");
+      return c.obrigatorio ? base.trim().min(1, "não pode ficar vazio") : base.default(c.padrao ?? "");
     }
     case "opcoes":
       return z.enum(c.opcoes.map((o) => o.valor) as [string, ...string[]], "opção inválida").default(c.padrao);
@@ -79,8 +79,8 @@ function esquemaCampo(c: Campo, rascunho: boolean) {
  * Valida os valores dos campos de um workflow. Campos que o workflow não
  * conhece são descartados — sobra de outro workflow escolhido antes.
  */
-export function validarValores(w: DefWorkflow, valores: unknown, rascunho: boolean): Record<string, unknown> {
-  const forma = Object.fromEntries(w.campos.map((c) => [c.chave, esquemaCampo(c, rascunho)]));
+export function validarValores(w: DefWorkflow, valores: unknown): Record<string, unknown> {
+  const forma = Object.fromEntries(w.campos.map((c) => [c.chave, esquemaCampo(c)]));
   const r = z.object(forma).safeParse(valores ?? {});
   if (!r.success) {
     const p = r.error.issues[0]!;

@@ -88,7 +88,7 @@ export async function rotasReferencias(app: FastifyInstance) {
     const { id } = validar(z.object({ id: Uuid }), req.params);
     const r = await prisma.referencia.findUnique({
       where: { id },
-      include: { ...incluirDono, _count: { select: { usadaEm: true } } },
+      include: incluirDono,
     });
     if (!r) throw naoEncontrado("Referência não encontrada.");
     return referenciaParaJson(r);
@@ -192,9 +192,8 @@ export async function rotasReferencias(app: FastifyInstance) {
   });
 
   /**
-   * Apaga a referência e o arquivo dela. Recusado (409) se ela foi usada em
-   * alguma geração. O arquivo só sai depois do banco: se o banco recusa, o
-   * arquivo continua lá.
+   * Apaga a referência e o arquivo dela. O arquivo só sai depois do banco:
+   * se o banco recusa, o arquivo continua lá.
    */
   app.delete("/:id", async (req, reply) => {
     const { id } = validar(z.object({ id: Uuid }), req.params);

@@ -36,7 +36,7 @@ const FiltroAssets = z.object({
  */
 const daListagem = {
   projeto: { select: { id: true, nome: true } },
-  _count: { select: { referencias: true, geracoes: true } },
+  _count: { select: { referencias: true, outputs: true } },
   referencias: {
     where: { tipo: "IMAGEM" as const },
     select: { arquivo: true },
@@ -48,18 +48,17 @@ const daListagem = {
 type DaListagem = { id: string; referencias: { arquivo: string | null }[] };
 
 /**
- * A imagem que representa cada asset, entre os outputs das gerações dele:
+ * A imagem que representa cada asset, entre os outputs dele:
  * o favorito, senão o mais recente. Uma consulta só para a lista inteira
  * (DISTINCT ON pega o primeiro de cada asset na ordem do ORDER BY).
  */
 async function capasDeOutputs(ids: string[]): Promise<Map<string, string>> {
   if (!ids.length) return new Map();
   const linhas = await prisma.$queryRaw<{ asset_id: string; arquivo: string }[]>`
-    SELECT DISTINCT ON (g.asset_id) g.asset_id, o.arquivo
+    SELECT DISTINCT ON (o.asset_id) o.asset_id, o.arquivo
     FROM output o
-    JOIN geracao g ON g.id = o.geracao_id
-    WHERE o.tipo = 'IMAGEM' AND g.asset_id = ANY(${ids}::uuid[])
-    ORDER BY g.asset_id, o.favorito DESC, o.criado_em DESC`;
+    WHERE o.tipo = 'IMAGEM' AND o.asset_id = ANY(${ids}::uuid[])
+    ORDER BY o.asset_id, o.favorito DESC, o.criado_em DESC`;
   return new Map(linhas.map((l) => [l.asset_id, l.arquivo]));
 }
 
@@ -99,10 +98,6 @@ export async function rotasAssets(app: FastifyInstance) {
       include: {
         ...daListagem,
         referencias: { orderBy: { criadoEm: "asc" } },
-        geracoes: {
-          orderBy: { criadoEm: "desc" },
-          include: { _count: { select: { outputs: true } } },
-        },
       },
     });
     if (!asset) throw naoEncontrado("Asset não encontrado.");
@@ -122,7 +117,7 @@ export async function rotasAssets(app: FastifyInstance) {
     return comCapa(await prisma.asset.update({ where: { id }, data: dados, include: daListagem }));
   });
 
-  /** Recusado (409) enquanto houver referências ou gerações: elas têm arquivo e histórico. */
+  /** Recusado (409) enquanto houver referências ou outputs: eles têm arquivo. */
   app.delete("/:id", async (req, reply) => {
     const { id } = validar(z.object({ id: Uuid }), req.params);
     await prisma.asset.delete({ where: { id } });

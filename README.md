@@ -31,12 +31,18 @@ outros projetos.
 
 ```
 Projeto
-├── Asset (personagem, cenário, objeto...) ── Referências, Gerações
+├── Asset (personagem, cenário, objeto...) ── Referências, Outputs  ← Gerador
 └── Cena (storyboard em texto)
-    └── Shot ──────────────────────────────── Referências, Gerações
-
-Geração ── entradas: Referências e Outputs ── produz: Outputs
+    └── Shot ──────────────────────────────── Referências, Outputs  ← Gerador
 ```
+
+Não existe cadastro de "geração". O **Gerador** é um recurso do código
+(`apps/api/src/geracao/`) que aparece dentro de cada asset e shot: o tipo e
+o workflow já vêm escolhidos pelo dono, você escreve o prompt e clica em
+**Gerar**. Cada imagem que sai é um **Output** do asset/shot e guarda tudo o
+que foi usado para gerá-la — tipo, workflow, modelo, prompt, seed, os outros
+campos e o grafo enviado ao ComfyUI. Clicar num output mostra isso, e "Usar
+estas configurações" devolve tudo ao Gerador.
 
 | Tabela | O que guarda |
 | --- | --- |
@@ -45,19 +51,17 @@ Geração ── entradas: Referências e Outputs ── produz: Outputs
 | `cena` | Com projeto ou solta; tem o storyboard |
 | `shot` | Sempre numa cena, em ordem. Toda cena nasce com um e nunca fica sem |
 | `referencia` | Imagem, vídeo ou texto enviado. De um asset, de um shot, ou solta |
-| `geracao` | Prompt, negativo, modelo, workflow, status. De um asset, de um shot, ou solta |
-| `geracao_entrada` | O que entrou numa geração: referências e outputs de outras |
-| `output` | O que uma geração produziu (chega com a integração do ComfyUI) |
-| `workflow` | Workflow do ComfyUI, formato API (sem tela ainda) |
+| `output` | Um arquivo gerado, com todos os metadados de como foi gerado. De um asset ou de um shot |
+| `execucao` | A fila: cada envio ao ComfyUI (na fila → executando → concluída/falhou), com o `prompt_id` |
 
 Regras que o banco garante (FKs e `CHECK`s):
 
 - Apagar um projeto **solta** os assets e cenas dele; não apaga.
-- O que tem arquivo ou histórico é protegido: asset, shot ou cena com
-  referência ou geração não se apaga; referência ou output usado como entrada
-  também não; geração com outputs também não. A tela explica o que remover antes.
-- Referência e geração pertencem a um asset **ou** a um shot, nunca aos dois.
-- Geração só se edita em rascunho: depois de rodar, é o registro do que rodou.
+- O que tem arquivo é protegido: asset, shot ou cena com referência ou
+  output não se apaga. A tela explica o que remover antes. O histórico da
+  fila (`execucao`) cai junto com o dono.
+- Referência pertence a um asset, a um shot, ou a nenhum — nunca aos dois.
+- Output e execução pertencem a exatamente um: asset **ou** shot.
 
 A conexão leva `options=-c timezone=UTC`: sem isso o driver grava os
 horários 3 horas deslocados, em silêncio (lição do NihongoHub).
@@ -187,7 +191,7 @@ percebe. (Veio do Trimly; aqui sem a etapa de testes, que o Creativa ainda
 não tem.)
 
 Gerações rodando no ComfyUI não se perdem: o ComfyUI não depende do servidor,
-e o acompanhamento retoma as rodadas quando ele volta.
+e o acompanhamento retoma as execuções quando ele volta.
 
 **Reiniciar** sozinho derruba o servidor antes de compilar: um erro ali deixa
 o site fora do ar até ser consertado. Serve para destravar, não para publicar.
@@ -242,11 +246,12 @@ apps/
   api/
     prisma/schema.prisma  Tabelas, enums e as regras de exclusão
     src/server.ts         Fastify: registra as rotas, arquivos e o front pronto
-    src/rotas/            projetos, assets, cenas (+ shots), referencias, geracoes
+    src/rotas/            projetos, assets, cenas (+ shots), referencias, gerador, outputs, fila
+    src/geracao/          O Gerador: catálogo de tipos e workflows, e a execução no ComfyUI
     src/lib/              prisma, validacao (zod), arquivos (D:\Creativa), filtros
   web/                    React + Vite + Tailwind, tela cheia (Full HD / QHD)
     src/paginas/          Uma por item do menu, com a lista e o detalhe
-    src/componentes/      layout, ui, modal, filtros, referencias, geracoes...
+    src/componentes/      layout, ui, modal, filtros, referencias, gerador, outputs...
     scripts/gerar-icones.mjs
 docs/
   padrao-de-projeto.md    Como montar um projeto novo no mesmo molde

@@ -17,7 +17,8 @@ const { rotasProjetos } = await import("./rotas/projetos.ts");
 const { rotasAssets } = await import("./rotas/assets.ts");
 const { rotasCenas, rotasShots } = await import("./rotas/cenas.ts");
 const { rotasReferencias } = await import("./rotas/referencias.ts");
-const { rotasGeracoes, rotasOutputs } = await import("./rotas/geracoes.ts");
+const { rotasGerador } = await import("./rotas/gerador.ts");
+const { rotasOutputs } = await import("./rotas/outputs.ts");
 const { iniciarAcompanhamento } = await import("./geracao/execucao.ts");
 const { rotasComfy } = await import("./rotas/comfyui.ts");
 const { rotasFila } = await import("./rotas/fila.ts");
@@ -41,7 +42,7 @@ app.setErrorHandler((erro: Error & { statusCode?: number; code?: string }, req, 
   // schema). P2025: o registro não existe. P2002: duplicado.
   if (erro.code === "P2003") {
     return reply.code(409).send({
-      erro: "Não dá para excluir: ainda há itens ligados a este registro (referências, gerações ou outputs).",
+      erro: "Não dá para excluir: ainda há itens ligados a este registro (referências ou outputs).",
     });
   }
   if (erro.code === "P2025") return reply.code(404).send({ erro: "Registro não encontrado." });
@@ -88,7 +89,7 @@ await app.register(rotasAssets, { prefix: "/api/assets" });
 await app.register(rotasCenas, { prefix: "/api/cenas" });
 await app.register(rotasShots, { prefix: "/api/shots" });
 await app.register(rotasReferencias, { prefix: "/api/referencias" });
-await app.register(rotasGeracoes, { prefix: "/api/geracoes" });
+await app.register(rotasGerador, { prefix: "/api/gerador" });
 await app.register(rotasOutputs, { prefix: "/api/outputs" });
 await app.register(rotasComfy, { prefix: "/api/comfyui" });
 await app.register(rotasFila, { prefix: "/api/fila" });
@@ -137,5 +138,5 @@ app.setNotFoundHandler((req, reply) => {
 // 0.0.0.0 e não localhost: assim os outros PCs chegam pelo IP do tailnet.
 await app.listen({ port: PORTA, host: "0.0.0.0" });
 
-// Retoma e acompanha as gerações que estão no ComfyUI (ver geracao/execucao.ts).
+// Retoma e acompanha as execuções que estão no ComfyUI (ver geracao/execucao.ts).
 iniciarAcompanhamento(app.log);

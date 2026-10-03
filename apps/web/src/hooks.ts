@@ -51,28 +51,6 @@ export function useVolta(): Volta | null {
 }
 
 /**
- * A geração aberta no lugar, nas páginas do asset e do shot: mora na URL
- * (`?geracao=<id>` ou `?geracao=nova`), para o voltar do navegador fechar
- * o bloco e o link poder ser mandado com a geração já aberta. O estado da
- * navegação (o "voltar" para o projeto) é preservado ao trocar.
- */
-export function useGeracaoAberta() {
-  const [params, setParams] = useSearchParams();
-  const aberta = params.get("geracao");
-  const abrir = (id: string | null, substituir = false) =>
-    setParams(
-      (atual) => {
-        const novo = new URLSearchParams(atual);
-        if (id) novo.set("geracao", id);
-        else novo.delete("geracao");
-        return novo;
-      },
-      { replace: substituir, preventScrollReset: true, state: window.history.state?.usr },
-    );
-  return [aberta, abrir] as const;
-}
-
-/**
  * Os filtros de uma página moram na URL (`/assets?projeto=X&tipo=PERSONAGEM`):
  * dá para voltar com o navegador, recarregar e mandar o endereço de um
  * filtro pronto — é o que os links "ver assets do projeto" usam.

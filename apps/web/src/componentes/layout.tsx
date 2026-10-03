@@ -15,7 +15,7 @@ const MENU = [
   { para: "/assets", rotulo: "Assets", icone: Shapes },
   { para: "/referencias", rotulo: "Referências", icone: Images },
   { para: "/cenas", rotulo: "Cenas", icone: Clapperboard },
-  { para: "/geracoes", rotulo: "Gerações", icone: Sparkles },
+  { para: "/outputs", rotulo: "Outputs", icone: Sparkles },
 ];
 
 export function Layout() {
