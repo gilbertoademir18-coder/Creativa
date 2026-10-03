@@ -36,7 +36,7 @@ export function lerEnv(chave: string, padrao: string): string {
 
 export function configComfy() {
   const url = lerEnv("COMFYUI_URL", "http://127.0.0.1:8188").replace(/\/$/, "");
-  const dir = lerEnv("COMFYUI_DIR", "C:\\AI\\ComfyUI");
+  const dir = lerEnv("COMFYUI_DIR", "C:\\IA\\ComfyUI");
   return {
     url,
     porta: Number(new URL(url).port || 80),

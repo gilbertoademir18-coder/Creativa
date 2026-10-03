@@ -8,7 +8,7 @@
 
 # Projeto
 
-- Plataforma para criar vídeos, imagens, sons e assets com IA chamando workflows do ComfyUI (portátil em `C:\AI\ComfyUI`, porta 8188).
+- Plataforma para criar vídeos, imagens, sons e assets com IA chamando workflows do ComfyUI (portátil em `C:\IA\ComfyUI`, porta 8188).
 - Monorepo npm workspaces: `apps/api` (Fastify) e `apps/web` (React + Vite + Tailwind). Leia o README antes de mudanças estruturais.
 - Código, nomes e comentários em português.
 - Versões muito novas (TypeScript 7, Vite 8): confira a API em `node_modules` antes de assumir.
@@ -50,7 +50,7 @@
   (`tipo_geracao`, `workflow`) e os valores dos campos (`parametros`).
 - Workflow novo = um arquivo em `geracao/workflows/` + uma linha em
   `geracao/registro.ts`. Para escrever:
-  1. Leia o `.json` em `C:\AI\ComfyUI\ComfyUI\user\default\workflows` (formato
+  1. Leia o `.json` em `C:\IA\ComfyUI\ComfyUI\user\default\workflows` (formato
      de tela) — inclusive as notas (MarkdownNote): elas dizem o que é fixo e por quê.
   2. Confira os nomes de entrada de cada nó em `GET /object_info/<Classe>` do
      ComfyUI. Não chute: o widget de tela nem sempre bate com o nome do input.
@@ -74,12 +74,12 @@ Levantado em 2026-10-01. Tudo roda aqui: ComfyUI, API, banco.
 | GPU | **RTX 3080 Ti, 12 GB VRAM** — Ampere (compute 8.6), driver 617.14, CUDA 13 |
 | CPU | Ryzen 7 5800X, 8 núcleos / 16 threads |
 | RAM | 32 GB DDR4-3466 (o WMI lê um dos pentes como 1 GB; são 4×8) |
-| `C:` | NVMe Samsung 980 PRO 2 TB — ComfyUI e modelos ficam aqui |
+| `C:` | NVMe Samsung 980 PRO 2 TB — **todo modelo de IA fica em `C:\IA`**: `C:\IA\ComfyUI`, `C:\IA\Ollama\models`. Ferramenta nova de IA também vai para lá |
 | `D:` | HDD 4 TB ("Data") — bom para arquivar saídas, ruim para modelos (carrega devagar) |
 | SO | Windows 11 Home |
 | ComfyUI | 0.36.0 portátil, Python 3.13, PyTorch 2.13 + cu130, attention do PyTorch |
 | Nós extras | ComfyUI-Manager, Civicomfy. Sem `triton`: nada de SageAttention ou `torch.compile` com backend triton |
-| LLM local | Ollama 0.35 (bandeja, porta 11434), modelo `gemma4:12b-it-qat` (~7 GB) para o assistente de prompt |
+| LLM local | Ollama 0.35 (bandeja, porta 11434), modelo `gemma4:12b-it-qat` (~7 GB) para o assistente de prompt. Modelos em `C:\IA\Ollama\models` — a variável `OLLAMA_MODELS` **e** o "Model location" do app (o do app vence) |
 
 O que isso muda nas escolhas:
 

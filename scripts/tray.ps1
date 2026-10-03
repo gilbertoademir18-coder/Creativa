@@ -84,7 +84,7 @@ function Ler-Env([string]$chave, [string]$padrao) {
     return $padrao
 }
 
-$COMFY_DIR   = Ler-Env "COMFYUI_DIR" "C:\AI\ComfyUI"
+$COMFY_DIR   = Ler-Env "COMFYUI_DIR" "C:\IA\ComfyUI"
 $COMFY_URL   = (Ler-Env "COMFYUI_URL" "http://127.0.0.1:8188").TrimEnd("/")
 $COMFY_PORTA = ([Uri]$COMFY_URL).Port
 

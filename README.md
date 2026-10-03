@@ -21,7 +21,7 @@ o app; o botão direito traz o resto.
 
 O `criar-banco.ps1` acrescenta o `DATABASE_URL` ao `.env`. O resto do `.env`
 é opcional — veja o `.env.example` para apontar outra pasta ou porta do
-ComfyUI (padrão: `C:\AI\ComfyUI`, `http://127.0.0.1:8188`).
+ComfyUI (padrão: `C:\IA\ComfyUI`, `http://127.0.0.1:8188`).
 
 ## Banco de dados
 
@@ -132,11 +132,14 @@ nesta máquina:
 
 ```powershell
 winget install Ollama.Ollama        # o app fica na bandeja e sobe com o Windows
+[Environment]::SetEnvironmentVariable("OLLAMA_MODELS", "C:\IA\Ollama\models", "User")
+# e no app: Settings → Model location → C:\IA\Ollama\models (ele guarda a dele e ela vence)
 ollama pull gemma4:12b-it-qat
 ```
 
-Trocar de modelo é `ollama pull` + `ASSISTENTE_MODELO` no `.env` (relido a
-cada uso).
+Os modelos ficam em **`C:\IA\Ollama\models`**, junto com o ComfyUI em
+`C:\IA\ComfyUI`: todo modelo de IA desta máquina mora em `C:\IA`. Trocar de
+modelo é `ollama pull` + `ASSISTENTE_MODELO` no `.env` (relido a cada uso).
 
 **A GPU é dividida.** São 12 GB para o ComfyUI e a LLM, que se revezam:
 
