@@ -26,3 +26,87 @@ body {
     cursor: pointer;
   }
 }
+
+/*
+ * Texto em markdown (descrição do projeto): o Tailwind zera títulos, listas
+ * e citações no preflight — aqui eles voltam, no tom do app. Vale para o
+ * conteúdo do editor (MDXEditor) e para onde o texto for só lido.
+ */
+.texto-md {
+  @apply text-[0.95rem] leading-relaxed text-zinc-200;
+}
+.texto-md > * + * {
+  @apply mt-3;
+}
+.texto-md h1 {
+  @apply mt-8 mb-2 text-2xl font-semibold text-zinc-50 first:mt-0;
+}
+.texto-md h2 {
+  @apply mt-7 mb-1 border-b border-zinc-800 pb-1 text-xl font-semibold text-zinc-100;
+}
+.texto-md h3 {
+  @apply mt-5 text-base font-semibold text-zinc-100;
+}
+.texto-md h4,
+.texto-md h5,
+.texto-md h6 {
+  @apply mt-4 text-sm font-semibold tracking-wide text-zinc-300 uppercase;
+}
+.texto-md ul {
+  @apply list-disc pl-6;
+}
+.texto-md ol {
+  @apply list-decimal pl-6;
+}
+.texto-md li + li {
+  @apply mt-1;
+}
+.texto-md blockquote {
+  @apply border-l-2 border-violet-500/60 pl-4 text-zinc-400 italic;
+}
+.texto-md a {
+  @apply text-violet-300 underline underline-offset-2;
+}
+.texto-md code {
+  @apply rounded bg-zinc-800 px-1 py-0.5 font-mono text-[0.85em] text-zinc-200;
+}
+.texto-md hr {
+  @apply my-6 border-zinc-800;
+}
+.texto-md strong {
+  @apply font-semibold text-zinc-50;
+}
+.texto-md table {
+  @apply w-full border-collapse text-sm;
+}
+.texto-md th,
+.texto-md td {
+  @apply border border-zinc-800 px-3 py-1.5 text-left;
+}
+.texto-md th {
+  @apply bg-zinc-900 font-semibold;
+}
+
+/*
+ * O MDXEditor no tema do app: o accent dele é azul (Radix); aqui vira o
+ * violeta do Creativa, e os fundos viram os zinc. Classe dobrada para
+ * ganhar do CSS dele, que carrega depois (junto com o editor).
+ */
+.editor-md.editor-md {
+  --accentBase: #1e1033;
+  --accentBgSubtle: #24133f;
+  --accentBg: #2e1065;
+  --accentBgHover: #3b0f86;
+  --accentBgActive: #4c1d95;
+  --accentLine: #5b21b6;
+  --accentBorder: #6d28d9;
+  --accentBorderHover: #7c3aed;
+  --accentSolid: #8b5cf6;
+  --accentSolidHover: #a78bfa;
+  --accentText: #c4b5fd;
+  --accentTextContrast: #ede9fe;
+  --baseBg: #18181b;
+  --basePageBg: #121215;
+  --baseBase: #121215;
+  --font-body: inherit;
+}

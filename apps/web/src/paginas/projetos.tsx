@@ -1,11 +1,11 @@
-import { ArrowLeft, Clapperboard, FolderKanban, Pencil, Plus, Shapes, Trash } from "lucide-react";
+import { ArrowLeft, Clapperboard, FileText, FolderKanban, Pencil, Plus, Shapes, Trash } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { assetsApi, cenasApi, projetosApi } from "../api.ts";
+import { ModalDescricaoProjeto, resumoMarkdown } from "../componentes/descricao-projeto.tsx";
 import { FiltroBusca } from "../componentes/filtros.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
 import {
-  AreaTexto,
   Aviso,
   BarraFiltros,
   Botao,
@@ -89,7 +89,7 @@ function CartaoProjeto({ p }: { p: Projeto }) {
         <FolderKanban className="size-5 text-violet-400" />
         <span className="truncate font-medium">{p.nome}</span>
       </div>
-      {p.descricao && <p className="line-clamp-2 text-sm text-zinc-400">{p.descricao}</p>}
+      {p.descricao && <p className="line-clamp-2 text-sm text-zinc-400">{resumoMarkdown(p.descricao)}</p>}
       <div className="mt-auto flex gap-4 text-xs text-zinc-500">
         <span className="flex items-center gap-1.5">
           <Shapes className="size-3.5" /> {p._count.assets} assets
@@ -109,6 +109,7 @@ export function PaginaProjeto() {
   const assets = useCarregar(() => assetsApi.listar({ projeto: id }), [id]);
   const cenas = useCarregar(() => cenasApi.listar({ projeto: id }), [id]);
   const [editando, setEditando] = useState(false);
+  const [descrevendo, setDescrevendo] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [novoAsset, setNovoAsset] = useState(false);
   const [novaCena, setNovaCena] = useState(false);
@@ -128,9 +129,18 @@ export function PaginaProjeto() {
           </Link>
         }
         titulo={p.nome}
-        subtitulo={p.descricao}
+        subtitulo={
+          p.descricao ? (
+            <button type="button" onClick={() => setDescrevendo(true)} className="line-clamp-2 max-w-4xl text-left hover:text-zinc-200" title="Abrir a descrição">
+              {resumoMarkdown(p.descricao, 300)}
+            </button>
+          ) : undefined
+        }
         acoes={
           <>
+            <Botao icone={<FileText className="size-4" />} onClick={() => setDescrevendo(true)}>
+              Descrição do projeto
+            </Botao>
             <Botao icone={<Pencil className="size-4" />} onClick={() => setEditando(true)}>
               Editar
             </Botao>
@@ -191,6 +201,15 @@ export function PaginaProjeto() {
           projeto.setDados(novo);
         }}
       />
+      <ModalDescricaoProjeto
+        projeto={p}
+        aberto={descrevendo}
+        aoFechar={() => setDescrevendo(false)}
+        aoSalvar={(novo) => {
+          setDescrevendo(false);
+          projeto.setDados(novo);
+        }}
+      />
       <ConfirmarExclusao
         aberto={excluindo}
         titulo="Excluir projeto"
@@ -243,7 +262,6 @@ export function ModalProjeto({
 
 function FormProjeto({ projeto, aoSalvar }: { projeto?: Projeto; aoSalvar: (p: Projeto) => void }) {
   const [nome, setNome] = useState(projeto?.nome ?? "");
-  const [descricao, setDescricao] = useState(projeto?.descricao ?? "");
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   return (
@@ -254,7 +272,7 @@ function FormProjeto({ projeto, aoSalvar }: { projeto?: Projeto; aoSalvar: (p: P
         setSalvando(true);
         setErro(null);
         try {
-          const dados = { nome, descricao: descricao || null };
+          const dados = { nome };
           aoSalvar(projeto ? await projetosApi.salvar(projeto.id, dados) : await projetosApi.criar(dados));
         } catch (er) {
           setErro((er as Error).message);
@@ -264,9 +282,6 @@ function FormProjeto({ projeto, aoSalvar }: { projeto?: Projeto; aoSalvar: (p: P
     >
       <Campo rotulo="Nome">
         <Entrada value={nome} onChange={(e) => setNome(e.target.value)} autoFocus required placeholder="Poker de Camila" />
-      </Campo>
-      <Campo rotulo="Descrição">
-        <AreaTexto value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={4} />
       </Campo>
       {erro && <Aviso>{erro}</Aviso>}
       <div className="flex justify-end">

@@ -12,4 +12,9 @@ export default defineConfig({
     // Em desenvolvimento a API roda na 3401 (ver apps/api/src/server.ts).
     proxy: { "/api": "http://127.0.0.1:3401" },
   },
+  build: {
+    // O editor de markdown (MDXEditor, ~1,4 MB) é um pedaço à parte, carregado
+    // só quando a janela da descrição abre — o app em si fica bem abaixo disso.
+    chunkSizeWarningLimit: 1600,
+  },
 });

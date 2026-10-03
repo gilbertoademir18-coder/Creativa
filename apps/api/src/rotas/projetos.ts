@@ -3,12 +3,17 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.ts";
 import { Busca, contem, naoEncontrado, Nome, TextoOpcional, Uuid, validar } from "../lib/validacao.ts";
 
-/** Rotas de projetos, montadas em `/api/projetos`. */
+/**
+ * Rotas de projetos, montadas em `/api/projetos`.
+ *
+ * A descrição é um documento à parte (markdown longo, com editor próprio na
+ * tela): tem rota própria, e salvar o nome não mexe nela.
+ */
 
-const CorpoProjeto = z.object({
-  nome: Nome,
-  descricao: TextoOpcional(),
-});
+const CorpoProjeto = z.object({ nome: Nome });
+
+/** Markdown longo: o roteiro do projeto, personagens, tom, referências. */
+const CorpoDescricao = z.object({ descricao: TextoOpcional(500_000) });
 
 const contagens = { _count: { select: { assets: true, cenas: true } } } as const;
 
@@ -38,6 +43,12 @@ export async function rotasProjetos(app: FastifyInstance) {
     const { id } = validar(z.object({ id: Uuid }), req.params);
     const dados = validar(CorpoProjeto, req.body);
     return prisma.projeto.update({ where: { id }, data: dados, include: contagens });
+  });
+
+  app.put("/:id/descricao", { bodyLimit: 5 * 1024 * 1024 }, async (req) => {
+    const { id } = validar(z.object({ id: Uuid }), req.params);
+    const { descricao } = validar(CorpoDescricao, req.body);
+    return prisma.projeto.update({ where: { id }, data: { descricao }, include: contagens });
   });
 
   /** Apagar o projeto solta os assets e as cenas dele — não os apaga. */

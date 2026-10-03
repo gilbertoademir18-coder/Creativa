@@ -54,6 +54,15 @@ e diga na resposta final o que acrescentou ou mudou.
   opção "Todos" já está à vista.
 - Filtros moram na URL (`useFiltros`), para dar para voltar, recarregar e
   mandar o link de um filtro pronto.
+- **Texto longo em markdown** usa o editor visual `EditorMarkdown`
+  (`componentes/editor-markdown.tsx`, MDXEditor). Ele pesa ~1,4 MB: importe
+  sempre com `React.lazy` (como em `descricao-projeto.tsx`), nunca direto —
+  senão vai para o pacote principal. O conteúdo usa a classe `.texto-md`
+  (`app.css`), que devolve títulos e listas que o Tailwind zera.
+- Onde só cabe um resumo (cartão, cabeçalho), mostre `resumoMarkdown()`, nunca
+  o markdown cru com `#` e `**`.
+- A descrição do projeto é um documento à parte: modal própria e rota própria
+  (`PUT /api/projetos/:id/descricao`). O "Editar" do projeto mexe só no nome.
 
 # O Gerador e os workflows do ComfyUI
 

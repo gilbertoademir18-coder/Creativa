@@ -61,7 +61,8 @@ export const urlArquivo = (relativo: string) => `/api/arquivos/${relativo}`;
 /** Dono de uma referência ou output: um asset, um shot, ou nenhum. */
 export type Dono = { assetId: string | null; shotId: string | null };
 
-export type ProjetoNovo = { nome: string; descricao: string | null };
+/** A descrição do projeto tem rota própria (`salvarDescricao`): nome e descrição se salvam separados. */
+export type ProjetoNovo = { nome: string };
 export type AssetNovo = { nome: string; tipo: TipoAsset; projetoId: string | null; descricao: string | null };
 export type CenaNova = { nome: string; projetoId: string | null; descricao: string | null; storyboard: string };
 export type ShotNovo = { nome: string; descricao: string | null };
@@ -91,6 +92,8 @@ export const projetosApi = {
   ler: (id: string) => api<Projeto>(`/projetos/${id}`),
   criar: (p: ProjetoNovo) => api<Projeto>("/projetos", { method: "POST", corpo: p }),
   salvar: (id: string, p: ProjetoNovo) => api<Projeto>(`/projetos/${id}`, { method: "PUT", corpo: p }),
+  salvarDescricao: (id: string, descricao: string | null) =>
+    api<Projeto>(`/projetos/${id}/descricao`, { method: "PUT", corpo: { descricao } }),
   apagar: (id: string) => api<void>(`/projetos/${id}`, { method: "DELETE" }),
 };
 
