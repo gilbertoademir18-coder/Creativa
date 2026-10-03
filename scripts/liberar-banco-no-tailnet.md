@@ -38,8 +38,8 @@ Administrador**:
 .\scripts\liberar-banco-no-tailnet.ps1 -Banco trimly
 ```
 
-Ele pede a senha do usuário `postgres` no fim, só para recarregar a
-configuração. Acrescenta uma linha por banco:
+Ele recarrega a configuração com `pg_ctl reload`, sem pedir senha nenhuma.
+Acrescenta uma linha por banco:
 
 ```
 host    creativa    creativa    100.64.0.0/10    scram-sha-256
@@ -49,6 +49,14 @@ host    trimly      trimly      100.64.0.0/10    scram-sha-256
 `100.64.0.0/10` é a faixa CGNAT do Tailscale: cobre qualquer máquina do
 tailnet, agora e depois, sem precisar voltar aqui a cada aparelho novo. Quem
 não está no tailnet não alcança esses endereços — o Tailscale é o porteiro.
+
+E garante uma regra de firewall, **"PostgreSQL - tailnet"**: TCP 5432,
+entrada, só de `100.64.0.0/10`, perfil Private (onde fica a interface do
+Tailscale). É uma regra para todos os bancos, com o mesmo nome que o script
+do MediaFlow usa — quem rodar primeiro cria, o outro reconhece. Sem ela o
+`pg_hba` fica certo e o pacote nem chega.
+
+Rodar de novo é seguro: cada passo confere o seu e só completa o que falta.
 
 ### Sobre rodar como Administrador
 
@@ -62,7 +70,8 @@ contornar a elevação.
 ## O que você está autorizado a fazer
 
 - Editar o `pg_hba.conf` (o script já faz backup com timestamp antes).
-- Recarregar a configuração do Postgres com `SELECT pg_reload_conf()`.
+- Recarregar a configuração do Postgres (`pg_ctl reload` ou `SELECT pg_reload_conf()`).
+- Criar a regra de firewall "PostgreSQL - tailnet" (o script faz), se faltar.
 - Ler o `postgresql.conf` para conferir o `listen_addresses`.
 
 ## O que você NÃO deve fazer
@@ -77,7 +86,8 @@ contornar a elevação.
 - **Não mude o `listen_addresses`.** Já está certo. Se parecer errado, avise
   o usuário em vez de editar.
 - **Não abra o Postgres para a internet.** Só a faixa do tailnet. Nada de
-  `0.0.0.0/0`, nada de regra nova no firewall para a porta 5432.
+  `0.0.0.0/0`, e nenhuma regra de firewall para a 5432 além da "PostgreSQL -
+  tailnet", que é só da faixa do tailnet e só no perfil Private.
 - **Não mexa nos arquivos gerados** (`D:\Creativa`) nem nos backups.
 
 ## Como saber que funcionou

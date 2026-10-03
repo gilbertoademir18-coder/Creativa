@@ -80,13 +80,16 @@ não sobe no Windows, e o IP de um nó é estável.
 **Aqui**, uma vez, rode `.\scripts\liberar-banco-no-tailnet.ps1` como
 Administrador: o `criar-banco.ps1` deixa o `pg_hba.conf` só com 127.0.0.1, e
 sem essa linha a conexão é recusada antes de olhar a senha —
-`nenhuma entrada em pg_hba.conf para o hospedeiro "100.x.y.z"`.
+`nenhuma entrada em pg_hba.conf para o hospedeiro "100.x.y.z"`. Ele também
+garante a regra de firewall **"PostgreSQL - tailnet"** (5432, só da faixa do
+tailnet), compartilhada com o MediaFlow: sem ela o `pg_hba` fica certo e o
+pacote nem chega. Rodar de novo é seguro, porque ele só completa o que falta.
 
 As instruções prontas para isso estão em
 [`scripts/liberar-banco-no-tailnet.md`](scripts/liberar-banco-no-tailnet.md) —
 feitas para colar no Claude Code da máquina do banco, com o que ele pode e o
-que ele não pode mexer. O Trimly tem o mesmo problema (banco `trimly`, no
-mesmo servidor), e o script atende os dois: `-Banco trimly`.
+que ele não pode mexer. O script atende qualquer projeto no mesmo servidor
+com banco e usuário de mesmo nome: `-Banco trimly`, `-Banco nihongohub`.
 
 Duas coisas não funcionam do outro PC:
 
@@ -249,6 +252,6 @@ scripts/
   publicar.ps1            Confere e faz backup antes de publicar (tray)
   publicar-no-tailnet.ps1 tailscale serve: Creativa 8444, ComfyUI 8445
   liberar-banco-no-tailnet.ps1
-                          pg_hba: deixa outro PC do tailnet usar o banco
+                          pg_hba + firewall: deixa outro PC do tailnet usar o banco
                           (.md: instruções para o Claude da máquina do banco)
 ```
