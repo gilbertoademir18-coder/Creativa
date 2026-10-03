@@ -4,6 +4,9 @@ import type {
   Assistente,
   AssistenteDisponivel,
   EstadoLlm,
+  EstadoTeste,
+  TipoGeracao,
+  WorkflowDetalhe,
   WorkflowResumo,
   Cena,
   Execucao,
@@ -160,8 +163,40 @@ export const geradorApi = {
   execucoes: (dono: Dono) =>
     api<Execucao[]>(`/gerador/execucoes${consulta({ asset: dono.assetId, shot: dono.shotId })}`),
   cancelar: (id: string) => api<{ ok: true }>(`/gerador/execucoes/${id}/cancelar`, { method: "POST" }),
-  /** Todos os workflows do código. */
-  workflows: () => api<WorkflowResumo[]>("/gerador/workflows"),
+};
+
+export type TipoGeracaoNovo = Pick<TipoGeracao, "nome" | "descricao" | "saida" | "tiposAsset" | "shot">;
+
+export const tiposGeracaoApi = {
+  listar: () => api<TipoGeracao[]>("/tipos-geracao"),
+  criar: (t: TipoGeracaoNovo) => api<TipoGeracao>("/tipos-geracao", { method: "POST", corpo: t }),
+  salvar: (id: string, t: TipoGeracaoNovo) => api<TipoGeracao>(`/tipos-geracao/${id}`, { method: "PUT", corpo: t }),
+  apagar: (id: string) => api<void>(`/tipos-geracao/${id}`, { method: "DELETE" }),
+};
+
+/** A definição de um workflow: o que se testa sem salvar. */
+export type DefinicaoWorkflow = Pick<WorkflowDetalhe, "ferramenta" | "grafo" | "campos" | "saidas">;
+
+export type WorkflowNovo = DefinicaoWorkflow & {
+  nome: string;
+  tipoGeracaoId: string;
+  descricao: string | null;
+  notas: string | null;
+  origem: string | null;
+  modelo: string | null;
+};
+
+export const workflowsApi = {
+  listar: (f: { tipo?: string; busca?: string } = {}) => api<WorkflowResumo[]>(`/workflows${consulta(f)}`),
+  ler: (id: string) => api<WorkflowDetalhe>(`/workflows/${id}`),
+  criar: (w: WorkflowNovo) => api<WorkflowDetalhe>("/workflows", { method: "POST", corpo: w }),
+  salvar: (id: string, w: WorkflowNovo) => api<WorkflowDetalhe>(`/workflows/${id}`, { method: "PUT", corpo: w }),
+  apagar: (id: string) => api<void>(`/workflows/${id}`, { method: "DELETE" }),
+  /** Roda a definição (salva ou não) uma vez, sem gravar nada. Acompanhe com `teste`. */
+  testar: (d: DefinicaoWorkflow & { valores: Record<string, unknown> }) =>
+    api<{ promptId: string; valores: Record<string, unknown> }>("/workflows/testar", { method: "POST", corpo: d }),
+  teste: (promptId: string, saidas: string[]) => api<EstadoTeste>(`/workflows/teste/${promptId}${consulta({ saidas: saidas.join(",") })}`),
+  urlImagemTeste: (i: EstadoTeste["imagens"][number]) => `/api/workflows/teste-imagem${consulta(i)}`,
 };
 
 export const assistentesApi = {

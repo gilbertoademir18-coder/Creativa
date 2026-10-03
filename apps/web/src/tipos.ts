@@ -138,8 +138,6 @@ export type AssistenteDisponivel = Pick<Assistente, "id" | "nome" | "descricao" 
 
 export type EstadoLlm = { noAr: boolean; modelo: string; modeloBaixado: boolean };
 
-/** Um workflow do código, para marcar em quais um assistente aparece. */
-export type WorkflowResumo = { chave: string; nome: string; tipo: string; tipoNome: string };
 
 /** Uma execução do Gerador ainda sem output: na fila, executando, ou que falhou há pouco. */
 export type Execucao = {
@@ -157,42 +155,110 @@ export type Execucao = {
 
 /*
  * O catálogo de tipos de geração e workflows, como a API descreve.
- * Espelha apps/api/src/geracao/definicoes.ts (sem a função que monta o grafo).
+ * Espelha apps/api/src/geracao/definicoes.ts.
  */
 
 export type AvisoCampo = { quando: "falta" | "tem"; padrao: string; mensagem: string };
 
+/** Onde um valor entra no grafo: o id do nó e o nome da entrada. */
+export type Alvo = { no: string; entrada: string };
+
+type BaseCampo = { chave: string; rotulo: string; dica?: string };
+
 export type CampoWorkflow =
-  | {
+  | (BaseCampo & {
       tipo: "texto";
-      chave: string;
-      rotulo: string;
+      alvos: Alvo[];
       linhas?: number;
       obrigatorio?: boolean;
-      dica?: string;
       padrao?: string;
       palavras?: { min: number; max: number };
       avisos?: AvisoCampo[];
       /** O assistente de prompt escreve neste campo. */
       assistivel?: boolean;
-    }
-  | { tipo: "opcoes"; chave: string; rotulo: string; opcoes: { valor: string; rotulo: string }[]; padrao: string; dica?: string }
-  | { tipo: "seed"; chave: string; rotulo: string };
+    })
+  | (BaseCampo & { tipo: "numero"; alvos: Alvo[]; padrao: number; min?: number; max?: number; passo?: number })
+  | (BaseCampo & { tipo: "opcoes"; alvos: Alvo[]; opcoes: { valor: string | number; rotulo: string }[]; padrao: string | number })
+  | (BaseCampo & { tipo: "seed"; alvos: Alvo[] })
+  | (BaseCampo & {
+      tipo: "tamanho";
+      largura: Alvo[];
+      altura: Alvo[];
+      opcoes: { valor: string; rotulo: string; largura: number; altura: number }[];
+      padrao: string;
+    });
+
+export type TipoCampo = CampoWorkflow["tipo"];
 
 export type WorkflowCatalogo = {
   chave: string;
   tipo: string;
+  ferramenta: string;
+  ferramentaNome: string;
   nome: string;
-  descricao: string;
-  arquivoComfy: string;
-  modelo: string;
+  descricao: string | null;
+  notas: string | null;
+  origem: string | null;
+  modelo: string | null;
   campos: CampoWorkflow[];
 };
+
+export type SaidaGeracao = "IMAGEM" | "VIDEO" | "AUDIO";
 
 export type TipoCatalogo = {
   chave: string;
   nome: string;
-  descricao: string;
-  saida: "IMAGEM" | "VIDEO";
+  descricao: string | null;
+  saida: SaidaGeracao;
   workflows: WorkflowCatalogo[];
+};
+
+/** Um tipo de geração, como o cadastro mostra. */
+export type TipoGeracao = {
+  id: string;
+  chave: string;
+  nome: string;
+  descricao: string | null;
+  saida: SaidaGeracao;
+  tiposAsset: TipoAsset[];
+  shot: boolean;
+  criadoEm: string;
+  editadoEm: string;
+  _count: { workflows: number };
+};
+
+/** Um workflow na lista do cadastro (sem o grafo). */
+export type WorkflowResumo = {
+  id: string;
+  chave: string;
+  ferramenta: string;
+  ferramentaNome: string;
+  nome: string;
+  descricao: string | null;
+  modelo: string | null;
+  editadoEm: string;
+  tipoGeracao: { id: string; chave: string; nome: string };
+  qtdCampos: number;
+  /** Quantos outputs já saíram dele. */
+  outputs: number;
+};
+
+/** O grafo no formato API do ComfyUI. */
+export type GrafoApi = Record<string, { class_type: string; inputs: Record<string, unknown>; _meta?: { title?: string } }>;
+
+/** Um workflow inteiro, para editar. */
+export type WorkflowDetalhe = Omit<WorkflowResumo, "qtdCampos" | "outputs"> & {
+  notas: string | null;
+  origem: string | null;
+  grafo: GrafoApi;
+  campos: CampoWorkflow[];
+  saidas: string[];
+};
+
+/** Em que pé está um teste de workflow no ComfyUI. */
+export type EstadoTeste = {
+  status: "NA_FILA" | "EXECUTANDO" | "CONCLUIDA" | "FALHOU";
+  progresso: { valor: number; max: number } | null;
+  imagens: { filename: string; subfolder: string; type: string }[];
+  erro: string | null;
 };

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { Output } from "../generated/prisma/client.ts";
-import { acharTipo, acharWorkflow } from "../geracao/registro.ts";
+import { lerCampos, nomesDoCatalogo } from "../geracao/catalogo.ts";
 import { apagar } from "../lib/arquivos.ts";
 import { doProjeto, doVinculo, incluirDono } from "../lib/filtros.ts";
 import { prisma } from "../lib/prisma.ts";
@@ -23,13 +23,11 @@ export function outputParaJson<T extends Pick<Output, "tamanhoBytes" | "duracaoS
   };
 }
 
+type Nomes = Awaited<ReturnType<typeof nomesDoCatalogo>>;
+
 /** Os nomes legíveis do tipo e do workflow vão junto: o front não precisa do catálogo para mostrar. */
-function comNomes<T extends { tipoGeracao: string; workflow: string }>(o: T) {
-  return {
-    ...o,
-    tipoGeracaoNome: acharTipo(o.tipoGeracao)?.nome ?? o.tipoGeracao,
-    workflowNome: acharWorkflow(o.workflow)?.nome ?? o.workflow,
-  };
+function comNomes<T extends { tipoGeracao: string; workflow: string }>(o: T, nomes: Nomes) {
+  return { ...o, tipoGeracaoNome: nomes.tipo(o.tipoGeracao), workflowNome: nomes.workflow(o.workflow) };
 }
 
 const FiltroOutputs = z.object({
@@ -66,12 +64,16 @@ const daGaleria = {
 export async function rotasOutputs(app: FastifyInstance) {
   /** Os tipos de geração que aparecem nos outputs, para o filtro da galeria. */
   app.get("/tipos", async () => {
-    const tipos = await prisma.output.findMany({ distinct: ["tipoGeracao"], select: { tipoGeracao: true } });
-    return tipos.map((t) => ({ chave: t.tipoGeracao, nome: acharTipo(t.tipoGeracao)?.nome ?? t.tipoGeracao }));
+    const [tipos, nomes] = await Promise.all([
+      prisma.output.findMany({ distinct: ["tipoGeracao"], select: { tipoGeracao: true } }),
+      nomesDoCatalogo(),
+    ]);
+    return tipos.map((t) => ({ chave: t.tipoGeracao, nome: nomes.tipo(t.tipoGeracao) }));
   });
 
   app.get("/", async (req) => {
     const f = validar(FiltroOutputs, req.query);
+    const nomes = await nomesDoCatalogo();
     const outputs = await prisma.output.findMany({
       where: {
         AND: [
@@ -85,7 +87,7 @@ export async function rotasOutputs(app: FastifyInstance) {
       orderBy: { criadoEm: "desc" },
       take: 1000,
     });
-    return outputs.map((o) => comNomes(outputParaJson(o)));
+    return outputs.map((o) => comNomes(outputParaJson(o), nomes));
   });
 
   /** Tudo o que foi usado para gerar o output, inclusive o grafo enviado ao ComfyUI. */
@@ -100,9 +102,13 @@ export async function rotasOutputs(app: FastifyInstance) {
     // Quanto tempo a imagem levou no ComfyUI, sem a espera na fila.
     const duracaoComfySeg =
       execucao?.iniciadaEm && execucao.concluidaEm ? Math.round((+execucao.concluidaEm - +execucao.iniciadaEm) / 1000) : null;
-    // O rótulo de cada parâmetro ("Tamanho", "Seed"), enquanto o workflow existir no código.
-    const rotulos = Object.fromEntries((acharWorkflow(o.workflow)?.campos ?? []).map((c) => [c.chave, c.rotulo]));
-    return { ...comNomes(outputParaJson(resto)), duracaoComfySeg, rotulos };
+    // O rótulo de cada parâmetro ("Tamanho", "Seed"), enquanto o workflow existir no cadastro.
+    const [w, nomes] = await Promise.all([
+      prisma.workflow.findUnique({ where: { chave: o.workflow }, select: { campos: true } }),
+      nomesDoCatalogo(),
+    ]);
+    const rotulos = Object.fromEntries((w ? lerCampos(w.campos, o.workflow) : []).map((c) => [c.chave, c.rotulo]));
+    return { ...comNomes(outputParaJson(resto), nomes), duracaoComfySeg, rotulos };
   });
 
   app.put("/:id/favorito", async (req) => {

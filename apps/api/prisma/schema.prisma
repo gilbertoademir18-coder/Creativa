@@ -297,3 +297,62 @@ model Assistente {
   @@index([projetoId])
   @@map("assistente")
 }
+
+/// Para que serve uma geração — "Placa de cenário", "Character sheet" — e em
+/// que Gerador ela aparece. Cadastro do usuário (página Tipos de geração).
+model TipoGeracao {
+  id         String      @id @default(uuid()) @db.Uuid
+  /// Identificador estável, gerado do nome na criação e nunca mais mudado:
+  /// execuções e outputs guardam esta chave, não o id.
+  chave      String      @unique
+  nome       String
+  descricao  String?
+  /// O que sai: define como os outputs são mostrados.
+  saida      TipoOutput  @default(IMAGEM)
+  /// Em quais tipos de asset o Gerador oferece este tipo.
+  tiposAsset TipoAsset[] @default([]) @map("tipos_asset")
+  /// Se aparece no Gerador dos shots.
+  shot       Boolean     @default(false)
+  criadoEm   DateTime    @default(now()) @map("criado_em") @db.Timestamptz
+  editadoEm  DateTime    @updatedAt @map("editado_em") @db.Timestamptz
+
+  /// Tipo com workflow não se apaga.
+  workflows Workflow[]
+
+  @@map("tipo_geracao")
+}
+
+/// Um jeito concreto de gerar um tipo, numa ferramenta (hoje, o ComfyUI):
+/// o grafo, os campos que o Gerador mostra e onde cada um entra no grafo.
+/// Cadastro do usuário (página Workflows).
+model Workflow {
+  id            String   @id @default(uuid()) @db.Uuid
+  /// Identificador estável, gerado do nome na criação e nunca mais mudado:
+  /// execuções, outputs e assistentes guardam esta chave.
+  chave         String   @unique
+  tipoGeracaoId String   @map("tipo_geracao_id") @db.Uuid
+  /// Em que ferramenta roda ("comfyui"). Ferramenta nova = um adaptador no código.
+  ferramenta    String   @default("comfyui")
+  nome          String
+  /// Uma linha: aparece no Gerador, embaixo da escolha do workflow.
+  descricao     String?
+  /// Markdown longo: o LEIA-ME do workflow, o que é fixo e por quê.
+  notas         String?
+  /// De onde veio (o nome do arquivo na ferramenta), só como referência.
+  origem        String?
+  /// O modelo principal, gravado em cada output.
+  modelo        String?
+  /// O grafo no formato da ferramenta — no ComfyUI, o "Export (API)".
+  grafo         Json
+  /// Os campos do Gerador e o alvo (nó + entrada) de cada um no grafo.
+  campos        Json     @default("[]")
+  /// Os nós cujas saídas viram Outputs.
+  saidas        String[] @default([])
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz
+  editadoEm     DateTime @updatedAt @map("editado_em") @db.Timestamptz
+
+  tipoGeracao TipoGeracao @relation(fields: [tipoGeracaoId], references: [id], onDelete: Restrict)
+
+  @@index([tipoGeracaoId])
+  @@map("workflow")
+}

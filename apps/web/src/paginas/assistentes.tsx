@@ -1,6 +1,6 @@
 import { Download, Plus, Trash, Upload, WandSparkles } from "lucide-react";
 import { useRef, useState } from "react";
-import { assistentesApi, geradorApi, type AssistenteNovo } from "../api.ts";
+import { assistentesApi, workflowsApi, type AssistenteNovo } from "../api.ts";
 import { EscolhaProjeto, FiltroBusca, FiltroProjeto, FiltroSelecao } from "../componentes/filtros.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
 import { AreaTexto, Aviso, BarraFiltros, Botao, Cabecalho, Campo, Carregando, Entrada, Etiqueta, Vazio } from "../componentes/ui.tsx";
@@ -20,7 +20,7 @@ export function PaginaAssistentes() {
     () => assistentesApi.listar({ projeto: f.projeto, workflow: f.workflow, busca: f.busca }),
     [f.projeto, f.workflow, f.busca],
   );
-  const workflows = useCarregar(() => geradorApi.workflows(), []);
+  const workflows = useCarregar(() => workflowsApi.listar(), []);
   const [aberto, setAberto] = useState<Assistente | "novo" | null>(null);
   const filtrando = !!(f.projeto || f.workflow || f.busca);
   const nomeWorkflow = (chave: string) => workflows.dados?.find((w) => w.chave === chave)?.nome ?? chave;
@@ -184,7 +184,7 @@ function FormAssistente({
 
   // Agrupados pelo tipo de geração: é como o Gerador apresenta.
   const porTipo = Object.entries(
-    workflows.reduce<Record<string, WorkflowResumo[]>>((g, w) => ({ ...g, [w.tipoNome]: [...(g[w.tipoNome] ?? []), w] }), {}),
+    workflows.reduce<Record<string, WorkflowResumo[]>>((g, w) => ({ ...g, [w.tipoGeracao.nome]: [...(g[w.tipoGeracao.nome] ?? []), w] }), {}),
   );
 
   return (

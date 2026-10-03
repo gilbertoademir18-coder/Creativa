@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { nomesDoCatalogo } from "../geracao/catalogo.ts";
 import { cancelarExecucao, lerFila, progressoDe } from "../geracao/execucao.ts";
-import { acharTipo } from "../geracao/registro.ts";
 import { configComfy } from "../lib/comfyui.ts";
 import { prisma } from "../lib/prisma.ts";
 import { Uuid, validar } from "../lib/validacao.ts";
@@ -38,11 +38,11 @@ type ExecucaoDaFila = {
 };
 
 /** O que a barra precisa de cada execução: título, tipo, e de quem é (com o link para lá). */
-function resumo(e: ExecucaoDaFila) {
+function resumo(e: ExecucaoDaFila, nomes: Awaited<ReturnType<typeof nomesDoCatalogo>>) {
   const prompt = (e.parametros as Record<string, unknown> | null)?.prompt;
   return {
     titulo: typeof prompt === "string" && prompt.trim() ? prompt.slice(0, 80) : "Sem prompt",
-    tipoNome: acharTipo(e.tipo)?.nome ?? e.tipo,
+    tipoNome: nomes.tipo(e.tipo),
     dono: e.asset ? e.asset.nome : e.shot ? `${e.shot.cena.nome} › ${e.shot.nome}` : null,
     link: e.asset ? `/assets/${e.asset.id}` : e.shot ? `/shots/${e.shot.id}` : null,
   };
@@ -50,7 +50,7 @@ function resumo(e: ExecucaoDaFila) {
 
 export async function rotasFila(app: FastifyInstance) {
   app.get("/", async () => {
-    const [ativas, recentes] = await Promise.all([
+    const [ativas, recentes, nomes] = await Promise.all([
       prisma.execucao.findMany({
         where: { status: { in: ["NA_FILA", "EXECUTANDO"] } },
         select: daExecucao,
@@ -62,6 +62,7 @@ export async function rotasFila(app: FastifyInstance) {
         orderBy: { concluidaEm: "desc" },
         take: 8,
       }),
+      nomesDoCatalogo(),
     ]);
 
     // Prompts na fila do ComfyUI que não são do Creativa (a interface dele
@@ -82,7 +83,7 @@ export async function rotasFila(app: FastifyInstance) {
         criadoEm: e.criadoEm,
         iniciadaEm: e.iniciadaEm,
         progresso: progressoDe(e.promptIdComfy),
-        ...resumo(e),
+        ...resumo(e, nomes),
       })),
       recentes: recentes.map((e) => ({
         execucaoId: e.id,
@@ -90,7 +91,7 @@ export async function rotasFila(app: FastifyInstance) {
         concluidaEm: e.concluidaEm,
         erro: e.erro,
         capa: e.outputs[0]?.arquivo ?? null,
-        ...resumo(e),
+        ...resumo(e, nomes),
       })),
       externos,
     };

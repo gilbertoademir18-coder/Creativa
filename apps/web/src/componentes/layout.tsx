@@ -1,4 +1,4 @@
-import { Clapperboard, FolderKanban, Images, Shapes, Sparkles, WandSparkles } from "lucide-react";
+import { Clapperboard, FolderKanban, Images, Layers, Shapes, Sparkles, WandSparkles, Workflow } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router";
 import { BarraComfy } from "./barra-comfy.tsx";
@@ -10,13 +10,26 @@ import { BarraFila } from "./barra-fila.tsx";
  * própria. Não há versão de celular — o Creativa roda em monitor.
  */
 
+/** O trabalho em cima; embaixo, a configuração do Gerador (o que dá para gerar e como). */
 const MENU = [
-  { para: "/projetos", rotulo: "Projetos", icone: FolderKanban },
-  { para: "/assets", rotulo: "Assets", icone: Shapes },
-  { para: "/referencias", rotulo: "Referências", icone: Images },
-  { para: "/cenas", rotulo: "Cenas", icone: Clapperboard },
-  { para: "/outputs", rotulo: "Outputs", icone: Sparkles },
-  { para: "/assistentes", rotulo: "Assistentes", icone: WandSparkles },
+  {
+    titulo: null,
+    itens: [
+      { para: "/projetos", rotulo: "Projetos", icone: FolderKanban },
+      { para: "/assets", rotulo: "Assets", icone: Shapes },
+      { para: "/referencias", rotulo: "Referências", icone: Images },
+      { para: "/cenas", rotulo: "Cenas", icone: Clapperboard },
+      { para: "/outputs", rotulo: "Outputs", icone: Sparkles },
+    ],
+  },
+  {
+    titulo: "Configuração",
+    itens: [
+      { para: "/tipos-geracao", rotulo: "Tipos de geração", icone: Layers },
+      { para: "/workflows", rotulo: "Workflows", icone: Workflow },
+      { para: "/assistentes", rotulo: "Assistentes", icone: WandSparkles },
+    ],
+  },
 ];
 
 export function Layout() {
@@ -28,19 +41,24 @@ export function Layout() {
           <span className="text-lg font-semibold tracking-tight">Creativa</span>
         </div>
         <nav className="flex flex-col gap-0.5 px-3">
-          {MENU.map(({ para, rotulo, icone: Icone }) => (
-            <NavLink
-              key={para}
-              to={para}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
-                  isActive ? "bg-violet-600/15 font-medium text-violet-200" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
-                }`
-              }
-            >
-              <Icone className="size-4.5" />
-              {rotulo}
-            </NavLink>
+          {MENU.map(({ titulo, itens }) => (
+            <div key={titulo ?? "trabalho"} className="flex flex-col gap-0.5">
+              {titulo && <div className="mt-6 mb-1 px-3 text-xs font-medium tracking-wide text-zinc-600 uppercase">{titulo}</div>}
+              {itens.map(({ para, rotulo, icone: Icone }) => (
+                <NavLink
+                  key={para}
+                  to={para}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                      isActive ? "bg-violet-600/15 font-medium text-violet-200" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
+                    }`
+                  }
+                >
+                  <Icone className="size-4.5" />
+                  {rotulo}
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
         <div className="mt-auto border-t border-zinc-800 px-5 py-4">

@@ -4,23 +4,52 @@ import type { CampoWorkflow } from "../tipos.ts";
 import { AreaTexto, Campo, Entrada, Pilulas, Seletor } from "./ui.tsx";
 
 /*
- * Os campos do Gerador. Cada workflow descreve os seus (apps/api/src/geracao)
- * e a tela monta o formulário a partir dessa descrição.
+ * Os campos do Gerador. Cada workflow cadastrado descreve os seus (página
+ * Workflows) e a tela monta o formulário a partir dessa descrição.
  */
+
+/** Os valores de um workflow: o que já havia nos campos de mesmo nome, ou o padrão. */
+export function valoresPara(campos: CampoWorkflow[], atuais: Record<string, unknown> = {}): Record<string, unknown> {
+  const v: Record<string, unknown> = {};
+  for (const c of campos) v[c.chave] = c.chave in atuais ? atuais[c.chave] : padraoDe(c);
+  return v;
+}
+
+/** O valor inicial de um campo. Seed começa aleatória (null). */
+export const padraoDe = (c: CampoWorkflow): unknown => (c.tipo === "texto" ? (c.padrao ?? "") : c.tipo === "seed" ? null : c.padrao);
 
 /** Um campo do workflow, montado a partir da descrição que a API manda. */
 export function CampoDinamico({ campo: c, valor, aoMudar }: { campo: CampoWorkflow; valor: unknown; aoMudar: (v: unknown) => void }) {
   if (c.tipo === "texto") return <CampoTexto campo={c} valor={String(valor ?? "")} aoMudar={aoMudar} />;
-  if (c.tipo === "opcoes") {
+  if (c.tipo === "opcoes" || c.tipo === "tamanho") {
+    // Pela posição: a opção pode valer um número, e o <select> só fala texto.
+    const opcoes: { valor: string | number; rotulo: string }[] = c.opcoes;
+    const i = Math.max(0, opcoes.findIndex((o) => o.valor === (valor ?? c.padrao)));
     return (
       <Campo rotulo={c.rotulo} dica={c.dica}>
-        <Seletor value={String(valor ?? c.padrao)} onChange={(e) => aoMudar(e.target.value)}>
-          {c.opcoes.map((o) => (
-            <option key={o.valor} value={o.valor}>
+        <Seletor value={i} onChange={(e) => aoMudar(opcoes[Number(e.target.value)]!.valor)}>
+          {opcoes.map((o, n) => (
+            <option key={n} value={n}>
               {o.rotulo}
             </option>
           ))}
         </Seletor>
+      </Campo>
+    );
+  }
+  if (c.tipo === "numero") {
+    const n = typeof valor === "number" ? valor : c.padrao;
+    return (
+      <Campo rotulo={c.rotulo} dica={c.dica}>
+        <Entrada
+          type="number"
+          value={n}
+          min={c.min}
+          max={c.max}
+          step={c.passo ?? "any"}
+          onChange={(e) => aoMudar(e.target.value === "" ? c.padrao : Number(e.target.value))}
+          className="w-40 font-mono"
+        />
       </Campo>
     );
   }

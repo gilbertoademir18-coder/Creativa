@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { cancelarExecucao, executar, MAX_POR_ENVIO, progressoDe, seedDe } from "../geracao/execucao.ts";
-import { acharTipo, catalogoPara, conferir, type DonoGeracao, WORKFLOWS } from "../geracao/registro.ts";
+import { catalogoPara, conferir, type DonoGeracao, lerCampos, seedDe } from "../geracao/catalogo.ts";
+import { cancelarExecucao, executar, MAX_POR_ENVIO, progressoDe } from "../geracao/execucao.ts";
 import { prisma } from "../lib/prisma.ts";
 import { ErroHttp, Uuid, UuidOpcional, validar } from "../lib/validacao.ts";
 
@@ -52,20 +52,15 @@ export async function rotasGerador(app: FastifyInstance) {
     return catalogoPara(await donoDe(asset, shot));
   });
 
-  /** Todos os workflows do código, com o tipo de cada um — para marcar em que workflows um assistente aparece. */
-  app.get("/workflows", async () =>
-    WORKFLOWS.map((w) => ({ chave: w.chave, nome: w.nome, tipo: w.tipo, tipoNome: acharTipo(w.tipo)?.nome ?? w.tipo })),
-  );
-
   /** "Gerar": confere o pedido contra o catálogo e manda `quantidade` execuções ao ComfyUI. */
   app.post("/executar", async (req) => {
     const { assistenteId, ...p } = validar(Pedido, req.body);
-    conferir(p.tipo, p.workflow, await donoDe(p.assetId, p.shotId));
+    const w = await conferir(p.tipo, p.workflow, await donoDe(p.assetId, p.shotId));
     // O nome, copiado: o assistente pode mudar ou sumir depois.
     const assistente = assistenteId
       ? ((await prisma.assistente.findUnique({ where: { id: assistenteId }, select: { nome: true } }))?.nome ?? null)
       : null;
-    await executar({ ...p, assistente, ideia: assistente ? p.ideia : null });
+    await executar(w, { ...p, assistente, ideia: assistente ? p.ideia : null });
     return { ok: true };
   });
 
@@ -98,9 +93,15 @@ export async function rotasGerador(app: FastifyInstance) {
       },
       orderBy: { criadoEm: "asc" },
     });
+    // A seed de cada uma, pelo campo de seed do workflow dela.
+    const workflows = await prisma.workflow.findMany({
+      where: { chave: { in: [...new Set(execucoes.map((e) => e.workflow))] } },
+      select: { chave: true, campos: true },
+    });
+    const campos = new Map(workflows.map((w) => [w.chave, lerCampos(w.campos, w.chave)]));
     return execucoes.map(({ promptIdComfy, parametros, ...e }) => ({
       ...e,
-      seed: seedDe(e.workflow, parametros as Record<string, unknown>),
+      seed: seedDe(campos.get(e.workflow) ?? [], parametros as Record<string, unknown>),
       progresso: progressoDe(promptIdComfy),
     }));
   });

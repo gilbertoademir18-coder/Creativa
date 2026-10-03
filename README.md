@@ -36,10 +36,9 @@ Projeto
     └── Shot ──────────────────────────────── Referências, Outputs  ← Gerador
 ```
 
-Não existe cadastro de "geração". O **Gerador** é um recurso do código
-(`apps/api/src/geracao/`) que aparece dentro de cada asset e shot: o tipo e
-o workflow já vêm escolhidos pelo dono, você escreve o prompt e clica em
-**Gerar**. Cada imagem que sai é um **Output** do asset/shot e guarda tudo o
+Não existe cadastro de "geração". O **Gerador** é um recurso do sistema que
+aparece dentro de cada asset e shot: o tipo e o workflow já vêm escolhidos
+pelo dono, você escreve o prompt e clica em **Gerar**. Cada imagem que sai é um **Output** do asset/shot e guarda tudo o
 que foi usado para gerá-la — tipo, workflow, modelo, prompt, seed, os outros
 campos e o grafo enviado ao ComfyUI. Clicar num output mostra isso, e "Usar
 estas configurações" devolve tudo ao Gerador.
@@ -53,6 +52,29 @@ estas configurações" devolve tudo ao Gerador.
 | `referencia` | Imagem, vídeo ou texto enviado. De um asset, de um shot, ou solta |
 | `output` | Um arquivo gerado, com todos os metadados de como foi gerado. De um asset ou de um shot |
 | `execucao` | A fila: cada envio ao ComfyUI (na fila → executando → concluída/falhou), com o `prompt_id` |
+| `tipo_geracao` | Para que serve uma geração ("Placa de cenário") e em que Gerador aparece (tipos de asset, shots) |
+| `workflow` | Como um tipo é gerado numa ferramenta: o grafo, os campos (com o alvo de cada um no grafo) e as saídas |
+| `assistente` | Instruções em markdown para a LLM local expandir a ideia no prompt de um workflow |
+
+Execução, output e assistente guardam a **chave** do tipo e do workflow
+(`placa-cenario-zimage`), não o id. A chave nasce do nome e não muda: dá
+para renomear ou apagar um workflow sem mexer no histórico.
+
+### Workflow novo
+
+1. No ComfyUI, com o workflow aberto: **Workflow → Export (API)**.
+2. No Creativa, **Workflows → Novo workflow** e importe o arquivo. O editor
+   sugere os campos (prompts, tamanho, seed) e as saídas (SaveImage...) e
+   detecta o modelo. O `.json` de tela é opcional: ele só traz as notas
+   (o LEIA-ME).
+3. Aba **Campos**: deixe só o que muda de uma geração para outra. Cada campo
+   escreve numa entrada do grafo ("Entra em"); o resto do grafo fica fixo.
+   O campo do prompt pode ser o do **assistente de prompt**.
+4. Aba **Testar**: roda uma vez, mesmo sem salvar, e mostra a imagem. Nada
+   é gravado no Creativa (a imagem fica só no ComfyUI).
+
+O workflow aparece no Gerador dos donos que o **tipo de geração** dele
+aceita (página Tipos de geração).
 
 Regras que o banco garante (FKs e `CHECK`s):
 
@@ -290,7 +312,7 @@ apps/
     prisma/schema.prisma  Tabelas, enums e as regras de exclusão
     src/server.ts         Fastify: registra as rotas, arquivos e o front pronto
     src/rotas/            projetos, assets, cenas (+ shots), referencias, gerador, outputs, fila
-    src/geracao/          O Gerador: catálogo de tipos e workflows, e a execução no ComfyUI
+    src/geracao/          O Gerador: formatos dos campos, montagem do grafo, catálogo (do banco) e execução no ComfyUI
     src/lib/              prisma, validacao (zod), arquivos (D:\Creativa), filtros
   web/                    React + Vite + Tailwind, tela cheia (Full HD / QHD)
     src/paginas/          Uma por item do menu, com a lista e o detalhe

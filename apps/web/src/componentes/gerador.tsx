@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { assistentesApi, geradorApi, outputsApi, type Dono } from "../api.ts";
 import { useCarregar } from "../hooks.ts";
-import type { CampoWorkflow, Execucao, OutputDetalhe, TipoCatalogo } from "../tipos.ts";
+import type { Execucao, OutputDetalhe, TipoCatalogo } from "../tipos.ts";
 import { BarraAssistente, limparTextoLlm, SeletorAssistente } from "./assistente-prompt.tsx";
-import { CampoDinamico, SeletorQuantidade } from "./campos-workflow.tsx";
+import { CampoDinamico, SeletorQuantidade, valoresPara } from "./campos-workflow.tsx";
 import { CartaoOutput, GRADE_OUTPUTS, VisorOutputs } from "./outputs.tsx";
 import { Aviso, Botao, Campo, Carregando, Seletor, Vazio } from "./ui.tsx";
 
@@ -21,16 +21,6 @@ import { Aviso, Botao, Campo, Carregando, Seletor, Vazio } from "./ui.tsx";
 
 /** O que está no formulário do Gerador. */
 type Config = { tipo: string; workflow: string; valores: Record<string, unknown> };
-
-/** Os valores de um workflow: o que já havia nos campos de mesmo nome, ou o padrão. */
-function valoresPara(campos: CampoWorkflow[], atuais: Record<string, unknown>): Record<string, unknown> {
-  const v: Record<string, unknown> = {};
-  for (const c of campos) {
-    if (c.chave in atuais) v[c.chave] = atuais[c.chave];
-    else v[c.chave] = c.tipo === "texto" ? (c.padrao ?? "") : c.tipo === "opcoes" ? c.padrao : null;
-  }
-  return v;
-}
 
 /**
  * Acerta a configuração com o catálogo: tipo que não serve para o dono cai
@@ -261,13 +251,13 @@ export function PainelGerador({ dono }: { dono: Dono }) {
             <Vazio
               icone={<Sparkles />}
               titulo="Nada para gerar aqui ainda"
-              texto="Os tipos de geração são programados por workflow do ComfyUI. Hoje existe a Placa de cenário, para assets do tipo Cenário."
+              texto="Nenhum tipo de geração aparece aqui, ou nenhum tem workflow. Cadastre em Tipos de geração (onde ele aparece) e em Workflows."
             />
           )}
           {config && tipos.length > 0 && (
             <>
               <div className="grid grid-cols-2 gap-4">
-                <Campo rotulo="Tipo de geração" dica={tipoAtual?.descricao}>
+                <Campo rotulo="Tipo de geração" dica={tipoAtual?.descricao ?? undefined}>
                   <Seletor value={config.tipo} onChange={(e) => setConfig(ajustar({ ...config, tipo: e.target.value, workflow: "" }, tipos))}>
                     {tipos.map((t) => (
                       <option key={t.chave} value={t.chave}>
@@ -276,7 +266,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
                     ))}
                   </Seletor>
                 </Campo>
-                <Campo rotulo="Workflow do ComfyUI" dica={wfAtual?.descricao}>
+                <Campo rotulo="Workflow" dica={wfAtual?.descricao ?? undefined}>
                   <Seletor value={config.workflow} onChange={(e) => setConfig(ajustar({ ...config, workflow: e.target.value }, tipos))}>
                     {tipoAtual?.workflows.map((w) => (
                       <option key={w.chave} value={w.chave}>
@@ -288,8 +278,13 @@ export function PainelGerador({ dono }: { dono: Dono }) {
               </div>
               {wfAtual && (
                 <p className="-mt-2 text-xs text-zinc-500">
-                  Modelo <span className="font-mono text-zinc-400">{wfAtual.modelo}</span> · no ComfyUI:{" "}
-                  <span className="text-zinc-400">{wfAtual.arquivoComfy}</span>
+                  {wfAtual.ferramentaNome}
+                  {wfAtual.modelo && (
+                    <>
+                      {" "}· modelo <span className="font-mono text-zinc-400">{wfAtual.modelo}</span>
+                    </>
+                  )}
+                  {wfAtual.origem && <> · {wfAtual.origem}</>}
                 </p>
               )}
               {campoAssistivel && (

@@ -20,6 +20,8 @@ const { rotasReferencias } = await import("./rotas/referencias.ts");
 const { rotasGerador } = await import("./rotas/gerador.ts");
 const { rotasOutputs } = await import("./rotas/outputs.ts");
 const { rotasAssistentes } = await import("./rotas/assistentes.ts");
+const { rotasWorkflows } = await import("./rotas/workflows.ts");
+const { rotasTiposGeracao } = await import("./rotas/tipos-geracao.ts");
 const { iniciarAcompanhamento } = await import("./geracao/execucao.ts");
 const { rotasComfy } = await import("./rotas/comfyui.ts");
 const { rotasFila } = await import("./rotas/fila.ts");
@@ -93,6 +95,8 @@ await app.register(rotasReferencias, { prefix: "/api/referencias" });
 await app.register(rotasGerador, { prefix: "/api/gerador" });
 await app.register(rotasOutputs, { prefix: "/api/outputs" });
 await app.register(rotasAssistentes, { prefix: "/api/assistentes" });
+await app.register(rotasWorkflows, { prefix: "/api/workflows" });
+await app.register(rotasTiposGeracao, { prefix: "/api/tipos-geracao" });
 await app.register(rotasComfy, { prefix: "/api/comfyui" });
 await app.register(rotasFila, { prefix: "/api/fila" });
 

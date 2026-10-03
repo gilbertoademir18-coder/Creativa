@@ -10,6 +10,8 @@ import { PaginaOutputs } from "./paginas/outputs.tsx";
 import { PaginaProjeto, PaginaProjetos } from "./paginas/projetos.tsx";
 import { PaginaReferencias } from "./paginas/referencias.tsx";
 import { PaginaShot } from "./paginas/shot.tsx";
+import { PaginaTiposGeracao } from "./paginas/tipos-geracao.tsx";
+import { PaginaWorkflows } from "./paginas/workflows.tsx";
 
 // Os itens do menu são rotas de primeiro nível; os detalhes ficam
 // debaixo de cada um. O shot tem endereço próprio (/shots/:id) — dá para
@@ -30,6 +32,8 @@ const roteador = createBrowserRouter([
       { path: "shots/:id", element: <PaginaShot /> },
       { path: "outputs", element: <PaginaOutputs /> },
       { path: "assistentes", element: <PaginaAssistentes /> },
+      { path: "tipos-geracao", element: <PaginaTiposGeracao /> },
+      { path: "workflows", element: <PaginaWorkflows /> },
       // Links antigos, de antes do Gerador.
       { path: "geracoes/*", element: <Navigate to="/outputs" replace /> },
       { path: "*", element: <Navigate to="/projetos" replace /> },

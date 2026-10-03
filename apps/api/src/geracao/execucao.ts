@@ -8,7 +8,9 @@ import { configComfy, consultarComfy } from "../lib/comfyui.ts";
 import { descarregar } from "../lib/ollama.ts";
 import { prisma } from "../lib/prisma.ts";
 import { ErroHttp } from "../lib/validacao.ts";
-import { acharWorkflow, prepararParaEnvio, validarValores } from "./registro.ts";
+import { acharWorkflow, prepararParaEnvio, seedDe, validarValores } from "./catalogo.ts";
+import type { DefWorkflow, GrafoApi } from "./definicoes.ts";
+import { montarGrafo } from "./grafo.ts";
 
 /**
  * O Gerador manda trabalho ao ComfyUI e acompanha até o fim.
@@ -69,8 +71,29 @@ export type Pedido = {
 };
 
 /**
- * Manda `quantidade` execuções para a fila do ComfyUI. Quem chama já
- * conferiu o pedido contra o catálogo (`conferir`).
+ * Põe um grafo na fila do ComfyUI e devolve o prompt_id. Erro de validação
+ * do ComfyUI (modelo que não existe, valor fora da faixa) vira 400 com a
+ * mensagem dele. Também é o que o "Testar" do cadastro de workflows usa.
+ */
+export async function enviarAoComfy(grafo: GrafoApi): Promise<string> {
+  if (!(await consultarComfy()).noAr) throw new ErroHttp(409, "O ComfyUI está desconectado. Inicie pela barra do topo.");
+  // A GPU é uma só: se a LLM do assistente ainda está na VRAM, sai agora.
+  await descarregar();
+  const r = await fetch(`${configComfy().url}/prompt`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt: grafo, client_id: CLIENT_ID }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  const j = (await r.json().catch(() => ({}))) as ErroComfyApi & { prompt_id?: string };
+  if (!r.ok || !j.prompt_id) throw new ErroHttp(400, `ComfyUI: ${mensagemDoComfy(j)}`);
+  garantirWebSocket();
+  return j.prompt_id;
+}
+
+/**
+ * Manda `quantidade` execuções para a fila do ComfyUI. O workflow vem de
+ * `conferir`: já se sabe que existe e serve para o dono.
  *
  * A primeira respeita a seed do formulário; as demais sorteiam seed nova —
  * pedir 4 da mesma seed daria 4 imagens iguais. Com seed aleatória, cada
@@ -79,30 +102,16 @@ export type Pedido = {
  * Erro de validação do ComfyUI (modelo que não existe, valor fora da faixa)
  * volta como 400. As que já foram para a fila antes do erro ficam.
  */
-export async function executar(pedido: Pedido): Promise<void> {
-  const w = acharWorkflow(pedido.workflow);
-  if (!w) throw new ErroHttp(400, `O workflow ${pedido.workflow} não existe no código.`);
-  if (!(await consultarComfy()).noAr) throw new ErroHttp(409, "O ComfyUI está desconectado. Inicie pela barra do topo.");
-
+export async function executar(w: DefWorkflow, pedido: Pedido): Promise<void> {
+  // Ferramenta nova = um adaptador aqui. Por enquanto só existe o ComfyUI.
+  if (w.ferramenta !== "comfyui") throw new ErroHttp(400, `O Creativa ainda não sabe rodar workflows de “${w.ferramenta}”.`);
   const base = validarValores(w, pedido.parametros);
   const seeds = w.campos.filter((c) => c.tipo === "seed").map((c) => c.chave);
 
-  // A GPU é uma só: se a LLM do assistente ainda está na VRAM, sai agora.
-  await descarregar();
-
   for (let i = 0; i < pedido.quantidade; i++) {
     const valores = prepararParaEnvio(w, i === 0 ? base : { ...base, ...Object.fromEntries(seeds.map((s) => [s, null])) });
-    const grafo = w.montar(valores);
-
-    const r = await fetch(`${configComfy().url}/prompt`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: grafo, client_id: CLIENT_ID }),
-      signal: AbortSignal.timeout(15_000),
-    });
-    const j = (await r.json().catch(() => ({}))) as ErroComfyApi & { prompt_id?: string };
-    if (!r.ok || !j.prompt_id) throw new ErroHttp(400, `ComfyUI: ${mensagemDoComfy(j)}`);
-
+    const grafo = montarGrafo(w.grafo, w.campos, valores);
+    const promptId = await enviarAoComfy(grafo);
     await prisma.execucao.create({
       data: {
         assetId: pedido.assetId,
@@ -115,11 +124,10 @@ export async function executar(pedido: Pedido): Promise<void> {
         grafoEnviado: grafo as object,
         assistente: pedido.assistente,
         ideia: pedido.ideia,
-        promptIdComfy: j.prompt_id,
+        promptIdComfy: promptId,
       },
     });
   }
-  garantirWebSocket();
 }
 
 /** Cancela uma execução — o "×" da fila e do Gerador. */
@@ -184,7 +192,8 @@ async function tamanhoPng(absoluto: string): Promise<{ largura: number; altura: 
  * os Outputs, cada um com a cópia de tudo o que a execução usou. Se algo
  * falha no meio, apaga o que já tinha copiado.
  */
-async function coletar(e: Execucao, h: Historico, saidas: string[]): Promise<void> {
+async function coletar(e: Execucao, h: Historico, w: DefWorkflow | null): Promise<void> {
+  const saidas = w?.saidas.length ? w.saidas : Object.keys(h.outputs ?? {});
   const url = configComfy().url;
   const copiados: { relativo: string; tamanho: number; mime: string; largura: number | null; altura: number | null }[] = [];
   try {
@@ -201,7 +210,8 @@ async function coletar(e: Execucao, h: Historico, saidas: string[]): Promise<voi
     }
     if (copiados.length === 0) throw new Error("o ComfyUI terminou sem gerar imagem nenhuma");
     const p = e.parametros as Record<string, unknown>;
-    const seed = seedDe(e.workflow, p);
+    // Pelo campo de seed do workflow; se ele sumiu do cadastro, pelo nome de costume.
+    const seed = w ? seedDe(w.campos, p) : typeof p.seed === "number" ? p.seed : null;
     await prisma.$transaction([
       ...copiados.map((c) =>
         prisma.output.create({
@@ -235,12 +245,6 @@ async function coletar(e: Execucao, h: Historico, saidas: string[]): Promise<voi
   }
 }
 
-/** A seed usada, pelo campo de seed do workflow (null se ele não tiver). */
-export function seedDe(workflow: string, parametros: Record<string, unknown>): number | null {
-  const chave = acharWorkflow(workflow)?.campos.find((c) => c.tipo === "seed")?.chave;
-  const v = chave ? parametros[chave] : null;
-  return typeof v === "number" ? v : null;
-}
 
 /** A mensagem de erro de uma execução que falhou, tirada do histórico. */
 function erroDoHistorico(h: Historico): string {
@@ -249,6 +253,34 @@ function erroDoHistorico(h: Historico): string {
     | undefined;
   if (msg) return `nó ${msg.node_id} (${msg.node_type}): ${msg.exception_message?.trim()}`;
   return "O ComfyUI informou erro na execução. Veja o log do ComfyUI.";
+}
+
+/** Uma imagem que o ComfyUI gerou, como ele a identifica (para o /view). */
+export type ImagemComfy = { filename: string; subfolder: string; type: string };
+
+/**
+ * Em que pé está um prompt solto — o do "Testar" do cadastro de workflows,
+ * que não vira execução nem output. As imagens ficam só no ComfyUI.
+ */
+export async function estadoDoPrompt(promptId: string, saidas: string[]): Promise<{
+  status: "NA_FILA" | "EXECUTANDO" | "CONCLUIDA" | "FALHOU";
+  progresso: { valor: number; max: number } | null;
+  imagens: ImagemComfy[];
+  erro: string | null;
+}> {
+  const url = configComfy().url;
+  const fila = await lerFila(url);
+  if (fila.rodando.includes(promptId)) return { status: "EXECUTANDO", progresso: progressoDe(promptId), imagens: [], erro: null };
+  if (fila.esperando.includes(promptId)) return { status: "NA_FILA", progresso: null, imagens: [], erro: null };
+  const resp = await fetch(`${url}/history/${promptId}`, { signal: AbortSignal.timeout(5_000) });
+  const h = ((await resp.json()) as Record<string, Historico>)[promptId];
+  progresso.delete(promptId);
+  if (!h) return { status: "FALHOU", progresso: null, imagens: [], erro: "O teste sumiu da fila do ComfyUI — ele foi reiniciado no meio?" };
+  if (h.status?.status_str === "error") return { status: "FALHOU", progresso: null, imagens: [], erro: erroDoHistorico(h) };
+  const nos = saidas.length ? saidas : Object.keys(h.outputs ?? {});
+  // Também as de pré-visualização (type "temp"): num teste, tudo o que saiu interessa.
+  const imagens = nos.flatMap((no) => h.outputs?.[no]?.images ?? []);
+  return { status: "CONCLUIDA", progresso: null, imagens, erro: imagens.length ? null : "O ComfyUI terminou sem gerar imagem nenhuma nos nós de saída." };
 }
 
 const falhar = (id: string, erro: string) =>
@@ -297,9 +329,9 @@ async function acompanhar(log: FastifyBaseLogger): Promise<void> {
       } else if (h.status?.completed) {
         // Começou e terminou entre duas voltas (geração rápida): ainda conta o início.
         if (!r.iniciadaEm) await prisma.execucao.update({ where: { id: r.id }, data: { iniciadaEm: new Date() } });
-        const w = acharWorkflow(r.workflow);
+        const w = await acharWorkflow(r.workflow).catch(() => null);
         try {
-          await coletar(r, h, w?.saidas ?? Object.keys(h.outputs ?? {}));
+          await coletar(r, h, w);
         } catch (e) {
           log.error({ err: e }, "falha ao coletar outputs");
           await falhar(r.id, `Gerou, mas não consegui trazer o resultado: ${(e as Error).message}`);

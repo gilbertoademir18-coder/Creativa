@@ -64,23 +64,28 @@ e diga na resposta final o que acrescentou ou mudou.
   `execucao` é só a fila do ComfyUI, não um cadastro.
 - **Assistentes de prompt** (página Assistentes, tabela `assistente`) são do
   usuário: markdown que a LLM local segue para expandir a ideia no campo
-  marcado `assistivel` do workflow. O código acrescenta sozinho a dica, as
-  palavras e os avisos do campo. Workflow novo com prompt: marque o campo
-  `assistivel: true`.
-- Tipos de geração e workflows são **programados no código**, em
-  `apps/api/src/geracao/` — não ficam no banco. O output guarda as chaves
-  (`tipo_geracao`, `workflow`) e os valores dos campos (`parametros`).
-- Workflow novo = um arquivo em `geracao/workflows/` + uma linha em
-  `geracao/registro.ts`. Para escrever:
-  1. Leia o `.json` em `C:\IA\ComfyUI\ComfyUI\user\default\workflows` (formato
-     de tela) — inclusive as notas (MarkdownNote): elas dizem o que é fixo e por quê.
-  2. Confira os nomes de entrada de cada nó em `GET /object_info/<Classe>` do
-     ComfyUI. Não chute: o widget de tela nem sempre bate com o nome do input.
-  3. Traduza para o formato API mantendo os ids dos nós do arquivo; exponha
-     como `campos` só o que muda de geração para geração.
-  4. Teste mandando o grafo montado direto ao `POST /prompt` (sem gravar no
-     banco) e confira a imagem. Apague o output de teste depois.
-- Tipo sem workflow nenhum não aparece na tela.
+  marcado `assistivel` do workflow (a caixa "O assistente de prompt escreve
+  aqui", no editor de campos). O código acrescenta sozinho a dica, as palavras
+  e os avisos do campo.
+- **Tipos de geração e workflows são cadastros do usuário** (páginas Tipos de
+  geração e Workflows; tabelas `tipo_geracao` e `workflow`) — não existe mais
+  workflow em código. Como dados do usuário, **não crie nem edite** registros
+  deles sem pedido; workflow novo é o usuário quem importa pela tela.
+- O workflow é **genérico**: `ferramenta` (hoje só `comfyui`), o `grafo` como
+  a ferramenta exporta (ComfyUI: o "Export (API)"), os `campos` e as `saidas`.
+  Cada campo tem **alvos** (nó + entrada do grafo); gerar é copiar o grafo e
+  escrever os valores nos alvos (`montarGrafo` em `geracao/grafo.ts`). Tipos
+  de campo: texto, numero, opcoes, seed, tamanho (largura **e** altura). O
+  formato e a validação moram em `geracao/definicoes.ts` (zod) — campo novo
+  começa ali e no `CampoDinamico` do front.
+- Ferramenta nova (fora do ComfyUI) = um adaptador em `geracao/execucao.ts`
+  (hoje `executar` recusa o que não é `comfyui`) e uma linha em `FERRAMENTAS`.
+- Execuções, outputs e assistentes guardam as **chaves** (`tipo_geracao`,
+  `workflow`), não ids: a chave nasce do nome e nunca muda.
+- O "Testar" do cadastro (`POST /api/workflows/testar`) roda sem gravar nada
+  no Creativa; a imagem fica em `C:\IA\ComfyUI\ComfyUI\output`. Se **você**
+  testar por ele, apague a imagem de teste depois (confira nome, tamanho e hora).
+- Tipo sem workflow nenhum não aparece no Gerador.
 
 # Git
 

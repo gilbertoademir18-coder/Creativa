@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import type { Campo, DefWorkflow } from "../geracao/definicoes.ts";
+import { acharWorkflow, nomesDoCatalogo } from "../geracao/catalogo.ts";
+import type { CampoDe, DefWorkflow } from "../geracao/definicoes.ts";
 import { lerFila } from "../geracao/execucao.ts";
-import { acharTipo, acharWorkflow, WORKFLOWS } from "../geracao/registro.ts";
 import { configComfy } from "../lib/comfyui.ts";
 import { consultarOllama, gerarTexto } from "../lib/ollama.ts";
 import { prisma } from "../lib/prisma.ts";
@@ -24,7 +24,6 @@ const CorpoAssistente = z.object({
   workflows: z
     .array(z.string())
     .default([])
-    .refine((ws) => ws.every((w) => acharWorkflow(w)), "workflow desconhecido")
     .transform((ws) => [...new Set(ws)]),
   instrucoes: z.string().trim().min(1, "escreva as instruções").max(100_000, "texto longo demais"),
 });
@@ -49,6 +48,14 @@ const PedidoExpandir = z
   .refine((d) => !!d.assetId !== !!d.shotId, "o Gerador é de um asset ou de um shot");
 
 const TIPO_ASSET = { PERSONAGEM: "personagem", CENARIO: "cenário", OBJETO: "objeto", OUTRO: "outro" } as const;
+
+/** Os workflows marcados existem no cadastro? (Vazio vale: é "todos".) */
+async function conferirWorkflows(chaves: string[]) {
+  if (!chaves.length) return;
+  const achados = await prisma.workflow.findMany({ where: { chave: { in: chaves } }, select: { chave: true } });
+  const falta = chaves.find((c) => !achados.some((a) => a.chave === c));
+  if (falta) throw new ErroHttp(400, `workflows: o workflow ${falta} não existe no cadastro.`);
+}
 
 const comProjeto = { projeto: { select: { id: true, nome: true } } } as const;
 
@@ -96,15 +103,19 @@ async function contextoDoDono(assetId: string | null, shotId: string | null): Pr
 }
 
 /** O campo em que o assistente escreve: o de texto marcado como `assistivel`. */
-export const campoAssistivel = (w: DefWorkflow) =>
-  w.campos.find((c): c is Extract<Campo, { tipo: "texto" }> => c.tipo === "texto" && !!c.assistivel);
+export const campoAssistivel = (w: Pick<DefWorkflow, "campos">) =>
+  w.campos.find((c): c is CampoDe<"texto"> => c.tipo === "texto" && !!c.assistivel);
 
 /**
  * As instruções para a LLM: as do assistente e, depois, o que o código sabe
  * do workflow — a dica do campo, a faixa de palavras e as regras que a tela
  * confere. Fecha com o formato: só o texto, pronto para colar.
  */
-export function montarSistema(instrucoes: string, w: DefWorkflow, campo: Extract<Campo, { tipo: "texto" }>): string {
+export function montarSistema(
+  instrucoes: string,
+  w: Pick<DefWorkflow, "nome"> & { descricao: string | null; tipoNome: string },
+  campo: CampoDe<"texto">,
+): string {
   const regras = (campo.avisos ?? []).map((a) => `- ${a.mensagem}`);
   return [
     instrucoes.trim(),
@@ -112,7 +123,7 @@ export function montarSistema(instrucoes: string, w: DefWorkflow, campo: Extract
     "---",
     "",
     `# O workflow`,
-    `Você escreve o campo "${campo.rotulo}" do workflow "${w.nome}" (${acharTipo(w.tipo)?.nome ?? w.tipo}).`,
+    `Você escreve o campo "${campo.rotulo}" do workflow "${w.nome}" (${w.tipoNome}).`,
     w.descricao,
     campo.dica && `Orientação do campo: ${campo.dica}`,
     campo.palavras && `Tamanho: entre ${campo.palavras.min} e ${campo.palavras.max} palavras.`,
@@ -174,12 +185,14 @@ export async function rotasAssistentes(app: FastifyInstance) {
 
   app.post("/", async (req, reply) => {
     const dados = validar(CorpoAssistente, req.body);
+    await conferirWorkflows(dados.workflows);
     return reply.code(201).send(await prisma.assistente.create({ data: dados, include: comProjeto }));
   });
 
   app.put("/:id", async (req) => {
     const { id } = validar(z.object({ id: Uuid }), req.params);
     const dados = validar(CorpoAssistente, req.body);
+    await conferirWorkflows(dados.workflows);
     return prisma.assistente.update({ where: { id }, data: dados, include: comProjeto });
   });
 
@@ -204,8 +217,8 @@ export async function rotasAssistentes(app: FastifyInstance) {
     const p = validar(PedidoExpandir, req.body);
     const assistente = await prisma.assistente.findUnique({ where: { id } });
     if (!assistente) throw naoEncontrado("Assistente não encontrado.");
-    const w = acharWorkflow(p.workflow);
-    if (!w) throw new ErroHttp(400, `O workflow ${p.workflow} não existe no código.`);
+    const w = await acharWorkflow(p.workflow);
+    if (!w) throw new ErroHttp(400, `O workflow ${p.workflow} não existe (mais) no cadastro.`);
     const campo = campoAssistivel(w);
     if (!campo) throw new ErroHttp(400, `O workflow “${w.nome}” não tem campo para o assistente escrever.`);
 
@@ -232,7 +245,12 @@ export async function rotasAssistentes(app: FastifyInstance) {
 
     // O primeiro pedaço antes de responder: se o Ollama recusar, ainda dá
     // para devolver um erro HTTP normal, com a mensagem na tela.
-    const texto = gerarTexto(montarSistema(assistente.instrucoes, w, campo), usuario, cancelar.signal);
+    const [extra, nomes] = await Promise.all([
+      prisma.workflow.findUnique({ where: { chave: w.chave }, select: { descricao: true } }),
+      nomesDoCatalogo(),
+    ]);
+    const sistema = montarSistema(assistente.instrucoes, { nome: w.nome, descricao: extra?.descricao ?? null, tipoNome: nomes.tipo(w.tipo) }, campo);
+    const texto = gerarTexto(sistema, usuario, cancelar.signal);
     let primeiro: IteratorResult<string>;
     try {
       primeiro = await texto.next();
