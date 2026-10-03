@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { cancelarExecucao, executar, MAX_POR_ENVIO, progressoDe, seedDe } from "../geracao/execucao.ts";
-import { catalogoPara, conferir, type DonoGeracao } from "../geracao/registro.ts";
+import { acharTipo, catalogoPara, conferir, type DonoGeracao, WORKFLOWS } from "../geracao/registro.ts";
 import { prisma } from "../lib/prisma.ts";
 import { ErroHttp, Uuid, UuidOpcional, validar } from "../lib/validacao.ts";
 
@@ -25,6 +25,9 @@ const Pedido = z
     workflow: z.string().min(1, "escolha o workflow"),
     parametros: z.record(z.string(), z.unknown()).default({}),
     quantidade: z.number().int().min(1).max(MAX_POR_ENVIO, `no máximo ${MAX_POR_ENVIO} de uma vez`).default(1),
+    /** O assistente que expandiu o prompt, e a ideia de origem — vão para cada output. */
+    assistenteId: UuidOpcional,
+    ideia: z.string().trim().max(10_000).nullish().transform((t) => t || null),
   })
   .refine((d) => !!d.assetId !== !!d.shotId, "o Gerador é de um asset ou de um shot");
 
@@ -49,11 +52,20 @@ export async function rotasGerador(app: FastifyInstance) {
     return catalogoPara(await donoDe(asset, shot));
   });
 
+  /** Todos os workflows do código, com o tipo de cada um — para marcar em que workflows um assistente aparece. */
+  app.get("/workflows", async () =>
+    WORKFLOWS.map((w) => ({ chave: w.chave, nome: w.nome, tipo: w.tipo, tipoNome: acharTipo(w.tipo)?.nome ?? w.tipo })),
+  );
+
   /** "Gerar": confere o pedido contra o catálogo e manda `quantidade` execuções ao ComfyUI. */
   app.post("/executar", async (req) => {
-    const p = validar(Pedido, req.body);
+    const { assistenteId, ...p } = validar(Pedido, req.body);
     conferir(p.tipo, p.workflow, await donoDe(p.assetId, p.shotId));
-    await executar(p);
+    // O nome, copiado: o assistente pode mudar ou sumir depois.
+    const assistente = assistenteId
+      ? ((await prisma.assistente.findUnique({ where: { id: assistenteId }, select: { nome: true } }))?.nome ?? null)
+      : null;
+    await executar({ ...p, assistente, ideia: assistente ? p.ideia : null });
     return { ok: true };
   });
 

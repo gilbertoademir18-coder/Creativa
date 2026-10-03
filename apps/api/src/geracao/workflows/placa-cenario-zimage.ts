@@ -37,6 +37,7 @@ export const placaCenarioZImage: DefWorkflow = {
       rotulo: "Prompt",
       linhas: 16,
       obrigatorio: true,
+      assistivel: true,
       palavras: { min: 280, max: 450 },
       dica:
         "Em inglês. Sem referência nenhuma, o texto é tudo que existe: 280–450 palavras em quatro parágrafos — o plano → o lugar (materiais, desgaste, set dressing) → luz e atmosfera → o fecho fotográfico. Sem negação e sem aspect ratio no texto.",

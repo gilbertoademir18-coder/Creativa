@@ -5,6 +5,7 @@ import type { FastifyBaseLogger } from "fastify";
 import type { Execucao } from "../generated/prisma/client.ts";
 import { apagar, caminhoAbsoluto, gravar } from "../lib/arquivos.ts";
 import { configComfy, consultarComfy } from "../lib/comfyui.ts";
+import { descarregar } from "../lib/ollama.ts";
 import { prisma } from "../lib/prisma.ts";
 import { ErroHttp } from "../lib/validacao.ts";
 import { acharWorkflow, prepararParaEnvio, validarValores } from "./registro.ts";
@@ -62,6 +63,9 @@ export type Pedido = {
   workflow: string;
   parametros: Record<string, unknown>;
   quantidade: number;
+  /** O assistente de prompt usado (o nome) e a ideia que ele expandiu, quando houve. */
+  assistente: string | null;
+  ideia: string | null;
 };
 
 /**
@@ -82,6 +86,9 @@ export async function executar(pedido: Pedido): Promise<void> {
 
   const base = validarValores(w, pedido.parametros);
   const seeds = w.campos.filter((c) => c.tipo === "seed").map((c) => c.chave);
+
+  // A GPU é uma só: se a LLM do assistente ainda está na VRAM, sai agora.
+  await descarregar();
 
   for (let i = 0; i < pedido.quantidade; i++) {
     const valores = prepararParaEnvio(w, i === 0 ? base : { ...base, ...Object.fromEntries(seeds.map((s) => [s, null])) });
@@ -106,6 +113,8 @@ export async function executar(pedido: Pedido): Promise<void> {
         status: "NA_FILA",
         parametros: valores,
         grafoEnviado: grafo as object,
+        assistente: pedido.assistente,
+        ideia: pedido.ideia,
         promptIdComfy: j.prompt_id,
       },
     });
@@ -207,6 +216,8 @@ async function coletar(e: Execucao, h: Historico, saidas: string[]): Promise<voi
             seed: seed === null ? null : BigInt(seed),
             parametros: e.parametros as object,
             grafoEnviado: e.grafoEnviado as object,
+            assistente: e.assistente,
+            ideia: e.ideia,
             tipo: "IMAGEM",
             arquivo: c.relativo,
             mime: c.mime,

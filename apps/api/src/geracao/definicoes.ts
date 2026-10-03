@@ -50,6 +50,11 @@ export type Campo =
       /** Faixa recomendada de palavras: a tela mostra um contador. */
       palavras?: { min: number; max: number };
       avisos?: Aviso[];
+      /**
+       * O assistente de prompt escreve neste campo: a pessoa digita a ideia e
+       * ele expande. A dica, as palavras e os avisos vão junto para a LLM.
+       */
+      assistivel?: boolean;
     }
   | {
       tipo: "opcoes";

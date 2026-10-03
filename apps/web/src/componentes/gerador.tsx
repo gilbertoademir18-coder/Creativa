@@ -1,9 +1,10 @@
 import { LoaderCircle, Play, Sparkles, Square, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { geradorApi, outputsApi, type Dono } from "../api.ts";
+import { assistentesApi, geradorApi, outputsApi, type Dono } from "../api.ts";
 import { useCarregar } from "../hooks.ts";
 import type { CampoWorkflow, Execucao, OutputDetalhe, TipoCatalogo } from "../tipos.ts";
+import { BarraAssistente, limparTextoLlm, SeletorAssistente } from "./assistente-prompt.tsx";
 import { CampoDinamico, SeletorQuantidade } from "./campos-workflow.tsx";
 import { CartaoOutput, GRADE_OUTPUTS, VisorOutputs } from "./outputs.tsx";
 import { Aviso, Botao, Campo, Carregando, Seletor, Vazio } from "./ui.tsx";
@@ -66,6 +67,92 @@ export function PainelGerador({ dono }: { dono: Dono }) {
   const wfAtual = tipoAtual?.workflows.find((w) => w.chave === config?.workflow);
 
   /*
+   * O assistente de prompt: escolhido por workflow (só aparecem os que valem
+   * para ele e para o projeto do dono). `ideia` é o texto de onde saiu o
+   * prompt atual, quando foi o assistente que escreveu — vai junto para o
+   * output, e é para onde o "Desfazer" volta.
+   */
+  const campoAssistivel = wfAtual?.campos.find((c) => c.tipo === "texto" && c.assistivel);
+  const disponiveis = useCarregar(
+    () => (config?.workflow && campoAssistivel ? assistentesApi.disponiveis(dono, config.workflow) : Promise.resolve([])),
+    [dono.assetId, dono.shotId, config?.workflow, !!campoAssistivel],
+  );
+  const estadoLlm = useCarregar(() => assistentesApi.estado(), []);
+  const [assistenteId, setAssistenteId] = useState("");
+  const [ideia, setIdeia] = useState<string | null>(null);
+  const [expandindo, setExpandindo] = useState(false);
+  const [avisoAssistente, setAvisoAssistente] = useState<string | null>(null);
+  const [erroAssistente, setErroAssistente] = useState<string | null>(null);
+  const parar = useRef<AbortController | null>(null);
+  /** Ao aplicar um output, o assistente dele — escolhido pelo nome quando a lista do workflow chegar. */
+  const assistenteDesejado = useRef<string | null>(null);
+
+  useEffect(() => {
+    const lista = disponiveis.dados;
+    if (!lista) return;
+    if (assistenteDesejado.current !== null) {
+      const a = lista.find((x) => x.nome === assistenteDesejado.current);
+      assistenteDesejado.current = null;
+      if (a) return setAssistenteId(a.id);
+    }
+    if (assistenteId && lista.some((a) => a.id === assistenteId)) return;
+    // Um só? Já vem escolhido.
+    setAssistenteId(lista.length === 1 ? lista[0]!.id : "");
+  }, [disponiveis.dados]);
+
+  /** Escreve no campo do assistente sem perder o que mudou no resto do formulário enquanto a LLM escrevia. */
+  const escreverPrompt = (chave: string, texto: string) =>
+    setConfig((c) => c && { ...c, valores: { ...c.valores, [chave]: texto } });
+
+  async function expandir(deNovo: boolean) {
+    if (!config || !campoAssistivel || !assistenteId) return;
+    const chave = campoAssistivel.chave;
+    const atual = String(config.valores[chave] ?? "");
+    // "Expandir de novo" parte da mesma ideia, não do prompt que já saiu dela.
+    const base = deNovo && ideia !== null ? ideia : atual;
+    if (!base.trim()) return setErroAssistente("Escreva a ideia no campo antes de expandir.");
+    const controle = new AbortController();
+    parar.current = controle;
+    setExpandindo(true);
+    setErroAssistente(null);
+    setAvisoAssistente(null);
+    let texto = "";
+    try {
+      await assistentesApi.expandir(
+        assistenteId,
+        { ...dono, workflow: config.workflow, ideia: base },
+        {
+          aoComecar: (comfyOcupado) => {
+            if (comfyOcupado) setAvisoAssistente("O ComfyUI está gerando: o assistente divide a placa com ele e vai mais devagar.");
+          },
+          aoPedaco: (pedaco) => {
+            texto += pedaco;
+            escreverPrompt(chave, texto);
+          },
+        },
+        controle.signal,
+      );
+      const limpo = limparTextoLlm(texto);
+      if (!limpo) throw new Error("A LLM não escreveu nada. Tente de novo.");
+      escreverPrompt(chave, limpo);
+      setIdeia(base);
+    } catch (e) {
+      // Parou ou falhou no meio: volta o que estava escrito.
+      escreverPrompt(chave, atual);
+      if (!controle.signal.aborted) setErroAssistente((e as Error).message);
+    } finally {
+      setExpandindo(false);
+      parar.current = null;
+    }
+  }
+
+  function desfazer() {
+    if (!campoAssistivel || ideia === null) return;
+    escreverPrompt(campoAssistivel.chave, ideia);
+    setIdeia(null);
+  }
+
+  /*
    * O formulário começa com as configurações do output mais recente do dono
    * (seed aleatória de novo): é continuar de onde parou. Sem output, os
    * padrões do primeiro tipo do catálogo. Com `?usar=<output>` na URL (vindo
@@ -108,6 +195,11 @@ export function PainelGerador({ dono }: { dono: Dono }) {
       for (const c of campos) if (c.tipo === "seed") valores[c.chave] = null;
     }
     setConfig(ajustar({ tipo: o.tipoGeracao, workflow: o.workflow, valores }, catalogo.dados ?? tipos));
+    // O assistente e a ideia daquele output também voltam.
+    setIdeia(o.ideia);
+    const doOutput = o.assistente ? disponiveis.dados?.find((a) => a.nome === o.assistente) : undefined;
+    if (doOutput) setAssistenteId(doOutput.id);
+    else assistenteDesejado.current = o.assistente;
     if (rolar) formulario.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -127,7 +219,17 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     setGerando(true);
     setErro(null);
     try {
-      await geradorApi.executar({ ...dono, tipo: config.tipo, workflow: config.workflow, parametros: config.valores, quantidade });
+      // O assistente só fica registrado se foi ele quem escreveu o prompt.
+      const doAssistente = ideia !== null && !!assistenteId;
+      await geradorApi.executar({
+        ...dono,
+        tipo: config.tipo,
+        workflow: config.workflow,
+        parametros: config.valores,
+        quantidade,
+        assistenteId: doAssistente ? assistenteId : null,
+        ideia: doAssistente ? ideia : null,
+      });
     } catch (e) {
       setErro((e as Error).message);
     } finally {
@@ -190,13 +292,30 @@ export function PainelGerador({ dono }: { dono: Dono }) {
                   <span className="text-zinc-400">{wfAtual.arquivoComfy}</span>
                 </p>
               )}
+              {campoAssistivel && (
+                <SeletorAssistente lista={disponiveis.dados} valor={assistenteId} aoMudar={setAssistenteId} desabilitado={expandindo} />
+              )}
               {wfAtual?.campos.map((c) => (
-                <CampoDinamico
-                  key={c.chave}
-                  campo={c}
-                  valor={config.valores[c.chave]}
-                  aoMudar={(v) => setConfig({ ...config, valores: { ...config.valores, [c.chave]: v } })}
-                />
+                <div key={c.chave} className="flex flex-col gap-2">
+                  <CampoDinamico
+                    campo={c}
+                    valor={config.valores[c.chave]}
+                    aoMudar={(v) => setConfig({ ...config, valores: { ...config.valores, [c.chave]: v } })}
+                  />
+                  {c === campoAssistivel && assistenteId && (
+                    <BarraAssistente
+                      estado={estadoLlm.dados}
+                      expandindo={expandindo}
+                      ideia={ideia}
+                      aviso={avisoAssistente}
+                      erro={erroAssistente}
+                      aoExpandir={() => expandir(false)}
+                      aoExpandirDeNovo={() => expandir(true)}
+                      aoParar={() => parar.current?.abort()}
+                      aoDesfazer={desfazer}
+                    />
+                  )}
+                </div>
               ))}
             </>
           )}
@@ -206,7 +325,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
             {erro && <Aviso>{erro}</Aviso>}
             <div className="flex items-center justify-end gap-2">
               <SeletorQuantidade valor={quantidade} aoMudar={setQuantidade} />
-              <Botao variante="primario" icone={<Play className="size-4" />} carregando={gerando} onClick={gerar}>
+              <Botao variante="primario" icone={<Play className="size-4" />} carregando={gerando} disabled={expandindo} onClick={gerar}>
                 Gerar
               </Botao>
             </div>

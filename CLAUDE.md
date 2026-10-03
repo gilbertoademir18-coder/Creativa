@@ -13,7 +13,7 @@
 - Código, nomes e comentários em português.
 - Versões muito novas (TypeScript 7, Vite 8): confira a API em `node_modules` antes de assumir.
 - Scripts `.ps1` precisam ser salvos em UTF-8 **com BOM**, senão o PowerShell 5.1 estraga os acentos.
-- Portas: 3400 app (tray), 3401/3410 dev, 8444 tailnet (Creativa), 8445 tailnet (ComfyUI). Outros projetos usam 3001, 3002, 3200, 8443, 8787.
+- Portas: 3400 app (tray), 3401/3410 dev, 8444 tailnet (Creativa), 8445 tailnet (ComfyUI), 11434 Ollama. Outros projetos usam 3001, 3002, 3200, 8443, 8787.
 - Prisma fixado em `^7.10.0` — a tag `latest` é um RC da v8.
 - Antes de concluir: `npm run typecheck` e `npm run build`.
 
@@ -40,6 +40,11 @@
   dono, e **o output guarda tudo o que foi usado para gerá-lo** (tipo,
   workflow, modelo, prompt, seed, `parametros`, `grafo_enviado`). A tabela
   `execucao` é só a fila do ComfyUI, não um cadastro.
+- **Assistentes de prompt** (página Assistentes, tabela `assistente`) são do
+  usuário: markdown que a LLM local segue para expandir a ideia no campo
+  marcado `assistivel` do workflow. O código acrescenta sozinho a dica, as
+  palavras e os avisos do campo. Workflow novo com prompt: marque o campo
+  `assistivel: true`.
 - Tipos de geração e workflows são **programados no código**, em
   `apps/api/src/geracao/` — não ficam no banco. O output guarda as chaves
   (`tipo_geracao`, `workflow`) e os valores dos campos (`parametros`).
@@ -74,6 +79,7 @@ Levantado em 2026-10-01. Tudo roda aqui: ComfyUI, API, banco.
 | SO | Windows 11 Home |
 | ComfyUI | 0.36.0 portátil, Python 3.13, PyTorch 2.13 + cu130, attention do PyTorch |
 | Nós extras | ComfyUI-Manager, Civicomfy. Sem `triton`: nada de SageAttention ou `torch.compile` com backend triton |
+| LLM local | Ollama 0.35 (bandeja, porta 11434), modelo `gemma4:12b-it-qat` (~7 GB) para o assistente de prompt |
 
 O que isso muda nas escolhas:
 
@@ -87,6 +93,10 @@ O que isso muda nas escolhas:
 - **Um job por vez.** A GPU é uma só: a fila de execuções do Creativa deve
   mandar uma geração por vez ao ComfyUI, e vídeo (Wan e afins) ocupa a placa
   inteira por minutos.
+- **ComfyUI e a LLM se revezam na VRAM.** Antes de enviar ao ComfyUI, o
+  Creativa descarrega a LLM (`descarregar()` em `lib/ollama.ts`); antes de
+  expandir um prompt, libera o ComfyUI com `/free` se ele estiver parado.
+  Mantenha esse revezamento em qualquer coisa nova que use a GPU.
 - 32 GB de RAM seguram um offload, mas modelos de vídeo grandes + offload
   chegam perto do limite.
 

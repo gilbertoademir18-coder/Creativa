@@ -108,6 +108,45 @@ Duas coisas não funcionam do outro PC:
   os dois lados combinarem, compartilhe `D:\Creativa` e aponte o
   `ARQUIVOS_DIR` do outro PC para o compartilhamento.
 
+## Assistente de prompt (LLM local)
+
+No Gerador, depois do workflow, dá para escolher um **assistente de prompt**:
+você escreve a ideia ("salão de baile abandonado, fim de tarde"), clica em
+**Expandir com o assistente** e uma LLM local reescreve o campo com o prompt
+completo, do jeito que aquele workflow pede. O output guarda o assistente e a
+ideia de onde o prompt saiu.
+
+Um assistente é um markdown com instruções, como uma skill do Claude. Eles são
+cadastrados na página **Assistentes**: nome, projeto (sem projeto = vale para
+todos) e em quais workflows aparecem. Dá para importar e exportar `.md`, no
+formato de skill (cabeçalho com `name` e `description` entre linhas `---`). Há um pronto para a Placa
+de cenário em [`docs/assistentes/placa-cenario.md`](docs/assistentes/placa-cenario.md).
+
+A LLM recebe as instruções do assistente **e** o que o código sabe do
+workflow — a dica do campo, a faixa de palavras, as regras que o Gerador
+confere — e a descrição do asset ou shot. O assistente não precisa repetir
+isso.
+
+**A LLM** é o [Ollama](https://ollama.com) com o `gemma4:12b-it-qat` (~7 GB),
+nesta máquina:
+
+```powershell
+winget install Ollama.Ollama        # o app fica na bandeja e sobe com o Windows
+ollama pull gemma4:12b-it-qat
+```
+
+Trocar de modelo é `ollama pull` + `ASSISTENTE_MODELO` no `.env` (relido a
+cada uso).
+
+**A GPU é dividida.** São 12 GB para o ComfyUI e a LLM, que se revezam:
+
+- antes de expandir, se o ComfyUI está parado, o Creativa tira os modelos dele
+  da VRAM (`/free`) e a LLM roda inteira na placa — a próxima geração
+  recarrega o modelo do NVMe, uns segundos a mais;
+- com o ComfyUI gerando, ninguém é interrompido: a LLM roda com o que sobra,
+  mais devagar, e a tela avisa;
+- antes de mandar algo ao ComfyUI, o Creativa tira a LLM da VRAM.
+
 ## Arquivos
 
 Referências enviadas (e, depois, os outputs) ficam em **`D:\Creativa`**,
@@ -223,6 +262,7 @@ tailnet.
 | 8445 | ComfyUI no tailnet (`tailscale serve` → 8188) |
 | 8188 | ComfyUI |
 | 5432 | PostgreSQL (compartilhado; banco `creativa`) |
+| 11434 | Ollama (a LLM do assistente de prompt) |
 
 Já ocupadas nesta máquina por outros projetos: 443/3001, 3002, 3200/8443 (Trimly), 8787.
 

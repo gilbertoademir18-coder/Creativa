@@ -182,7 +182,7 @@ function CorpoVisor({
       ) : (
         <div className="flex max-h-[78vh] min-w-0 flex-col gap-5 overflow-y-auto pr-1">
           <div className="flex flex-wrap gap-2">
-            <Botao variante="primario" icone={<Wand2 className="size-4" />} onClick={() => aoUsar(o)} title="Leva tipo, workflow, prompt, seed e o resto para o Gerador">
+            <Botao variante="primario" icone={<Wand2 className="size-4" />} onClick={() => aoUsar(o)} title="Leva tipo, workflow, assistente, prompt, seed e o resto para o Gerador">
               Usar estas configurações
             </Botao>
             <Botao icone={<Star className={`size-4 ${o.favorito ? "fill-amber-400 text-amber-400" : ""}`} />} onClick={favoritar}>
@@ -209,7 +209,15 @@ function CorpoVisor({
             {o.largura && <Linha rotulo="Tamanho">{o.largura} × {o.altura}{o.tamanhoBytes !== null && ` · ${formatarBytes(o.tamanhoBytes)}`}</Linha>}
             <Linha rotulo="Gerado em">{formatarData(o.criadoEm)}</Linha>
             {o.duracaoComfySeg !== null && <Linha rotulo="Levou">{o.duracaoComfySeg}s no ComfyUI</Linha>}
+            {o.assistente && <Linha rotulo="Assistente">{o.assistente}</Linha>}
           </dl>
+
+          {o.ideia && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium tracking-wide text-zinc-400 uppercase">Ideia (antes do assistente)</span>
+              <p className="rounded-lg border border-violet-500/20 bg-violet-950/20 p-3 text-sm whitespace-pre-wrap text-zinc-300">{o.ideia}</p>
+            </div>
+          )}
 
           <Parametros o={o} />
 

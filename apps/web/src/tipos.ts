@@ -114,7 +114,32 @@ export type OutputDetalhe = Output & {
   duracaoComfySeg: number | null;
   /** O rótulo de cada parâmetro, enquanto o workflow existir no código. */
   rotulos: Record<string, string>;
+  /** O assistente de prompt usado (o nome) e a ideia que ele expandiu. */
+  assistente: string | null;
+  ideia: string | null;
 };
+
+/** Um assistente de prompt: instruções em markdown que a LLM local segue. */
+export type Assistente = {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  projetoId: string | null;
+  /** Chaves dos workflows em que aparece. Vazio: em todos. */
+  workflows: string[];
+  instrucoes: string;
+  criadoEm: string;
+  editadoEm: string;
+  projeto: ProjetoRef | null;
+};
+
+/** O que o Gerador lista: os assistentes que valem para o workflow e o projeto do dono. */
+export type AssistenteDisponivel = Pick<Assistente, "id" | "nome" | "descricao" | "projetoId" | "projeto">;
+
+export type EstadoLlm = { noAr: boolean; modelo: string; modeloBaixado: boolean };
+
+/** Um workflow do código, para marcar em quais um assistente aparece. */
+export type WorkflowResumo = { chave: string; nome: string; tipo: string; tipoNome: string };
 
 /** Uma execução do Gerador ainda sem output: na fila, executando, ou que falhou há pouco. */
 export type Execucao = {
@@ -148,6 +173,8 @@ export type CampoWorkflow =
       padrao?: string;
       palavras?: { min: number; max: number };
       avisos?: AvisoCampo[];
+      /** O assistente de prompt escreve neste campo. */
+      assistivel?: boolean;
     }
   | { tipo: "opcoes"; chave: string; rotulo: string; opcoes: { valor: string; rotulo: string }[]; padrao: string; dica?: string }
   | { tipo: "seed"; chave: string; rotulo: string };

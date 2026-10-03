@@ -22,7 +22,7 @@ const RAIZ = path.resolve(import.meta.dirname, "../../../..");
  * o do momento em que o servidor subiu. É o que permite trocar o
  * COMFYUI_ARGS e só reiniciar o ComfyUI, como no tray.
  */
-function lerEnv(chave: string, padrao: string): string {
+export function lerEnv(chave: string, padrao: string): string {
   try {
     const linha = readFileSync(path.join(RAIZ, ".env"), "utf8")
       .split(/\r?\n/)

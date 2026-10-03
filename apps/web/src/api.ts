@@ -1,6 +1,10 @@
 import type {
   Asset,
   AssetDetalhe,
+  Assistente,
+  AssistenteDisponivel,
+  EstadoLlm,
+  WorkflowResumo,
   Cena,
   Execucao,
   Output,
@@ -64,6 +68,17 @@ export type Pedido = Dono & {
   workflow: string;
   parametros: Record<string, unknown>;
   quantidade: number;
+  /** O assistente que expandiu o prompt, e a ideia de origem — ficam gravados em cada output. */
+  assistenteId: string | null;
+  ideia: string | null;
+};
+
+export type AssistenteNovo = {
+  nome: string;
+  descricao: string | null;
+  projetoId: string | null;
+  workflows: string[];
+  instrucoes: string;
 };
 
 type Filtro = Record<string, string | undefined>;
@@ -145,6 +160,57 @@ export const geradorApi = {
   execucoes: (dono: Dono) =>
     api<Execucao[]>(`/gerador/execucoes${consulta({ asset: dono.assetId, shot: dono.shotId })}`),
   cancelar: (id: string) => api<{ ok: true }>(`/gerador/execucoes/${id}/cancelar`, { method: "POST" }),
+  /** Todos os workflows do código. */
+  workflows: () => api<WorkflowResumo[]>("/gerador/workflows"),
+};
+
+export const assistentesApi = {
+  listar: (f: { projeto?: string; workflow?: string; busca?: string } = {}) => api<Assistente[]>(`/assistentes${consulta(f)}`),
+  ler: (id: string) => api<Assistente>(`/assistentes/${id}`),
+  criar: (a: AssistenteNovo) => api<Assistente>("/assistentes", { method: "POST", corpo: a }),
+  salvar: (id: string, a: AssistenteNovo) => api<Assistente>(`/assistentes/${id}`, { method: "PUT", corpo: a }),
+  apagar: (id: string) => api<void>(`/assistentes/${id}`, { method: "DELETE" }),
+  /** Os que valem no Gerador de um dono, para um workflow. */
+  disponiveis: (dono: Dono, workflow: string) =>
+    api<AssistenteDisponivel[]>(`/assistentes/disponiveis${consulta({ asset: dono.assetId, shot: dono.shotId, workflow })}`),
+  /** A LLM local (Ollama) está no ar, com o modelo baixado? */
+  estado: () => api<EstadoLlm>("/assistentes/estado"),
+  /**
+   * Expande a ideia no prompt completo. O texto chega em pedaços
+   * (`aoPedaco`), conforme a LLM escreve; `aoComecar` diz se o ComfyUI estava
+   * ocupado (aí a LLM vai mais devagar). Devolve o texto inteiro.
+   */
+  expandir: async (
+    id: string,
+    pedido: Dono & { workflow: string; ideia: string },
+    eventos: { aoComecar?: (comfyOcupado: boolean) => void; aoPedaco: (texto: string) => void },
+    sinal?: AbortSignal,
+  ): Promise<string> => {
+    let resposta: Response;
+    try {
+      resposta = await fetch(`/api/assistentes/${id}/expandir`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pedido),
+        signal: sinal,
+      });
+    } catch (e) {
+      if (sinal?.aborted) throw e;
+      throw new Error("Sem conexão com o servidor. O Creativa está rodando?");
+    }
+    if (!resposta.ok) await lerResposta(resposta);
+    if (!resposta.body) throw new Error("O servidor respondeu sem texto.");
+    eventos.aoComecar?.(resposta.headers.get("X-Comfy-Ocupado") === "1");
+    const leitor = resposta.body.pipeThrough(new TextDecoderStream()).getReader();
+    let tudo = "";
+    while (true) {
+      const { value, done } = await leitor.read();
+      if (done) break;
+      tudo += value;
+      eventos.aoPedaco(value);
+    }
+    return tudo;
+  },
 };
 
 export const outputsApi = {

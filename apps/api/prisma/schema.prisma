@@ -77,8 +77,9 @@ model Projeto {
   criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz
   editadoEm DateTime @updatedAt @map("editado_em") @db.Timestamptz
 
-  assets Asset[]
-  cenas  Cena[]
+  assets      Asset[]
+  cenas       Cena[]
+  assistentes Assistente[]
 
   @@map("projeto")
 }
@@ -196,6 +197,10 @@ model Execucao {
   parametros    Json
   /// O grafo exatamente como foi enviado.
   grafoEnviado  Json           @map("grafo_enviado")
+  /// O assistente de prompt usado (o nome, copiado no envio) e a ideia que
+  /// a pessoa escreveu antes de ele expandir.
+  assistente    String?
+  ideia         String?
   /// O id que o ComfyUI devolve no POST /prompt.
   promptIdComfy String?        @unique @map("prompt_id_comfy")
   erro          String?
@@ -253,6 +258,10 @@ model Output {
   parametros   Json
   /// O grafo exatamente como foi enviado ao ComfyUI.
   grafoEnviado Json       @map("grafo_enviado")
+  /// O assistente de prompt usado (o nome, copiado no envio — o assistente
+  /// pode mudar ou sumir depois) e a ideia que a pessoa escreveu.
+  assistente   String?
+  ideia        String?
   criadoEm     DateTime   @default(now()) @map("criado_em") @db.Timestamptz
 
   /// Output tem arquivo em disco: barra apagar o asset ou o shot.
@@ -265,4 +274,26 @@ model Output {
   @@index([execucaoId])
   @@index([tipoGeracao])
   @@map("output")
+}
+
+/// Um assistente de prompt: instruções em markdown, como uma skill, que a LLM
+/// local (Ollama) segue para transformar uma ideia curta no prompt completo
+/// de um workflow. Quem escreve é o usuário, pela página Assistentes.
+model Assistente {
+  id         String   @id @default(uuid()) @db.Uuid
+  nome       String
+  descricao  String?
+  /// Sem projeto: vale para todos. Apagar o projeto torna o assistente geral.
+  projetoId  String?  @map("projeto_id") @db.Uuid
+  /// Chaves dos workflows do código em que ele aparece. Vazio: em todos.
+  workflows  String[] @default([])
+  /// O markdown com as instruções.
+  instrucoes String
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz
+  editadoEm  DateTime @updatedAt @map("editado_em") @db.Timestamptz
+
+  projeto Projeto? @relation(fields: [projetoId], references: [id], onDelete: SetNull)
+
+  @@index([projetoId])
+  @@map("assistente")
 }
