@@ -191,7 +191,11 @@ export function PainelGerador({ dono }: { dono: Dono }) {
       assistenteDesejado.current = r.assistente;
       return;
     }
-    const ultimo = outputs.dados[0];
+    // O mais recente pela data: a lista vem com os favoritos na frente.
+    const ultimo = outputs.dados.reduce<(typeof outputs.dados)[number] | undefined>(
+      (mais, o) => (!mais || o.criadoEm > mais.criadoEm ? o : mais),
+      undefined,
+    );
     if (ultimo) {
       outputsApi
         .ler(ultimo.id)

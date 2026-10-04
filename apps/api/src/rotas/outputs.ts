@@ -84,7 +84,8 @@ export async function rotasOutputs(app: FastifyInstance) {
         ],
       },
       select: daGaleria,
-      orderBy: { criadoEm: "desc" },
+      // Os favoritos primeiro (os mais novos deles no topo), depois o resto, do mais novo ao mais velho.
+      orderBy: [{ favorito: "desc" }, { criadoEm: "desc" }],
       take: 1000,
     });
     return outputs.map((o) => comNomes(outputParaJson(o), nomes));
