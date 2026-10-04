@@ -101,9 +101,20 @@ function tamanho(pasta, arquivo) {
 
 /** Todos os nós de um workflow de tela, inclusive os de dentro dos subgrafos. */
 function todosOsNos(wf) {
-  const nos = [...(wf.nodes ?? [])];
-  for (const sg of wf.definitions?.subgraphs ?? []) nos.push(...(sg.nodes ?? []).map((n) => ({ ...n, _subgrafo: sg.name ?? sg.id })));
+  const nos = (wf.nodes ?? []).map((n) => ({ ...n, _links: wf.links ?? [], _nos: wf.nodes ?? [] }));
+  for (const sg of wf.definitions?.subgraphs ?? [])
+    nos.push(...(sg.nodes ?? []).map((n) => ({ ...n, _subgrafo: sg.name ?? sg.id, _links: sg.links ?? [], _nos: sg.nodes ?? [], _entradasSg: sg.inputs ?? [] })));
   return nos;
+}
+
+/** De onde vem uma entrada ligada: "#12 VAELoader[0]", ou uma entrada do subgrafo. Os links vêm em array (raiz) ou objeto (subgrafo). */
+function origemDo(n, linkId) {
+  const l = n._links.find((x) => (Array.isArray(x) ? x[0] : x.id) === linkId);
+  if (!l) return "?";
+  const [origem, slot] = Array.isArray(l) ? [l[1], l[2]] : [l.origin_id, l.origin_slot];
+  if (origem === -10) return `entrada do subgrafo "${n._entradasSg?.[slot]?.name ?? slot}"`;
+  const o = n._nos.find((x) => x.id === origem);
+  return `#${origem} ${o?.type ?? "?"}[${slot}]`;
 }
 
 function modelosDoTemplate(wf) {
@@ -162,8 +173,8 @@ if (comando === "modelos") {
       pares.push(`${e.nome}=${JSON.stringify(vals.shift())}`);
       for (let k = 0; k < extrasDe(e).length; k++) vals.shift();
     }
-    const ligadas = (n.inputs ?? []).filter((x) => x.link != null).map((x) => x.name);
-    console.log(`#${n.id} ${n.type}${onde}${n.title ? ` "${n.title}"` : ""}\n   ${pares.join("  ") || "(sem widgets)"}${ligadas.length ? `\n   ligadas: ${ligadas.join(", ")}` : ""}`);
+    const ligadas = (n.inputs ?? []).filter((x) => x.link != null).map((x) => `${x.name} ← ${origemDo(n, x.link)}`);
+    console.log(`#${n.id} ${n.type}${onde}${n.title ? ` "${n.title}"` : ""}\n   ${pares.join("  ") || "(sem widgets)"}${ligadas.map((l) => `\n   ${l}`).join("")}`);
   }
   const ms = modelosDoTemplate(wf);
   if (ms.length) {

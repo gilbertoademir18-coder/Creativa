@@ -204,6 +204,11 @@ O que isso muda nas escolhas:
   codificador), escolhido em 2026-10-03 contra Illustrious XL e Anima Turbo.
   O `CLIPLoader` dele é `type = stable_diffusion`, e com cfg 4 o negativo
   funciona. O porquê e os números estão nas notas do workflow.
+- **Personagem com referência de estilo: Krea 2 Turbo int8 + o LoRA
+  `krea2_style_reference`** (ostris), em nós nativos (`TextEncodeQwenImageEditPlus`
+  + `index_timestep_zero`). O modelo tem 13,5 GB, mais do que a placa, e roda
+  com offload. O `CLIPLoader` é `type = krea2`, e com cfg 1 não há negativo.
+  O prompt descreve só o conteúdo: o estilo vem da imagem.
 
 # Banco de dados
 
