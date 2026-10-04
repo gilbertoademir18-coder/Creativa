@@ -232,6 +232,11 @@ if (comando === "modelos") {
         continue;
       }
       const ops = opcoesDe(e.spec);
+      // A imagem de um LoadImage vem do campo de imagem do Creativa, enviada na hora de gerar.
+      if (e.spec[1]?.image_upload && ops && !ops.includes(v)) {
+        avisos.push(`#${id} ${n.class_type}.${e.nome}: "${v}" não está na pasta input — tudo bem se um campo de imagem do Creativa aponta para cá.`);
+        continue;
+      }
       if (ops && ops.length && !ops.includes(v)) {
         const ehModelo = /\.(safetensors|gguf|ckpt|pt|pth|bin|sft)$/i.test(String(v));
         erros.push(`#${id} ${n.class_type}.${e.nome}: "${v}" não está entre as opções${ehModelo ? " — o modelo não está baixado (ou está em outra pasta)" : `: ${ops.slice(0, 12).join(", ")}`}.`);

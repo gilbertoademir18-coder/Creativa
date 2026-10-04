@@ -59,8 +59,12 @@ export function erroDosCampos(grafo: GrafoApi, campos: Campo[]): string | null {
   return null;
 }
 
-/** Copia o grafo e escreve o valor de cada campo nos alvos dele. */
-export function montarGrafo(grafo: GrafoApi, campos: Campo[], v: Valores): GrafoApi {
+/**
+ * Copia o grafo e escreve o valor de cada campo nos alvos dele. Os campos de
+ * imagem recebem o nome do arquivo já enviado ao ComfyUI (`imagens`, por
+ * chave do campo — ver `enviarImagens`).
+ */
+export function montarGrafo(grafo: GrafoApi, campos: Campo[], v: Valores, imagens: Record<string, string> = {}): GrafoApi {
   const g = structuredClone(grafo);
   const escrever = (alvos: Alvo[], valor: unknown) => {
     for (const a of alvos) g[a.no]!.inputs[a.entrada] = valor;
@@ -71,6 +75,10 @@ export function montarGrafo(grafo: GrafoApi, campos: Campo[], v: Valores): Grafo
       const o = c.opcoes.find((x) => x.valor === valor) ?? c.opcoes.find((x) => x.valor === c.padrao) ?? c.opcoes[0]!;
       escrever(c.largura, o.largura);
       escrever(c.altura, o.altura);
+    } else if (c.tipo === "imagem") {
+      const nome = imagens[c.chave];
+      if (!nome) throw new Error(`a imagem do campo “${c.rotulo}” não foi enviada ao ComfyUI`);
+      escrever(c.alvos, nome);
     } else {
       escrever(c.alvos, valor);
     }

@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { Output } from "../generated/prisma/client.ts";
 import { lerCampos, nomesDoCatalogo } from "../geracao/catalogo.ts";
+import { imagensDosParametros } from "../geracao/imagens.ts";
 import { apagar } from "../lib/arquivos.ts";
 import { doProjeto, doVinculo, incluirDono } from "../lib/filtros.ts";
 import { prisma } from "../lib/prisma.ts";
@@ -109,7 +110,8 @@ export async function rotasOutputs(app: FastifyInstance) {
       nomesDoCatalogo(),
     ]);
     const rotulos = Object.fromEntries((w ? lerCampos(w.campos, o.workflow) : []).map((c) => [c.chave, c.rotulo]));
-    return { ...comNomes(outputParaJson(resto), nomes), duracaoComfySeg, rotulos };
+    const imagens = await imagensDosParametros((o.parametros ?? {}) as Record<string, unknown>);
+    return { ...comNomes(outputParaJson(resto), nomes), duracaoComfySeg, rotulos, imagens };
   });
 
   app.put("/:id/favorito", async (req) => {

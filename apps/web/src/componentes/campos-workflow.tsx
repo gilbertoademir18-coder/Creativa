@@ -1,6 +1,8 @@
 import { TriangleAlert } from "lucide-react";
 import { useMemo } from "react";
+import type { Dono } from "../api.ts";
 import type { CampoWorkflow } from "../tipos.ts";
+import { CampoImagem } from "./campo-imagem.tsx";
 import { AreaTexto, Campo, Entrada, Pilulas, Seletor } from "./ui.tsx";
 
 /*
@@ -15,12 +17,28 @@ export function valoresPara(campos: CampoWorkflow[], atuais: Record<string, unkn
   return v;
 }
 
-/** O valor inicial de um campo. Seed começa aleatória (null). */
-export const padraoDe = (c: CampoWorkflow): unknown => (c.tipo === "texto" ? (c.padrao ?? "") : c.tipo === "seed" ? null : c.padrao);
+/** O valor inicial de um campo. Seed começa aleatória (null); imagem, sem nenhuma escolhida. */
+export const padraoDe = (c: CampoWorkflow): unknown =>
+  c.tipo === "texto" ? (c.padrao ?? "") : c.tipo === "seed" || c.tipo === "imagem" ? null : c.padrao;
 
-/** Um campo do workflow, montado a partir da descrição que a API manda. */
-export function CampoDinamico({ campo: c, valor, aoMudar }: { campo: CampoWorkflow; valor: unknown; aoMudar: (v: unknown) => void }) {
+/**
+ * Um campo do workflow, montado a partir da descrição que a API manda.
+ * `dono` é de quem é o Gerador: os campos de imagem mostram as imagens do
+ * projeto dele. Sem dono (o "Testar" do cadastro), todas.
+ */
+export function CampoDinamico({
+  campo: c,
+  valor,
+  aoMudar,
+  dono = null,
+}: {
+  campo: CampoWorkflow;
+  valor: unknown;
+  aoMudar: (v: unknown) => void;
+  dono?: Dono | null;
+}) {
   if (c.tipo === "texto") return <CampoTexto campo={c} valor={String(valor ?? "")} aoMudar={aoMudar} />;
+  if (c.tipo === "imagem") return <CampoImagem campo={c} valor={valor} aoMudar={aoMudar} dono={dono} />;
   if (c.tipo === "opcoes" || c.tipo === "tamanho") {
     // Pela posição: a opção pode valer um número, e o <select> só fala texto.
     const opcoes: { valor: string | number; rotulo: string }[] = c.opcoes;

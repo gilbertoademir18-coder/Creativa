@@ -80,6 +80,16 @@ export const Campo = z.discriminatedUnion("tipo", [
     alvos: z.array(Alvo).min(1, "o campo precisa entrar em algum lugar do grafo"),
   }),
   z.object({
+    /**
+     * Uma imagem do projeto — referência ou output — que o Creativa envia ao
+     * ComfyUI na hora de gerar. O alvo é a entrada `image` de um LoadImage.
+     * Sempre obrigatória: o LoadImage não roda sem arquivo.
+     */
+    tipo: z.literal("imagem"),
+    ...base,
+    alvos: z.array(Alvo).min(1, "o campo precisa entrar em algum lugar do grafo"),
+  }),
+  z.object({
     /** Um tamanho escolhido numa lista, que preenche largura E altura. */
     tipo: z.literal("tamanho"),
     ...base,
@@ -97,8 +107,16 @@ export type CampoDe<T extends Campo["tipo"]> = Extract<Campo, { tipo: T }>;
 /** O grafo no formato API do ComfyUI, o que o POST /prompt aceita. */
 export type GrafoApi = Record<string, { class_type: string; inputs: Record<string, unknown>; _meta?: { title: string } }>;
 
+/**
+ * O valor de um campo de imagem: qual referência ou output do projeto. É o
+ * que fica nos parâmetros do output ("Usar estas configurações" traz de
+ * volta); o nome do arquivo no ComfyUI só existe no grafo enviado.
+ */
+export const RefImagem = z.object({ origem: z.enum(["referencia", "output"]), id: z.uuid("imagem inválida") }, "escolha uma imagem");
+export type RefImagem = z.infer<typeof RefImagem>;
+
 /** Os valores já validados, prontos para montar o grafo. A seed já vem sorteada. */
-export type Valores = Record<string, string | number>;
+export type Valores = Record<string, string | number | RefImagem>;
 
 /** O que o Gerador precisa de um workflow para montar e enviar. */
 export type DefWorkflow = {

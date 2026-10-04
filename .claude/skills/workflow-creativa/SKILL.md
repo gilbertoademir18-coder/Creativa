@@ -165,7 +165,7 @@ o Gerador oferece o tipo, e `shot` decide se ele aparece nos shots.
 
 **Os campos** são o que o Gerador mostra. O formato está em
 `apps/api/src/geracao/definicoes.ts` (leia antes). Os tipos são `texto`,
-`numero`, `opcoes`, `seed` e `tamanho`, e cada um tem `alvos` (nó + entrada).
+`numero`, `opcoes`, `seed`, `tamanho` e `imagem`, e cada um tem `alvos` (nó + entrada).
 Mostre só o que a pessoa vai querer mudar; o resto fica fixo no grafo. O
 normal:
 
@@ -177,6 +177,15 @@ normal:
 - **`tamanho`:** opções na proporção do projeto e na resolução nativa do
   modelo, com `padrao`.
 - **`seed`.**
+- **`imagem`**, para workflows com referência (edição, personagem numa
+  cena, first frame): um campo por `LoadImage`, com alvo na entrada `image`
+  e `rotulo` que diga o papel ("Personagem", "Cenário"). Ele sempre é
+  obrigatório. No Gerador, a pessoa escolhe uma referência ou um output de
+  imagem **do projeto**, e o Creativa envia o arquivo ao ComfyUI na hora de
+  gerar. No grafo, deixe no `image` o nome de qualquer arquivo: o `validar` só
+  avisa. No rascunho de exemplo, o valor é `{ "origem": "output" | "referencia",
+  "id": "<uuid>" }`. Escolha a melhor imagem do projeto (um favorito) ou deixe
+  `null`.
 
 `creativa.mjs workflow-salvar def.json`. Se a API recusar, ela diz qual
 campo ou alvo está errado.

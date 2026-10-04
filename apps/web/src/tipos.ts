@@ -161,6 +161,8 @@ export type OutputDetalhe = Output & {
   grafoEnviado: Record<string, unknown>;
   /** Segundos no ComfyUI, sem a espera na fila. */
   duracaoComfySeg: number | null;
+  /** As imagens dos campos de imagem, pela chave (null: a imagem foi apagada depois). */
+  imagens: Record<string, { arquivo: string; nome: string } | null>;
   /** O rótulo de cada parâmetro, enquanto o workflow existir no código. */
   rotulos: Record<string, string>;
   /** O assistente de prompt usado (o nome) e a ideia que ele expandiu. */
@@ -229,6 +231,8 @@ export type CampoWorkflow =
   | (BaseCampo & { tipo: "numero"; alvos: Alvo[]; padrao: number; min?: number; max?: number; passo?: number })
   | (BaseCampo & { tipo: "opcoes"; alvos: Alvo[]; opcoes: { valor: string | number; rotulo: string }[]; padrao: string | number })
   | (BaseCampo & { tipo: "seed"; alvos: Alvo[] })
+  /** Uma imagem do projeto (referência ou output), enviada ao ComfyUI ao gerar. Alvo: o `image` de um LoadImage. */
+  | (BaseCampo & { tipo: "imagem"; alvos: Alvo[] })
   | (BaseCampo & {
       tipo: "tamanho";
       largura: Alvo[];
@@ -238,6 +242,20 @@ export type CampoWorkflow =
     });
 
 export type TipoCampo = CampoWorkflow["tipo"];
+
+/** O valor de um campo de imagem: qual referência ou output. */
+export type RefImagem = { origem: "referencia" | "output"; id: string };
+
+/** Uma imagem que um campo de imagem pode usar (de `/gerador/imagens`). */
+export type ImagemDisponivel = RefImagem & {
+  nome: string;
+  arquivo: string;
+  favorito: boolean;
+  criadoEm: string;
+  dono: { tipo: "asset" | "shot"; id: string; nome: string };
+  /** É do próprio asset ou shot do Gerador? */
+  doDono: boolean;
+};
 
 export type WorkflowCatalogo = {
   chave: string;

@@ -11,6 +11,7 @@ import { ErroHttp } from "../lib/validacao.ts";
 import { acharWorkflow, prepararParaEnvio, seedDe, validarValores } from "./catalogo.ts";
 import type { DefWorkflow, GrafoApi } from "./definicoes.ts";
 import { montarGrafo } from "./grafo.ts";
+import { enviarImagens } from "./imagens.ts";
 
 /**
  * O Gerador manda trabalho ao ComfyUI e acompanha até o fim.
@@ -107,10 +108,12 @@ export async function executar(w: DefWorkflow, pedido: Pedido): Promise<void> {
   if (w.ferramenta !== "comfyui") throw new ErroHttp(400, `O Creativa ainda não sabe rodar workflows de “${w.ferramenta}”.`);
   const base = validarValores(w, pedido.parametros);
   const seeds = w.campos.filter((c) => c.tipo === "seed").map((c) => c.chave);
+  // As imagens dos campos de imagem vão uma vez só: são as mesmas em todas as execuções.
+  const imagens = await enviarImagens(w, base, { assetId: pedido.assetId, shotId: pedido.shotId });
 
   for (let i = 0; i < pedido.quantidade; i++) {
     const valores = prepararParaEnvio(w, i === 0 ? base : { ...base, ...Object.fromEntries(seeds.map((s) => [s, null])) });
-    const grafo = montarGrafo(w.grafo, w.campos, valores);
+    const grafo = montarGrafo(w.grafo, w.campos, valores, imagens);
     const promptId = await enviarAoComfy(grafo);
     await prisma.execucao.create({
       data: {

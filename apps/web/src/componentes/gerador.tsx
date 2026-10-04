@@ -369,6 +369,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
                   )}
                   <CampoDinamico
                     campo={c}
+                    dono={dono}
                     valor={config.valores[c.chave]}
                     aoMudar={(v) => setConfig({ ...config, valores: { ...config.valores, [c.chave]: v } })}
                   />

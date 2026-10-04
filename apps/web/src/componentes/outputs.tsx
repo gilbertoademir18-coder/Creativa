@@ -274,6 +274,27 @@ function Parametros({ o }: { o: OutputDetalhe }) {
     <div className="flex flex-col gap-3">
       {entradas.map(([chave, valor]) => {
         const rotulo = o.rotulos[chave] ?? chave;
+        // Campo de imagem: a miniatura da referência ou output que entrou.
+        if (chave in (o.imagens ?? {})) {
+          const img = o.imagens[chave];
+          return (
+            <div key={chave} className="flex items-center gap-3 text-sm">
+              <span className="w-28 shrink-0 text-xs font-medium tracking-wide text-zinc-400 uppercase">{rotulo}</span>
+              {img ? (
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="size-14 shrink-0 overflow-hidden rounded-md border border-zinc-800 bg-zinc-950">
+                    <Miniatura tipo="IMAGEM" arquivo={img.arquivo} />
+                  </span>
+                  <span className="truncate text-xs text-zinc-400" title={img.nome}>
+                    {img.nome}
+                  </span>
+                </span>
+              ) : (
+                <span className="text-xs text-zinc-500">a imagem foi apagada depois</span>
+              )}
+            </div>
+          );
+        }
         const texto = typeof valor === "string" ? valor : JSON.stringify(valor);
         if (typeof valor === "string" && valor.length > 60) {
           return (

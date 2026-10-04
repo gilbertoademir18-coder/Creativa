@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { catalogoPara, conferir, type DonoGeracao, lerCampos, seedDe } from "../geracao/catalogo.ts";
 import { cancelarExecucao, executar, MAX_POR_ENVIO, progressoDe } from "../geracao/execucao.ts";
+import { imagensDisponiveis } from "../geracao/imagens.ts";
 import { Prisma } from "../generated/prisma/client.ts";
 import { prisma } from "../lib/prisma.ts";
 import { ErroHttp, Uuid, UuidOpcional, validar } from "../lib/validacao.ts";
@@ -69,6 +70,18 @@ export async function rotasGerador(app: FastifyInstance) {
   app.get("/catalogo", async (req) => {
     const { asset, shot } = validar(Dono, req.query);
     return catalogoPara(await donoDe(asset, shot));
+  });
+
+  /**
+   * As imagens que os campos de imagem podem usar: referências e outputs de
+   * imagem do projeto do dono. Sem dono (o "Testar" do cadastro), todas.
+   */
+  app.get("/imagens", async (req) => {
+    const { asset, shot } = validar(
+      z.object({ asset: UuidOpcional, shot: UuidOpcional }).refine((d) => !(d.asset && d.shot), "um asset ou um shot, não os dois"),
+      req.query,
+    );
+    return imagensDisponiveis({ assetId: asset, shotId: shot });
   });
 
   /** Onde o Gerador do dono parou (null: nunca foi salvo). */

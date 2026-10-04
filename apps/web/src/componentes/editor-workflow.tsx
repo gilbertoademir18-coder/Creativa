@@ -23,6 +23,7 @@ const TIPOS_CAMPO: { valor: TipoCampo; rotulo: string }[] = [
   { valor: "opcoes", rotulo: "Opções" },
   { valor: "seed", rotulo: "Seed" },
   { valor: "tamanho", rotulo: "Tamanho (largura × altura)" },
+  { valor: "imagem", rotulo: "Imagem (referência ou output do projeto)" },
 ];
 
 /** Os nós que costumam ser a saída de um workflow. */
@@ -70,7 +71,7 @@ const resumoValor = (v: unknown) => {
 
 /**
  * Campos sugeridos para um grafo recém-importado: a seed, o tamanho (um nó
- * com width e height) e os textos (prompts). É um ponto de partida — a
+ * com width e height), os textos (prompts) e as imagens (cada LoadImage). É um ponto de partida — a
  * pessoa apaga o que não quer expor.
  */
 function sugerirCampos(grafo: GrafoApi): CampoWorkflow[] {
@@ -101,6 +102,11 @@ function sugerirCampos(grafo: GrafoApi): CampoWorkflow[] {
       padrao: `${l}x${a}`,
     });
   }
+  const cargas = ent.filter((e) => e.entrada === "image" && /^LoadImage/.test(e.classe) && typeof e.valor === "string");
+  cargas.forEach((e, n) => {
+    const rotulo = e.titulo !== e.classe ? e.titulo : cargas.length > 1 ? `Imagem ${n + 1}` : "Imagem de referência";
+    campos.push({ tipo: "imagem", chave: chave(chaveDoRotulo(rotulo)), rotulo, alvos: [{ no: e.no, entrada: "image" }] });
+  });
   const seeds = ent.filter((e) => /^(seed|noise_seed)$/.test(e.entrada) && typeof e.valor === "number");
   if (seeds.length) campos.push({ tipo: "seed", chave: chave("seed"), rotulo: "Seed", alvos: seeds.map((e) => ({ no: e.no, entrada: e.entrada })) });
   return campos;
@@ -442,6 +448,8 @@ function trocarTipo(c: CampoWorkflow, tipo: TipoCampo, entradas: EntradaGrafo[])
       return { ...base, tipo, alvos, opcoes: [{ valor: v, rotulo: String(v) }], padrao: v };
     }
     case "seed":
+      return { ...base, tipo, alvos };
+    case "imagem":
       return { ...base, tipo, alvos };
     case "tamanho":
       return { ...base, tipo, largura: alvos, altura: [{ no: alvos[0]?.no ?? "", entrada: "height" }], opcoes: [{ valor: "1024x1024", rotulo: "1024 × 1024", largura: 1024, altura: 1024 }], padrao: "1024x1024" };

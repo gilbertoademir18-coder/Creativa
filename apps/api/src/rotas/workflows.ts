@@ -5,6 +5,7 @@ import { lerCampos, prepararParaEnvio, validarValores } from "../geracao/catalog
 import { Campo, FERRAMENTAS, nomeFerramenta, type GrafoApi } from "../geracao/definicoes.ts";
 import { enviarAoComfy, estadoDoPrompt } from "../geracao/execucao.ts";
 import { erroDoGrafo, erroDosCampos, montarGrafo } from "../geracao/grafo.ts";
+import { enviarImagens } from "../geracao/imagens.ts";
 import { chaveLivre } from "../lib/chave.ts";
 import { configComfy } from "../lib/comfyui.ts";
 import { prisma } from "../lib/prisma.ts";
@@ -135,7 +136,9 @@ export async function rotasWorkflows(app: FastifyInstance) {
     if (d.ferramenta !== "comfyui") throw new ErroHttp(400, `O Creativa ainda não sabe rodar workflows de “${d.ferramenta}”.`);
     const grafo = conferirDefinicao(d);
     const prontos = prepararParaEnvio(d, validarValores(d, valores));
-    const promptId = await enviarAoComfy(montarGrafo(grafo, d.campos, prontos));
+    // Sem dono: o teste pode usar qualquer imagem do Creativa.
+    const imagens = await enviarImagens(d, prontos, { assetId: null, shotId: null });
+    const promptId = await enviarAoComfy(montarGrafo(grafo, d.campos, prontos, imagens));
     return { promptId, valores: prontos };
   });
 

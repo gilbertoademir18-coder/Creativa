@@ -24,6 +24,7 @@ import type {
   TipoReferencia,
   TipoCatalogo,
   RascunhoGerador,
+  ImagemDisponivel,
   Vinculo,
 } from "./tipos.ts";
 
@@ -197,6 +198,9 @@ export const geradorApi = {
   execucoes: (dono: Dono) =>
     api<Execucao[]>(`/gerador/execucoes${consulta({ asset: dono.assetId, shot: dono.shotId })}`),
   cancelar: (id: string) => api<{ ok: true }>(`/gerador/execucoes/${id}/cancelar`, { method: "POST" }),
+  /** As imagens que os campos de imagem podem usar: as do projeto do dono. Sem dono (o "Testar"), todas. */
+  imagens: (dono: Dono | null) =>
+    api<ImagemDisponivel[]>(`/gerador/imagens${consulta({ asset: dono?.assetId, shot: dono?.shotId })}`),
   /** Onde o Gerador do dono parou (null: nunca foi salvo). */
   rascunho: (dono: Dono) =>
     api<{ rascunho: RascunhoGerador | null }>(`/gerador/rascunho${consulta({ asset: dono.assetId, shot: dono.shotId })}`),

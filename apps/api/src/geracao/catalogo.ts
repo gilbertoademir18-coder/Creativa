@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { TipoAsset } from "../generated/prisma/enums.ts";
 import { prisma } from "../lib/prisma.ts";
 import { ErroHttp } from "../lib/validacao.ts";
-import { Campo, nomeFerramenta, type DefWorkflow, type GrafoApi, type Valores } from "./definicoes.ts";
+import { Campo, nomeFerramenta, RefImagem, type DefWorkflow, type GrafoApi, type Valores } from "./definicoes.ts";
 
 /**
  * O catálogo do Gerador: os tipos de geração e os workflows de cada um, como
@@ -134,6 +134,8 @@ function esquemaCampo(c: Campo) {
         .string()
         .refine((v) => c.opcoes.some((o) => o.valor === v), "tamanho inválido")
         .default(c.padrao);
+    case "imagem":
+      return RefImagem;
     case "seed":
       // null = aleatória. O teto é o do JavaScript, não o do ComfyUI (2^64):
       // acima disso o número perderia dígitos no caminho.
@@ -162,7 +164,7 @@ export function prepararParaEnvio(w: Pick<DefWorkflow, "campos">, valores: Recor
   for (const c of w.campos) {
     const v = valores[c.chave];
     if (c.tipo === "seed") prontos[c.chave] = typeof v === "number" ? v : Math.floor(Math.random() * 2 ** 48);
-    else prontos[c.chave] = v as string | number;
+    else prontos[c.chave] = v as string | number | RefImagem;
   }
   return prontos;
 }

@@ -139,9 +139,15 @@ as cenas (`SetNull`), nunca as apaga.
   a ferramenta exporta (ComfyUI: o "Export (API)"), os `campos` e as `saidas`.
   Cada campo tem **alvos** (nó + entrada do grafo); gerar é copiar o grafo e
   escrever os valores nos alvos (`montarGrafo` em `geracao/grafo.ts`). Tipos
-  de campo: texto, numero, opcoes, seed, tamanho (largura **e** altura). O
-  formato e a validação moram em `geracao/definicoes.ts` (zod) — campo novo
-  começa ali e no `CampoDinamico` do front.
+  de campo: texto, numero, opcoes, seed, tamanho (largura **e** altura) e
+  imagem. O formato e a validação moram em `geracao/definicoes.ts` (zod) —
+  campo novo começa ali e no `CampoDinamico` do front.
+- **Campo de imagem** (referência de workflow): o valor é
+  `{ origem: "referencia" | "output", id }`, de qualquer asset ou shot **do
+  projeto do dono** (sem projeto, só do próprio dono; no "Testar", qualquer
+  um). Ao gerar, `enviarImagens` (`geracao/imagens.ts`) manda o arquivo ao
+  ComfyUI (`/upload/image`, em `input/creativa/`, com o nome pelo hash) e o
+  nome vai para o `LoadImage`. O output guarda a referência, não o arquivo.
 - Ferramenta nova (fora do ComfyUI) = um adaptador em `geracao/execucao.ts`
   (hoje `executar` recusa o que não é `comfyui`) e uma linha em `FERRAMENTAS`.
 - Execuções, outputs e assistentes guardam as **chaves** (`tipo_geracao`,
