@@ -6,6 +6,7 @@ import { Layout } from "./componentes/layout.tsx";
 import { PaginaAsset, PaginaAssets } from "./paginas/assets.tsx";
 import { PaginaAssistentes } from "./paginas/assistentes.tsx";
 import { PaginaCena, PaginaCenas } from "./paginas/cenas.tsx";
+import { PaginaConversas } from "./paginas/conversas.tsx";
 import { PaginaOutputs } from "./paginas/outputs.tsx";
 import { PaginaProjeto, PaginaProjetos } from "./paginas/projetos.tsx";
 import { PaginaReferencias } from "./paginas/referencias.tsx";
@@ -33,6 +34,8 @@ const roteador = createBrowserRouter([
       { path: "shots/:id", element: <PaginaShot /> },
       { path: "videos/:id", element: <PaginaVideo /> },
       { path: "outputs", element: <PaginaOutputs /> },
+      { path: "conversas", element: <PaginaConversas /> },
+      { path: "conversas/:id", element: <PaginaConversas /> },
       { path: "assistentes", element: <PaginaAssistentes /> },
       { path: "tipos-geracao", element: <PaginaTiposGeracao /> },
       { path: "workflows", element: <PaginaWorkflows /> },

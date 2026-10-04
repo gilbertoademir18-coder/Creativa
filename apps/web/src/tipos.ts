@@ -338,3 +338,16 @@ export type EstadoTeste = {
   imagens: { filename: string; subfolder: string; type: string }[];
   erro: string | null;
 };
+
+/** Uma conversa livre com a LLM local (página Conversas). */
+export type Conversa = { id: string; titulo: string; criadoEm: string; editadoEm: string };
+
+export type MensagemConversa = {
+  id: string;
+  papel: "USUARIO" | "ASSISTENTE";
+  conteudo: string;
+  modelo: string | null;
+  criadoEm: string;
+};
+
+export type ConversaDetalhe = Conversa & { mensagens: MensagemConversa[] };

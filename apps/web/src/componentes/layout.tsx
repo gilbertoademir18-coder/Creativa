@@ -1,4 +1,4 @@
-import { Clapperboard, FolderKanban, Images, Layers, Shapes, Sparkles, WandSparkles, Workflow } from "lucide-react";
+import { Clapperboard, FolderKanban, Images, Layers, MessagesSquare, Shapes, Sparkles, WandSparkles, Workflow } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router";
 import { BarraComfy } from "./barra-comfy.tsx";
@@ -20,6 +20,7 @@ const MENU = [
       { para: "/referencias", rotulo: "Referências", icone: Images },
       { para: "/cenas", rotulo: "Cenas", icone: Clapperboard },
       { para: "/outputs", rotulo: "Outputs", icone: Sparkles },
+      { para: "/conversas", rotulo: "Conversas", icone: MessagesSquare },
     ],
   },
   {

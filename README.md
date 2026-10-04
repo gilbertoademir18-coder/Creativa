@@ -77,6 +77,7 @@ pronto para expandir. Ela não roda nada na GPU sem você pedir.
 | `tipo_geracao` | Para que serve uma geração ("Placa de cenário") e em que Gerador aparece (tipos de asset, shots) |
 | `workflow` | Como um tipo é gerado numa ferramenta: o grafo, os campos (com o alvo de cada um no grafo) e as saídas |
 | `assistente` | Instruções em markdown para a LLM local expandir a ideia no prompt de um workflow |
+| `conversa`, `mensagem_conversa` | Os chats livres com a LLM local (página Conversas) |
 
 Execução, output e assistente guardam a **chave** do tipo e do workflow
 (`placa-cenario-zimage`), não o id. A chave nasce do nome e não muda: dá
@@ -202,6 +203,16 @@ modelo é `ollama pull` + `ASSISTENTE_MODELO` no `.env` (relido a cada uso).
 - com o ComfyUI gerando, ninguém é interrompido: a LLM roda com o que sobra,
   mais devagar, e a tela avisa;
 - antes de mandar algo ao ComfyUI, o Creativa tira a LLM da VRAM.
+
+## Conversas (chat com a LLM local)
+
+A página **Conversas** é um chat livre com a mesma LLM, no estilo do
+ChatGPT: várias conversas na lista à esquerda (busca pelo título, renomear,
+excluir), a resposta chegando em tempo real, em markdown, com "Parar" e
+"Copiar". A conversa só nasce com a primeira mensagem, e o título vem sozinho
+(a LLM resume a primeira troca). Cada pergunta leva a conversa inteira — ou o
+fim dela, se passar do contexto (~16 mil tokens). A GPU se reveza com o
+ComfyUI do mesmo jeito que no assistente.
 
 ## Arquivos
 

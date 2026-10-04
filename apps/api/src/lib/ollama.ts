@@ -19,6 +19,15 @@ export function configOllama() {
   };
 }
 
+/** O contexto que se pede ao Ollama, em tokens. */
+const NUM_CTX = 16_384;
+
+/**
+ * Quanto de texto cabe com folga nesse contexto, em caracteres: em português
+ * dá ~3,5 caracteres por token, e sobra espaço para a resposta.
+ */
+export const LIMITE_CONTEXTO = 36_000;
+
 export type EstadoOllama = { noAr: boolean; modelo: string; modeloBaixado: boolean };
 
 /** O Ollama responde? E o modelo do .env já foi baixado (`ollama pull`)? */
@@ -36,6 +45,9 @@ export async function consultarOllama(): Promise<EstadoOllama> {
   }
 }
 
+/** Uma fala na conversa com a LLM, no formato do /api/chat do Ollama. */
+export type MensagemLlm = { role: "system" | "user" | "assistant"; content: string };
+
 /**
  * Escreve um texto com a LLM, em pedaços, conforme ela gera. Sem
  * "pensamento" (think: false): o que se quer é o prompt direto, rápido.
@@ -43,7 +55,21 @@ export async function consultarOllama(): Promise<EstadoOllama> {
  * O modelo fica carregado por 5 minutos depois: expandir de novo em seguida
  * não paga o carregamento outra vez.
  */
-export async function* gerarTexto(sistema: string, usuario: string, sinal?: AbortSignal): AsyncGenerator<string> {
+export function gerarTexto(sistema: string, usuario: string, sinal?: AbortSignal): AsyncGenerator<string> {
+  return conversar(
+    [
+      { role: "system", content: sistema },
+      { role: "user", content: usuario },
+    ],
+    sinal,
+  );
+}
+
+/**
+ * Manda uma conversa inteira (sistema, falas anteriores e a última) e devolve
+ * a resposta em pedaços. É o que o `gerarTexto` e a página Conversas usam.
+ */
+export async function* conversar(mensagens: MensagemLlm[], sinal?: AbortSignal): AsyncGenerator<string> {
   const { url, modelo } = configOllama();
   const r = await fetch(`${url}/api/chat`, {
     method: "POST",
@@ -56,12 +82,10 @@ export async function* gerarTexto(sistema: string, usuario: string, sinal?: Abor
       // Sem isto o Ollama usa 4096 tokens e, quando passa, corta o começo
       // calado — justo as instruções do assistente. O assistente, o workflow
       // e a descrição do projeto passam fácil disso. Com o gemma4 12B, 16k
-      // custa ~330 MB de VRAM a mais que 4k.
-      options: { num_ctx: 16_384 },
-      messages: [
-        { role: "system", content: sistema },
-        { role: "user", content: usuario },
-      ],
+      // custa ~330 MB de VRAM a mais que 4k. Quem manda conversa longa corta
+      // antes (`LIMITE_CONTEXTO`), para não perder as instruções.
+      options: { num_ctx: NUM_CTX },
+      messages: mensagens,
     }),
     signal: sinal,
   });

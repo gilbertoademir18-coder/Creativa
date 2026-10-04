@@ -13,6 +13,8 @@
   "dependencies": {
     "@mdxeditor/editor": "^4.3.2",
     "lucide-react": "^1.49.0",
+    "micromark": "^4.0.3",
+    "micromark-extension-gfm": "^3.0.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router": "^8.4.0"

@@ -154,6 +154,34 @@ async function comfyOcupado(): Promise<boolean | null> {
   }
 }
 
+/**
+ * Abre espaço na GPU para a LLM. Com o ComfyUI parado, os modelos dele saem
+ * da VRAM (/free) para a LLM rodar inteira na placa — a próxima geração
+ * recarrega do NVMe. Com o ComfyUI ocupado, ninguém é interrompido: a LLM
+ * roda com o que sobrar, mais devagar. Devolve se o ComfyUI estava ocupado,
+ * para a tela avisar (cabeçalho X-Comfy-Ocupado).
+ */
+export async function abrirEspacoParaLlm(): Promise<boolean> {
+  const ocupado = await comfyOcupado();
+  if (ocupado === false) {
+    await fetch(`${configComfy().url}/free`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ unload_models: true, free_memory: true }),
+      signal: AbortSignal.timeout(10_000),
+    }).catch(() => {});
+  }
+  return !!ocupado;
+}
+
+/** O Ollama no ar e com o modelo baixado, ou um 409 que diz o que fazer. */
+export async function exigirOllama() {
+  const estado = await consultarOllama();
+  if (!estado.noAr) throw new ErroHttp(409, "O Ollama não está no ar. Abra o Ollama pelo menu Iniciar (ele fica na bandeja).");
+  if (!estado.modeloBaixado) throw new ErroHttp(409, `O modelo ${estado.modelo} não foi baixado. Rode: ollama pull ${estado.modelo}`);
+  return estado;
+}
+
 export async function rotasAssistentes(app: FastifyInstance) {
   app.get("/", async (req) => {
     const f = validar(FiltroAssistentes, req.query);
@@ -215,10 +243,7 @@ export async function rotasAssistentes(app: FastifyInstance) {
    * Expande a ideia no prompt completo, com a LLM local. A resposta é o
    * texto puro, em streaming: a tela vai preenchendo a caixa conforme chega.
    *
-   * A GPU: com o ComfyUI parado, os modelos dele saem da VRAM (/free) para a
-   * LLM rodar inteira na placa — a próxima geração recarrega do NVMe. Com o
-   * ComfyUI ocupado, ninguém é interrompido: a LLM roda com o que sobrar
-   * (mais devagar), e o cabeçalho X-Comfy-Ocupado avisa a tela.
+   * A GPU se reveza com o ComfyUI: veja `abrirEspacoParaLlm`.
    */
   app.post("/:id/expandir", async (req, reply) => {
     const { id } = validar(z.object({ id: Uuid }), req.params);
@@ -230,20 +255,9 @@ export async function rotasAssistentes(app: FastifyInstance) {
     const campo = campoAssistivel(w);
     if (!campo) throw new ErroHttp(400, `O workflow “${w.nome}” não tem campo para o assistente escrever.`);
 
-    const estado = await consultarOllama();
-    if (!estado.noAr) throw new ErroHttp(409, "O Ollama não está no ar. Abra o Ollama pelo menu Iniciar (ele fica na bandeja).");
-    if (!estado.modeloBaixado) throw new ErroHttp(409, `O modelo ${estado.modelo} não foi baixado. Rode: ollama pull ${estado.modelo}`);
-
+    await exigirOllama();
     const dono = await contextoDoDono(p.assetId, p.shotId);
-    const ocupado = await comfyOcupado();
-    if (ocupado === false) {
-      await fetch(`${configComfy().url}/free`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ unload_models: true, free_memory: true }),
-        signal: AbortSignal.timeout(10_000),
-      }).catch(() => {});
-    }
+    const ocupado = await abrirEspacoParaLlm();
 
     // Do geral ao específico: o projeto (recortado para esta saída e para os
     // personagens que aparecem), depois o asset ou o vídeo, a cena e o shot.

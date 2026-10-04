@@ -193,11 +193,16 @@ O que isso muda nas escolhas:
 - **ComfyUI e a LLM se revezam na VRAM.** Antes de enviar ao ComfyUI, o
   Creativa descarrega a LLM (`descarregar()` em `lib/ollama.ts`); antes de
   expandir um prompt, libera o ComfyUI com `/free` se ele estiver parado.
-  Mantenha esse revezamento em qualquer coisa nova que use a GPU.
+  Mantenha esse revezamento em qualquer coisa nova que use a GPU. Na API,
+  toda rota que chama a LLM começa com `exigirOllama()` e
+  `abrirEspacoParaLlm()` (`rotas/assistentes.ts`), e o streaming de texto
+  na tela passa por `textoEmStreaming` (`api.ts`).
 - **O Ollama usa 4096 tokens de contexto se ninguém pedir outro** e corta o
-  começo calado (as instruções!). O `gerarTexto` pede `num_ctx` 16384: no
-  gemma4 12B custa só ~330 MB a mais. Confira com `GET :11434/api/ps`
-  (`context_length`).
+  começo calado (as instruções!). O `conversar` (e o `gerarTexto`) pede
+  `num_ctx` 16384: no gemma4 12B custa só ~330 MB a mais. Confira com
+  `GET :11434/api/ps` (`context_length`). Conversa longa (página Conversas)
+  é cortada antes, pelo começo, em `LIMITE_CONTEXTO` caracteres
+  (`lib/ollama.ts`).
 - 32 GB de RAM seguram um offload, mas modelos de vídeo grandes + offload
   chegam perto do limite.
 - **Personagem de anime: Anima Aesthetic v1.1** (2B, ~6 GB de VRAM com o

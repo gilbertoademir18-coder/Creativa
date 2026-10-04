@@ -449,3 +449,42 @@ model Workflow {
   @@index([tipoGeracaoId])
   @@map("workflow")
 }
+
+enum PapelMensagem {
+  USUARIO
+  ASSISTENTE
+
+  @@map("papel_mensagem")
+}
+
+/// Uma conversa livre com a LLM local (página Conversas), como um chat.
+/// Não tem projeto nem dono: é um caderno de rascunho à parte.
+model Conversa {
+  id        String   @id @default(uuid()) @db.Uuid
+  /// Nasce da primeira mensagem; a pessoa pode renomear.
+  titulo    String
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz
+  /// Muda a cada mensagem: a lista mostra as mais recentes em cima.
+  editadoEm DateTime @updatedAt @map("editado_em") @db.Timestamptz
+
+  /// Apagar a conversa leva as mensagens junto.
+  mensagens MensagemConversa[]
+
+  @@index([editadoEm])
+  @@map("conversa")
+}
+
+model MensagemConversa {
+  id         String        @id @default(uuid()) @db.Uuid
+  conversaId String        @map("conversa_id") @db.Uuid
+  papel      PapelMensagem
+  conteudo   String
+  /// O modelo que respondeu (só nas do assistente).
+  modelo     String?
+  criadoEm   DateTime      @default(now()) @map("criado_em") @db.Timestamptz
+
+  conversa Conversa @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+
+  @@index([conversaId, criadoEm])
+  @@map("mensagem_conversa")
+}

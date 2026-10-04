@@ -86,6 +86,12 @@ body {
 .texto-md th {
   @apply bg-zinc-900 font-semibold;
 }
+.texto-md pre {
+  @apply overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm leading-normal;
+}
+.texto-md pre code {
+  @apply bg-transparent p-0;
+}
 
 /*
  * O MDXEditor no tema do app: o accent dele é azul (Radix); aqui vira o

@@ -9,6 +9,8 @@ import type {
   WorkflowDetalhe,
   WorkflowResumo,
   Cena,
+  Conversa,
+  ConversaDetalhe,
   Execucao,
   ListaVideos,
   VideoDetalhe,
@@ -264,31 +266,69 @@ export const assistentesApi = {
     eventos: { aoComecar?: (comfyOcupado: boolean) => void; aoPedaco: (texto: string) => void },
     sinal?: AbortSignal,
   ): Promise<string> => {
-    let resposta: Response;
-    try {
-      resposta = await fetch(`/api/assistentes/${id}/expandir`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(pedido),
-        signal: sinal,
-      });
-    } catch (e) {
-      if (sinal?.aborted) throw e;
-      throw new Error("Sem conexão com o servidor. O Creativa está rodando?");
-    }
-    if (!resposta.ok) await lerResposta(resposta);
-    if (!resposta.body) throw new Error("O servidor respondeu sem texto.");
-    eventos.aoComecar?.(resposta.headers.get("X-Comfy-Ocupado") === "1");
-    const leitor = resposta.body.pipeThrough(new TextDecoderStream()).getReader();
-    let tudo = "";
-    while (true) {
-      const { value, done } = await leitor.read();
-      if (done) break;
-      tudo += value;
-      eventos.aoPedaco(value);
-    }
-    return tudo;
+    return textoEmStreaming(`/api/assistentes/${id}/expandir`, pedido, eventos, sinal);
   },
+};
+
+/**
+ * Um POST cuja resposta é texto da LLM em streaming: entrega os pedaços
+ * conforme chegam e devolve o texto inteiro. `aoComecar` diz se o ComfyUI
+ * estava ocupado (aí a LLM vai mais devagar) e passa os outros cabeçalhos.
+ */
+async function textoEmStreaming(
+  url: string,
+  corpo: unknown,
+  eventos: { aoComecar?: (comfyOcupado: boolean, cabecalhos: Headers) => void; aoPedaco: (texto: string) => void },
+  sinal?: AbortSignal,
+): Promise<string> {
+  let resposta: Response;
+  try {
+    resposta = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(corpo),
+      signal: sinal,
+    });
+  } catch (e) {
+    if (sinal?.aborted) throw e;
+    throw new Error("Sem conexão com o servidor. O Creativa está rodando?");
+  }
+  if (!resposta.ok) await lerResposta(resposta);
+  if (!resposta.body) throw new Error("O servidor respondeu sem texto.");
+  eventos.aoComecar?.(resposta.headers.get("X-Comfy-Ocupado") === "1", resposta.headers);
+  const leitor = resposta.body.pipeThrough(new TextDecoderStream()).getReader();
+  let tudo = "";
+  while (true) {
+    const { value, done } = await leitor.read();
+    if (done) break;
+    tudo += value;
+    eventos.aoPedaco(value);
+  }
+  return tudo;
+}
+
+export const conversasApi = {
+  listar: (busca?: string) => api<Conversa[]>(`/conversas${consulta({ busca })}`),
+  ler: (id: string) => api<ConversaDetalhe>(`/conversas/${id}`),
+  renomear: (id: string, titulo: string) => api<Conversa>(`/conversas/${id}`, { method: "PUT", corpo: { titulo } }),
+  excluir: (id: string) => api<void>(`/conversas/${id}`, { method: "DELETE" }),
+  /**
+   * Manda a mensagem; a resposta chega em pedaços. Sem conversa, começa uma
+   * nova: o id dela chega em `aoComecar`. A pergunta e a resposta ficam
+   * gravadas na conversa.
+   */
+  enviar: (
+    conversaId: string | null,
+    texto: string,
+    eventos: { aoComecar?: (comfyOcupado: boolean, conversaId: string) => void; aoPedaco: (texto: string) => void },
+    sinal?: AbortSignal,
+  ) =>
+    textoEmStreaming(
+      "/api/conversas/mensagens",
+      { conversaId, texto },
+      { aoPedaco: eventos.aoPedaco, aoComecar: (ocupado, h) => eventos.aoComecar?.(ocupado, h.get("X-Conversa-Id") ?? "") },
+      sinal,
+    ),
 };
 
 export const outputsApi = {
