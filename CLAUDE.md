@@ -115,7 +115,21 @@ as cenas (`SetNull`), nunca as apaga.
 - **Tipos de geração e workflows são cadastros do usuário** (páginas Tipos de
   geração e Workflows; tabelas `tipo_geracao` e `workflow`) — não existe mais
   workflow em código. Como dados do usuário, **não crie nem edite** registros
-  deles sem pedido; workflow novo é o usuário quem importa pela tela.
+  deles sem pedido. A exceção é a skill `/workflow-creativa`: invocá-la é o
+  pedido, e ela cria ou altera tipos, workflows, assistentes, um asset, cena
+  ou shot de exemplo e o rascunho do Gerador, **só** pelos scripts dela
+  (`creativa.mjs`, que passa pela API), sem apagar nada.
+- **O rascunho do Gerador** (`rascunho_gerador` em `asset` e `shot`) guarda
+  onde o Gerador parou: tipo, workflow, valores, assistente (pelo nome) e
+  ideia. O Gerador abre por ele (antes do último output) e salva sozinho.
+  Rascunho que existe é do usuário: não passe por cima.
+- **Templates oficiais do ComfyUI** ficam em
+  `C:\IA\ComfyUI\python_embeded\Lib\site-packages\comfyui_workflow_templates_json\templates`
+  (os `api_*` são serviços pagos). Eles trazem os números certos de cada
+  modelo e, nos loaders, o link de download de cada arquivo. O `comfy.mjs`
+  da skill `workflow-creativa` lê os templates, confere um grafo contra o
+  `/object_info` sem rodar nada e salva workflows na lista do ComfyUI
+  (`user/default/workflows`, formato de tela).
 - O workflow é **genérico**: `ferramenta` (hoje só `comfyui`), o `grafo` como
   a ferramenta exporta (ComfyUI: o "Export (API)"), os `campos` e as `saidas`.
   Cada campo tem **alvos** (nó + entrada do grafo); gerar é copiar o grafo e
@@ -209,6 +223,9 @@ O que isso muda nas escolhas:
   `montarSistema`/`campoAssistivel` (`rotas/assistentes.ts`) e `gerarTexto`
   (`lib/ollama.ts`), monta o sistema com um `.md` de `docs/assistentes/` e
   confere palavras e avisos do campo. Depois, `descarregar()` para devolver a VRAM.
+- **Conferir um grafo do ComfyUI sem rodar:**
+  `node .claude/skills/workflow-creativa/comfy.mjs validar <grafo-api.json>`
+  (nós, entradas, ligações, opções, modelos baixados).
 - **Diga explicitamente o que você não conseguiu verificar.**
 
 # Pegadinhas do terminal nesta máquina

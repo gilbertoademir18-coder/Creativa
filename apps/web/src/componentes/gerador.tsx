@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { assistentesApi, geradorApi, outputsApi, type Dono } from "../api.ts";
 import { useCarregar } from "../hooks.ts";
-import type { Execucao, OutputDetalhe, TipoCatalogo } from "../tipos.ts";
+import type { Execucao, OutputDetalhe, RascunhoGerador, TipoCatalogo } from "../tipos.ts";
 import { BarraAssistente, limparTextoLlm, SeletorAssistente } from "./assistente-prompt.tsx";
 import { CampoDinamico, SeletorQuantidade, valoresPara } from "./campos-workflow.tsx";
 import { CartaoOutput, GRADE_OUTPUTS, VisorOutputs } from "./outputs.tsx";
@@ -17,6 +17,10 @@ import { Aviso, Botao, Campo, Carregando, Seletor, Vazio } from "./ui.tsx";
  * O tipo e o workflow vêm escolhidos pelo dono (o catálogo só oferece o que
  * serve para ele — Cenário tem Placa de cenário...). O formulário não se
  * esvazia ao gerar: muda uma palavra do prompt e gera de novo.
+ *
+ * O formulário fica salvo no dono (o rascunho do Gerador): sai do asset,
+ * volta amanhã, e está tudo como deixou — workflow, assistente, ideia e
+ * campos. É também onde a skill de workflows deixa um exemplo pronto.
  */
 
 /** O que está no formulário do Gerador. */
@@ -43,6 +47,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     [dono.assetId, dono.shotId],
   );
   const execucoes = useCarregar(() => geradorApi.execucoes(dono), [dono.assetId, dono.shotId]);
+  const salvo = useCarregar(() => geradorApi.rascunho(dono), [dono.assetId, dono.shotId]);
 
   const [config, setConfig] = useState<Config | null>(null);
   const [quantidade, setQuantidade] = useState(1);
@@ -143,16 +148,20 @@ export function PainelGerador({ dono }: { dono: Dono }) {
   }
 
   /*
-   * O formulário começa com as configurações do output mais recente do dono
-   * (seed aleatória de novo): é continuar de onde parou. Sem output, os
-   * padrões do primeiro tipo do catálogo. Com `?usar=<output>` na URL (vindo
-   * da galeria geral), as daquele output.
+   * O formulário começa do rascunho salvo: é continuar de onde parou. Sem
+   * rascunho, das configurações do output mais recente do dono (seed
+   * aleatória de novo); sem output, dos padrões do primeiro tipo do catálogo.
+   * Com `?usar=<output>` na URL (vindo da galeria geral), as daquele output.
    */
   const iniciado = useRef<string | null>(null);
   const chaveDono = dono.assetId ?? dono.shotId ?? "";
+  /** O último rascunho que está no banco, para não salvar o mesmo de novo. */
+  const ultimoSalvo = useRef<string | null>(null);
   useEffect(() => {
-    if (!catalogo.dados || !outputs.dados || iniciado.current === chaveDono) return;
+    if (!catalogo.dados || !outputs.dados || (!salvo.dados && !salvo.erro) || iniciado.current === chaveDono) return;
     iniciado.current = chaveDono;
+    const r = salvo.dados?.rascunho;
+    ultimoSalvo.current = r ? JSON.stringify(r) : null;
     const usar = params.get("usar");
     if (usar) {
       outputsApi
@@ -166,6 +175,12 @@ export function PainelGerador({ dono }: { dono: Dono }) {
       }, { replace: true, preventScrollReset: true, state: window.history.state?.usr });
       return;
     }
+    if (r) {
+      setConfig(ajustar({ tipo: r.tipo, workflow: r.workflow, valores: r.valores }, catalogo.dados));
+      setIdeia(r.ideia);
+      assistenteDesejado.current = r.assistente;
+      return;
+    }
     const ultimo = outputs.dados[0];
     if (ultimo) {
       outputsApi
@@ -175,7 +190,29 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     } else {
       setConfig(ajustar({ tipo: "", workflow: "", valores: {} }, catalogo.dados));
     }
-  }, [catalogo.dados, outputs.dados, chaveDono]);
+  }, [catalogo.dados, outputs.dados, salvo.dados, salvo.erro, chaveDono]);
+
+  /*
+   * Salva o rascunho sozinho, um pouco depois da última mudança. Não salva
+   * enquanto a LLM escreve (o prompt muda a cada pedaço) nem enquanto a lista
+   * de assistentes carrega (o assistente escolhido ainda não é conhecido, e
+   * salvaria "nenhum" por cima do que estava).
+   */
+  const assistenteNome = disponiveis.dados?.find((a) => a.id === assistenteId)?.nome ?? null;
+  useEffect(() => {
+    if (!config || expandindo || iniciado.current !== chaveDono) return;
+    if (disponiveis.carregando || assistenteDesejado.current !== null) return;
+    const r: RascunhoGerador = { tipo: config.tipo, workflow: config.workflow, valores: config.valores, assistente: assistenteNome, ideia };
+    const json = JSON.stringify(r);
+    if (json === ultimoSalvo.current) return;
+    const t = setTimeout(() => {
+      geradorApi
+        .salvarRascunho(dono, r)
+        .then(() => (ultimoSalvo.current = json))
+        .catch(() => {}); // Rascunho é conveniência: falhar não atrapalha gerar.
+    }, 800);
+    return () => clearTimeout(t);
+  }, [config, assistenteNome, ideia, expandindo, disponiveis.carregando, chaveDono]);
 
   /** Leva as configurações de um output ao formulário. `seedAleatoria`: não repete a seed dele. */
   function aplicar(o: OutputDetalhe, rolar = true, seedAleatoria = false) {

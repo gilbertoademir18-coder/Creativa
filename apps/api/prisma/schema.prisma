@@ -125,14 +125,17 @@ model VersaoDescricao {
 
 /// Personagem, cenário, objeto... Pode pertencer a um projeto ou estar solto.
 model Asset {
-  id        String    @id @default(uuid()) @db.Uuid
+  id              String    @id @default(uuid()) @db.Uuid
   /// Apagar o projeto solta o asset, não o apaga.
-  projetoId String?   @map("projeto_id") @db.Uuid
-  tipo      TipoAsset
-  nome      String
-  descricao String?
-  criadoEm  DateTime  @default(now()) @map("criado_em") @db.Timestamptz
-  editadoEm DateTime  @updatedAt @map("editado_em") @db.Timestamptz
+  projetoId       String?   @map("projeto_id") @db.Uuid
+  tipo            TipoAsset
+  nome            String
+  descricao       String?
+  /// Onde o Gerador deste asset parou: tipo, workflow, valores, assistente
+  /// (pelo nome) e ideia. Salvo sozinho enquanto se mexe no formulário.
+  rascunhoGerador Json?     @map("rascunho_gerador")
+  criadoEm        DateTime  @default(now()) @map("criado_em") @db.Timestamptz
+  editadoEm       DateTime  @updatedAt @map("editado_em") @db.Timestamptz
 
   projeto     Projeto?     @relation(fields: [projetoId], references: [id], onDelete: SetNull)
   referencias Referencia[]
@@ -213,14 +216,16 @@ model Video {
 
 /// Um plano da cena. Toda cena nasce com um; todo shot tem cena.
 model Shot {
-  id        String   @id @default(uuid()) @db.Uuid
-  cenaId    String   @map("cena_id") @db.Uuid
-  nome      String
-  descricao String?
+  id              String   @id @default(uuid()) @db.Uuid
+  cenaId          String   @map("cena_id") @db.Uuid
+  nome            String
+  descricao       String?
   /// Posição na cena, a partir de 0.
-  ordem     Int
-  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz
-  editadoEm DateTime @updatedAt @map("editado_em") @db.Timestamptz
+  ordem           Int
+  /// Onde o Gerador deste shot parou (o mesmo formato do asset).
+  rascunhoGerador Json?    @map("rascunho_gerador")
+  criadoEm        DateTime @default(now()) @map("criado_em") @db.Timestamptz
+  editadoEm       DateTime @updatedAt @map("editado_em") @db.Timestamptz
 
   /// Apagar a cena leva os shots — mas só os vazios: referência e output
   /// presos a um shot barram a cascata (Restrict neles).

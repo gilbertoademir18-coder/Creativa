@@ -23,6 +23,7 @@ import type {
   TipoAsset,
   TipoReferencia,
   TipoCatalogo,
+  RascunhoGerador,
   Vinculo,
 } from "./tipos.ts";
 
@@ -196,6 +197,11 @@ export const geradorApi = {
   execucoes: (dono: Dono) =>
     api<Execucao[]>(`/gerador/execucoes${consulta({ asset: dono.assetId, shot: dono.shotId })}`),
   cancelar: (id: string) => api<{ ok: true }>(`/gerador/execucoes/${id}/cancelar`, { method: "POST" }),
+  /** Onde o Gerador do dono parou (null: nunca foi salvo). */
+  rascunho: (dono: Dono) =>
+    api<{ rascunho: RascunhoGerador | null }>(`/gerador/rascunho${consulta({ asset: dono.assetId, shot: dono.shotId })}`),
+  salvarRascunho: (dono: Dono, rascunho: RascunhoGerador | null) =>
+    api<{ rascunho: RascunhoGerador | null }>("/gerador/rascunho", { method: "PUT", corpo: { ...dono, rascunho } }),
 };
 
 export type TipoGeracaoNovo = Pick<TipoGeracao, "nome" | "descricao" | "saida" | "tiposAsset" | "shot">;

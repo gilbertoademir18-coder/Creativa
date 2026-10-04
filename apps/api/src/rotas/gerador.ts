@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { catalogoPara, conferir, type DonoGeracao, lerCampos, seedDe } from "../geracao/catalogo.ts";
 import { cancelarExecucao, executar, MAX_POR_ENVIO, progressoDe } from "../geracao/execucao.ts";
+import { Prisma } from "../generated/prisma/client.ts";
 import { prisma } from "../lib/prisma.ts";
 import { ErroHttp, Uuid, UuidOpcional, validar } from "../lib/validacao.ts";
 
@@ -31,6 +32,24 @@ const Pedido = z
   })
   .refine((d) => !!d.assetId !== !!d.shotId, "o Gerador é de um asset ou de um shot");
 
+/**
+ * Onde o Gerador de um dono parou. O assistente vai pelo nome (como nos
+ * outputs): id muda se ele for recriado, o nome é o que a pessoa reconhece.
+ * Nada aqui é conferido contra o catálogo — a tela acerta ao abrir (tipo ou
+ * workflow que sumiu cai para o primeiro).
+ */
+const Rascunho = z.object({
+  tipo: z.string().max(200),
+  workflow: z.string().max(200),
+  valores: z.record(z.string(), z.unknown()).default({}),
+  assistente: z.string().max(200).nullish().transform((t) => t || null),
+  ideia: z.string().max(10_000).nullish().transform((t) => t || null),
+});
+
+const PedidoRascunho = z
+  .object({ assetId: UuidOpcional, shotId: UuidOpcional, rascunho: Rascunho.nullable() })
+  .refine((d) => !!d.assetId !== !!d.shotId, "o Gerador é de um asset ou de um shot");
+
 /** O dono como o catálogo enxerga: o tipo do asset importa (só Cenário tem Placa...). */
 async function donoDe(assetId: string | null, shotId: string | null): Promise<DonoGeracao> {
   if (assetId) {
@@ -50,6 +69,25 @@ export async function rotasGerador(app: FastifyInstance) {
   app.get("/catalogo", async (req) => {
     const { asset, shot } = validar(Dono, req.query);
     return catalogoPara(await donoDe(asset, shot));
+  });
+
+  /** Onde o Gerador do dono parou (null: nunca foi salvo). */
+  app.get("/rascunho", async (req) => {
+    const { asset, shot } = validar(Dono, req.query);
+    const d = asset
+      ? await prisma.asset.findUnique({ where: { id: asset }, select: { rascunhoGerador: true } })
+      : await prisma.shot.findUnique({ where: { id: shot! }, select: { rascunhoGerador: true } });
+    if (!d) throw new ErroHttp(404, asset ? "Asset não encontrado." : "Shot não encontrado.");
+    return { rascunho: d.rascunhoGerador ?? null };
+  });
+
+  /** Guarda onde o Gerador parou. A tela chama sozinha, enquanto se mexe no formulário. */
+  app.put("/rascunho", { bodyLimit: 2 * 1024 * 1024 }, async (req) => {
+    const { assetId, shotId, rascunho } = validar(PedidoRascunho, req.body);
+    const data = { rascunhoGerador: rascunho ? (rascunho as Prisma.InputJsonObject) : Prisma.DbNull };
+    if (assetId) await prisma.asset.update({ where: { id: assetId }, data, select: { id: true } });
+    else await prisma.shot.update({ where: { id: shotId! }, data, select: { id: true } });
+    return { rascunho };
   });
 
   /** "Gerar": confere o pedido contra o catálogo e manda `quantidade` execuções ao ComfyUI. */

@@ -52,6 +52,17 @@ que foi usado para gerá-la — tipo, workflow, modelo, prompt, seed, os outros
 campos e o grafo enviado ao ComfyUI. Clicar num output mostra isso, e "Usar
 estas configurações" devolve tudo ao Gerador.
 
+O Gerador **lembra onde parou** em cada asset e shot (o rascunho do Gerador):
+workflow, assistente, ideia e campos ficam salvos enquanto você mexe, e
+voltam quando você abre o asset de novo.
+
+Para montar um workflow novo, use a skill **`/workflow-creativa`** do Claude
+Code, por exemplo: *"para o projeto X, quero um workflow e assistente para
+imagens de personagens"*. Ela lê a descrição do projeto, escolhe o modelo que
+cabe nesta máquina (e sugere o download), monta o workflow no ComfyUI e
+cadastra o tipo, o workflow, o assistente e um asset de exemplo com o Gerador
+pronto para expandir. Ela não roda nada na GPU sem você pedir.
+
 | Tabela | O que guarda |
 | --- | --- |
 | `projeto` | O trabalho: "Poker de Camila", "Anime Katsuragi" |

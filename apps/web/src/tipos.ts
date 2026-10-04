@@ -254,6 +254,15 @@ export type WorkflowCatalogo = {
 
 export type SaidaGeracao = "IMAGEM" | "VIDEO" | "AUDIO";
 
+/** Onde o Gerador de um asset ou shot parou. O assistente vai pelo nome. */
+export type RascunhoGerador = {
+  tipo: string;
+  workflow: string;
+  valores: Record<string, unknown>;
+  assistente: string | null;
+  ideia: string | null;
+};
+
 export type TipoCatalogo = {
   chave: string;
   nome: string;
