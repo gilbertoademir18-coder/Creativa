@@ -166,7 +166,7 @@ títulos fixos), e vão só as seções que servem à saída do workflow e as fi
 dos personagens citados na geração. Para escrever uma com o Claude Code, use
 a skill `/descricao-projeto`: ela parte da versão atual e grava sozinha uma
 versão nova. Toda gravação, pela tela ou pela skill, entra no histórico, e o
-botão **Versões** da janela da descrição mostra e restaura as antigas.
+painel de versões, à esquerda na janela da descrição, mostra e restaura as antigas.
 
 **A LLM** é o [Ollama](https://ollama.com) com o `gemma4:12b-it-qat` (~7 GB),
 nesta máquina:

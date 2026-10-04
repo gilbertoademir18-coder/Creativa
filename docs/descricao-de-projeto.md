@@ -8,7 +8,7 @@ títulos e manda ao assistente só as seções que servem àquela geração.
 Para escrever ou revisar uma descrição com o Claude Code, use a skill
 `/descricao-projeto` (em `.claude/skills/descricao-projeto/`). Ela segue este
 documento, parte sempre da versão mais recente e grava uma versão nova. O
-histórico fica no botão **Versões**, na janela da descrição do projeto.
+histórico fica no painel de versões, à esquerda na janela da descrição do projeto.
 
 ## O modelo
 

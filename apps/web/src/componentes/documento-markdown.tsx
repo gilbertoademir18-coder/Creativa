@@ -1,5 +1,4 @@
-import { History } from "lucide-react";
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { formatarData } from "../rotulos.ts";
 import type { VersaoDescricao } from "../tipos.ts";
 import { Modal } from "./modal.tsx";
@@ -23,9 +22,9 @@ export type Historico = {
  * Fechar com alterações não salvas pergunta antes — texto longo perdido por
  * um clique no × dói.
  *
- * Com `historico`, o botão "Versões" abre a lista ao lado do editor. Abrir
- * uma versão antiga põe o texto dela no editor; salvar a restaura como
- * versão nova (nada do histórico se reescreve).
+ * Com `historico`, a lista de versões fica sempre à vista, à esquerda do
+ * editor, com rolagem própria. Abrir uma versão antiga põe o texto dela no
+ * editor; salvar a restaura como versão nova (nada do histórico se reescreve).
  */
 export function ModalDocumento({
   titulo,
@@ -54,14 +53,24 @@ export function ModalDocumento({
   // A versão antiga aberta no editor (null: o texto atual) e o texto dela.
   const [vendo, setVendo] = useState<{ versao: VersaoDescricao; texto: string } | null>(null);
   const [versoes, setVersoes] = useState<VersaoDescricao[] | null>(null);
-  const [painel, setPainel] = useState(false);
   const [carregandoVersao, setCarregandoVersao] = useState<number | null>(null);
   // O MDXEditor só lê o texto ao montar: trocar de versão monta outro.
   const [chaveEditor, setChaveEditor] = useState(0);
 
-  const alterado = texto.trim() !== (valor ?? "").trim();
+  // O texto que entrou no editor (a atual ou a versão aberta), do jeito que o
+  // editor o reescreveu ao carregar: é com ele que se compara o que a pessoa
+  // mexeu. Comparar com o texto do banco acusaria mudança sem ninguém tocar.
+  const [base, setBase] = useState(valor ?? "");
+
   /** Mexeu no que está no editor (a atual ou a versão antiga aberta)? */
-  const editado = texto.trim() !== (vendo ? vendo.texto : (valor ?? "")).trim();
+  const editado = texto.trim() !== base.trim();
+  /** Tem algo a salvar: uma edição, ou uma versão antiga aberta para restaurar. */
+  const alterado = vendo ? texto.trim() !== (valor ?? "").trim() : editado;
+
+  function mudou(md: string, normalizacao: boolean) {
+    setTexto(md);
+    if (normalizacao) setBase(md);
+  }
 
   // Reabriu: começa do que está salvo.
   const [ultimoAberto, setUltimoAberto] = useState(aberto);
@@ -69,30 +78,36 @@ export function ModalDocumento({
     setUltimoAberto(aberto);
     if (aberto) {
       setTexto(valor ?? "");
+      setBase(valor ?? "");
       setErro(null);
       setVendo(null);
-      setPainel(false);
+      setVersoes(null);
     }
   }
+
+  // A lista de versões carrega a cada abertura: a skill pode ter gravado uma nova.
+  const temHistorico = !!historico;
+  useEffect(() => {
+    if (!aberto || !temHistorico) return;
+    let vivo = true;
+    historico!.listar().then(
+      (v) => vivo && setVersoes(v),
+      (e: Error) => vivo && setErro(e.message),
+    );
+    return () => {
+      vivo = false;
+    };
+    // `historico` é um objeto novo a cada render; o que importa é abrir.
+  }, [aberto, temHistorico]);
 
   function fechar() {
     if (alterado && !window.confirm("O texto tem alterações não salvas. Fechar e descartar?")) return;
     aoFechar();
   }
 
-  async function alternarPainel() {
-    if (painel) return setPainel(false);
-    setPainel(true);
-    setVersoes(null);
-    try {
-      setVersoes(await historico!.listar());
-    } catch (e) {
-      setErro((e as Error).message);
-    }
-  }
-
   function trocarTexto(novo: string, versao: VersaoDescricao | null) {
     setTexto(novo);
+    setBase(novo);
     setVendo(versao && { versao, texto: novo });
     setChaveEditor((k) => k + 1);
   }
@@ -137,7 +152,43 @@ export function ModalDocumento({
   return (
     <Modal aberto={aberto} titulo={titulo} largura="enorme" aoFechar={fechar}>
       <div className="flex flex-col gap-4">
-        <div className={painel ? "grid grid-cols-[minmax(0,1fr)_20rem] gap-4" : ""}>
+        <div className={historico ? "grid grid-cols-[20rem_minmax(0,1fr)] gap-4" : ""}>
+          {historico && (
+            // Sticky e com altura da janela: o editor rola o corpo da modal, a lista rola sozinha.
+            <aside className="sticky top-0 flex max-h-[calc(90vh-10rem)] flex-col self-start overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
+              <h3 className="border-b border-zinc-800 px-4 py-2.5 text-xs font-semibold tracking-wide text-zinc-400 uppercase">
+                Versões
+              </h3>
+              <div className="flex min-h-0 flex-col gap-1 overflow-y-auto p-2">
+                {!versoes && <Carregando />}
+                {versoes?.length === 0 && <p className="px-2 py-3 text-sm text-zinc-500">Nenhuma versão salva ainda.</p>}
+                {versoes?.map((v) => {
+                  const ativa = vendo ? vendo.versao.numero === v.numero : v.numero === historico.atual;
+                  return (
+                    <button
+                      key={v.numero}
+                      type="button"
+                      onClick={() => abrirVersao(v.numero)}
+                      disabled={carregandoVersao !== null}
+                      className={`flex shrink-0 flex-col gap-1 rounded-lg px-3 py-2 text-left text-sm transition-colors ${ativa ? "bg-violet-950/60 ring-1 ring-violet-700" : "hover:bg-zinc-800"}`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <b className="text-zinc-100">v{v.numero}</b>
+                        <Etiqueta className={v.origem === "CLAUDE" ? "bg-orange-950/60 text-orange-300" : "bg-zinc-800 text-zinc-300"}>
+                          {v.origem === "CLAUDE" ? "Claude" : "Tela"}
+                        </Etiqueta>
+                        {v.numero === historico.atual && <Etiqueta className="bg-emerald-950/60 text-emerald-300">atual</Etiqueta>}
+                        <span className="ml-auto text-xs text-zinc-500">
+                          {carregandoVersao === v.numero ? "abrindo..." : formatarData(v.criadoEm)}
+                        </span>
+                      </span>
+                      {v.nota && <span className="text-xs text-zinc-400">{v.nota}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </aside>
+          )}
           <div className="flex min-w-0 flex-col gap-3">
             {vendo && (
               <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-900/60 bg-amber-950/30 px-4 py-2.5 text-sm text-amber-200">
@@ -152,50 +203,15 @@ export function ModalDocumento({
             )}
             <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
               <Suspense fallback={<Carregando />}>
-                <EditorMarkdown key={chaveEditor} valor={texto} aoMudar={setTexto} placeholder={placeholder} />
+                <EditorMarkdown key={chaveEditor} valor={texto} aoMudar={mudou} placeholder={placeholder} />
               </Suspense>
             </div>
           </div>
-          {painel && (
-            <aside className="flex max-h-[65vh] flex-col gap-1 overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900 p-2">
-              {!versoes && <Carregando />}
-              {versoes?.length === 0 && <p className="px-2 py-3 text-sm text-zinc-500">Nenhuma versão salva ainda.</p>}
-              {versoes?.map((v) => {
-                const ativa = vendo ? vendo.versao.numero === v.numero : v.numero === historico!.atual;
-                return (
-                  <button
-                    key={v.numero}
-                    type="button"
-                    onClick={() => abrirVersao(v.numero)}
-                    disabled={carregandoVersao !== null}
-                    className={`flex flex-col gap-1 rounded-lg px-3 py-2 text-left text-sm transition-colors ${ativa ? "bg-violet-950/60 ring-1 ring-violet-700" : "hover:bg-zinc-800"}`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <b className="text-zinc-100">v{v.numero}</b>
-                      <Etiqueta className={v.origem === "CLAUDE" ? "bg-orange-950/60 text-orange-300" : "bg-zinc-800 text-zinc-300"}>
-                        {v.origem === "CLAUDE" ? "Claude" : "Tela"}
-                      </Etiqueta>
-                      {v.numero === historico!.atual && <Etiqueta className="bg-emerald-950/60 text-emerald-300">atual</Etiqueta>}
-                      <span className="ml-auto text-xs text-zinc-500">
-                        {carregandoVersao === v.numero ? "abrindo..." : formatarData(v.criadoEm)}
-                      </span>
-                    </span>
-                    {v.nota && <span className="text-xs text-zinc-400">{v.nota}</span>}
-                  </button>
-                );
-              })}
-            </aside>
-          )}
         </div>
         {erro && <Aviso>{erro}</Aviso>}
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs text-zinc-500">{situacao}</span>
           <div className="flex gap-2">
-            {historico && (
-              <Botao variante={painel ? "secundario" : "fantasma"} icone={<History className="size-4" />} onClick={alternarPainel}>
-                Versões
-              </Botao>
-            )}
             <Botao variante="fantasma" onClick={fechar}>
               Fechar
             </Botao>

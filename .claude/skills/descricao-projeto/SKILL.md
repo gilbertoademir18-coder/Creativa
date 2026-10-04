@@ -71,8 +71,8 @@ O usuário é criativo, não quer um formulário. Então:
 ## 4. Entrega: grave você mesmo, como versão nova
 
 O usuário quer que a skill grave sozinha. É seguro porque toda gravação vira
-uma versão nova e as antigas ficam no histórico do projeto (botão
-**Versões**, na janela da descrição). Então, quando o texto estiver pronto:
+uma versão nova e as antigas ficam no histórico do projeto (painel de
+versões, à esquerda na janela da descrição). Então, quando o texto estiver pronto:
 
 1. Escreva a descrição **completa**, não só o trecho que mudou, num `.md` no
    scratchpad. Mexa só no que foi pedido e mantenha o resto palavra por palavra.

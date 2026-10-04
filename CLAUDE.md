@@ -78,6 +78,11 @@ as cenas (`SetNull`), nunca as apaga.
   na área de transferência (uma `<div>` por linha → quebras dobradas). O
   componente intercepta o colar e, se o texto tem cara de markdown, usa
   `insertMarkdown`. Mexeu no editor? Teste colando um `.md` copiado do VS Code.
+- O MDXEditor reescreve o markdown ao carregar (junta as linhas de um
+  parágrafo, troca escapes) e avisa pelo `onChange` com `normalizacao = true`.
+  Para saber se a pessoa mexeu, compare com o texto normalizado (a `base` da
+  `ModalDocumento`), nunca com o do banco: senão "alterações não salvas" aparece
+  sem ninguém tocar.
 - Onde só cabe um resumo (cartão, cabeçalho), mostre `resumoMarkdown()`, nunca
   o markdown cru com `#` e `**`.
 - A descrição do projeto é um documento à parte: modal própria e rota própria

@@ -49,7 +49,12 @@ export default function EditorMarkdown({
   placeholder,
 }: {
   valor: string;
-  aoMudar: (md: string) => void;
+  /**
+   * `normalizacao`: não foi edição, foi o editor reescrevendo o texto que
+   * recebeu no formato dele (junta as linhas de um parágrafo, troca escapes).
+   * Acontece ao montar, e o texto "muda" sem ninguém mexer.
+   */
+  aoMudar: (md: string, normalizacao: boolean) => void;
   placeholder?: string;
 }) {
   const editor = useRef<MDXEditorMethods>(null);
@@ -68,7 +73,7 @@ export default function EditorMarkdown({
       <MDXEditor
         ref={editor}
         markdown={valor}
-        onChange={(md) => aoMudar(md)}
+        onChange={(md, normalizacao) => aoMudar(md, normalizacao)}
         placeholder={placeholder}
         autoFocus
         className="dark-theme editor-md"
