@@ -87,6 +87,11 @@ as cenas (`SetNull`), nunca as apaga.
   o markdown cru com `#` e `**`.
 - A descrição do projeto é um documento à parte: modal própria e rota própria
   (`PUT /api/projetos/:id/descricao`). O "Editar" do projeto mexe só no nome.
+- **Toda página de dentro de um projeto** (asset, vídeo, cena, shot — e as
+  que vierem) tem o botão **"Descrição do projeto"** no cabeçalho:
+  `BotaoDescricaoProjeto` (`componentes/descricao-projeto.tsx`), que busca o
+  projeto ao clicar e abre a mesma janela, com as versões. Sem projeto, ele
+  não aparece.
 - **A descrição do projeto tem versões** (`versao_descricao`): cada gravação
   com texto diferente vira versão nova; versões não se editam nem se apagam, e
   restaurar é gravar o texto antigo de novo. Quem grava manda `base` (a
@@ -189,6 +194,10 @@ O que isso muda nas escolhas:
   (`context_length`).
 - 32 GB de RAM seguram um offload, mas modelos de vídeo grandes + offload
   chegam perto do limite.
+- **Personagem de anime: Anima Aesthetic v1.1** (2B, ~6 GB de VRAM com o
+  codificador), escolhido em 2026-10-03 contra Illustrious XL e Anima Turbo.
+  O `CLIPLoader` dele é `type = stable_diffusion`, e com cfg 4 o negativo
+  funciona. O porquê e os números estão nas notas do workflow.
 
 # Banco de dados
 

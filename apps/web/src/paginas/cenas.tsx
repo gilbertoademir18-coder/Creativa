@@ -2,6 +2,7 @@ import { Clapperboard, Film, Pencil, Plus, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { cenasApi, listasApi } from "../api.ts";
+import { BotaoDescricaoProjeto } from "../componentes/descricao-projeto.tsx";
 import { EscolhaProjeto, FiltroBusca, FiltroProjeto } from "../componentes/filtros.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
 import { ListaOrdenavel, movido } from "../componentes/ordenavel.tsx";
@@ -160,6 +161,7 @@ export function PaginaCena() {
         }
         acoes={
           <>
+            <BotaoDescricaoProjeto projeto={c.projeto} />
             <Botao icone={<Pencil className="size-4" />} onClick={() => setEditando(true)}>
               Editar
             </Botao>

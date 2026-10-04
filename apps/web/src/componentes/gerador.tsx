@@ -63,9 +63,11 @@ export function PainelGerador({ dono }: { dono: Dono }) {
 
   /*
    * O assistente de prompt: escolhido por workflow (só aparecem os que valem
-   * para ele e para o projeto do dono). `ideia` é o texto de onde saiu o
-   * prompt atual, quando foi o assistente que escreveu — vai junto para o
-   * output, e é para onde o "Desfazer" volta.
+   * para ele e para o projeto do dono). São dois textos: a `ideia`, que é da
+   * pessoa (a caixa "Sua ideia", nunca apagada, salva no rascunho), e o
+   * prompt, que o assistente escreve a partir dela e a pessoa ainda pode
+   * ajustar. `ideiaDoPrompt` é a ideia de onde saiu o prompt atual — vai
+   * junto para o output; null se quem escreveu o prompt foi a pessoa.
    */
   const campoAssistivel = wfAtual?.campos.find((c) => c.tipo === "texto" && c.assistivel);
   const disponiveis = useCarregar(
@@ -74,7 +76,10 @@ export function PainelGerador({ dono }: { dono: Dono }) {
   );
   const estadoLlm = useCarregar(() => assistentesApi.estado(), []);
   const [assistenteId, setAssistenteId] = useState("");
-  const [ideia, setIdeia] = useState<string | null>(null);
+  const [ideia, setIdeia] = useState("");
+  const [ideiaDoPrompt, setIdeiaDoPrompt] = useState<string | null>(null);
+  /** O prompt de antes da última expansão: para onde o "Desfazer" volta. */
+  const [promptAnterior, setPromptAnterior] = useState<string | null>(null);
   const [expandindo, setExpandindo] = useState(false);
   const [avisoAssistente, setAvisoAssistente] = useState<string | null>(null);
   const [erroAssistente, setErroAssistente] = useState<string | null>(null);
@@ -99,13 +104,13 @@ export function PainelGerador({ dono }: { dono: Dono }) {
   const escreverPrompt = (chave: string, texto: string) =>
     setConfig((c) => c && { ...c, valores: { ...c.valores, [chave]: texto } });
 
-  async function expandir(deNovo: boolean) {
+  /** Escreve o prompt a partir da ideia. A ideia fica como está; o prompt anterior, guardado para o "Desfazer". */
+  async function expandir() {
     if (!config || !campoAssistivel || !assistenteId) return;
     const chave = campoAssistivel.chave;
     const atual = String(config.valores[chave] ?? "");
-    // "Expandir de novo" parte da mesma ideia, não do prompt que já saiu dela.
-    const base = deNovo && ideia !== null ? ideia : atual;
-    if (!base.trim()) return setErroAssistente("Escreva a ideia no campo antes de expandir.");
+    const base = ideia.trim();
+    if (!base) return setErroAssistente("Escreva sua ideia antes de expandir.");
     const controle = new AbortController();
     parar.current = controle;
     setExpandindo(true);
@@ -130,7 +135,8 @@ export function PainelGerador({ dono }: { dono: Dono }) {
       const limpo = limparTextoLlm(texto);
       if (!limpo) throw new Error("A LLM não escreveu nada. Tente de novo.");
       escreverPrompt(chave, limpo);
-      setIdeia(base);
+      setPromptAnterior(atual);
+      setIdeiaDoPrompt(base);
     } catch (e) {
       // Parou ou falhou no meio: volta o que estava escrito.
       escreverPrompt(chave, atual);
@@ -141,10 +147,12 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     }
   }
 
+  /** Volta o prompt de antes da última expansão (a ideia não muda). */
   function desfazer() {
-    if (!campoAssistivel || ideia === null) return;
-    escreverPrompt(campoAssistivel.chave, ideia);
-    setIdeia(null);
+    if (!campoAssistivel || promptAnterior === null) return;
+    escreverPrompt(campoAssistivel.chave, promptAnterior);
+    setPromptAnterior(null);
+    setIdeiaDoPrompt(null);
   }
 
   /*
@@ -177,7 +185,9 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     }
     if (r) {
       setConfig(ajustar({ tipo: r.tipo, workflow: r.workflow, valores: r.valores }, catalogo.dados));
-      setIdeia(r.ideia);
+      setIdeia(r.ideia ?? "");
+      // Com ideia salva, o prompt provavelmente saiu dela (o rascunho não guarda se foi editado à mão depois).
+      setIdeiaDoPrompt(r.ideia);
       assistenteDesejado.current = r.assistente;
       return;
     }
@@ -202,7 +212,13 @@ export function PainelGerador({ dono }: { dono: Dono }) {
   useEffect(() => {
     if (!config || expandindo || iniciado.current !== chaveDono) return;
     if (disponiveis.carregando || assistenteDesejado.current !== null) return;
-    const r: RascunhoGerador = { tipo: config.tipo, workflow: config.workflow, valores: config.valores, assistente: assistenteNome, ideia };
+    const r: RascunhoGerador = {
+      tipo: config.tipo,
+      workflow: config.workflow,
+      valores: config.valores,
+      assistente: assistenteNome,
+      ideia: ideia.trim() ? ideia : null,
+    };
     const json = JSON.stringify(r);
     if (json === ultimoSalvo.current) return;
     const t = setTimeout(() => {
@@ -223,7 +239,9 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     }
     setConfig(ajustar({ tipo: o.tipoGeracao, workflow: o.workflow, valores }, catalogo.dados ?? tipos));
     // O assistente e a ideia daquele output também voltam.
-    setIdeia(o.ideia);
+    setIdeia(o.ideia ?? "");
+    setIdeiaDoPrompt(o.ideia);
+    setPromptAnterior(null);
     const doOutput = o.assistente ? disponiveis.dados?.find((a) => a.nome === o.assistente) : undefined;
     if (doOutput) setAssistenteId(doOutput.id);
     else assistenteDesejado.current = o.assistente;
@@ -247,7 +265,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     setErro(null);
     try {
       // O assistente só fica registrado se foi ele quem escreveu o prompt.
-      const doAssistente = ideia !== null && !!assistenteId;
+      const doAssistente = ideiaDoPrompt !== null && !!assistenteId;
       await geradorApi.executar({
         ...dono,
         tipo: config.tipo,
@@ -255,7 +273,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
         parametros: config.valores,
         quantidade,
         assistenteId: doAssistente ? assistenteId : null,
-        ideia: doAssistente ? ideia : null,
+        ideia: doAssistente ? ideiaDoPrompt : null,
       });
     } catch (e) {
       setErro((e as Error).message);
@@ -329,24 +347,27 @@ export function PainelGerador({ dono }: { dono: Dono }) {
               )}
               {wfAtual?.campos.map((c) => (
                 <div key={c.chave} className="flex flex-col gap-2">
-                  <CampoDinamico
-                    campo={c}
-                    valor={config.valores[c.chave]}
-                    aoMudar={(v) => setConfig({ ...config, valores: { ...config.valores, [c.chave]: v } })}
-                  />
+                  {/* A ideia vem antes do prompt: é dela que ele sai. */}
                   {c === campoAssistivel && assistenteId && (
                     <BarraAssistente
                       estado={estadoLlm.dados}
                       expandindo={expandindo}
                       ideia={ideia}
+                      aoMudarIdeia={setIdeia}
+                      deNovo={ideiaDoPrompt !== null && ideiaDoPrompt === ideia.trim()}
+                      podeDesfazer={promptAnterior !== null}
                       aviso={avisoAssistente}
                       erro={erroAssistente}
-                      aoExpandir={() => expandir(false)}
-                      aoExpandirDeNovo={() => expandir(true)}
+                      aoExpandir={expandir}
                       aoParar={() => parar.current?.abort()}
                       aoDesfazer={desfazer}
                     />
                   )}
+                  <CampoDinamico
+                    campo={c}
+                    valor={config.valores[c.chave]}
+                    aoMudar={(v) => setConfig({ ...config, valores: { ...config.valores, [c.chave]: v } })}
+                  />
                 </div>
               ))}
             </>

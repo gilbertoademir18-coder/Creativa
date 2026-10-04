@@ -235,18 +235,18 @@ Depois grave o **rascunho do Gerador**, para ele abrir pronto:
 {
   "tipo": "<chave do tipo>",
   "workflow": "<chave do workflow>",
-  "valores": { "prompt": "Lia transformada em Prompt, corpo inteiro, pose confiante apontando para o console", "tamanho": "832x1216", "seed": null },
+  "valores": { "prompt": "", "tamanho": "832x1216", "seed": null },
   "assistente": "<nome do assistente>",
-  "ideia": null
+  "ideia": "Lia transformada em Prompt, corpo inteiro, pose confiante apontando para o console"
 }
 ```
 
 `creativa.mjs rascunho asset <id> rascunho.json`.
 
-- O **prompt é a ideia curta**, em português, 1 ou 2 frases: é o que o
-  usuário vê no campo, pronto para clicar em "Expandir com o assistente".
+- A **`ideia` é o exemplo**, curta, em português, 1 ou 2 frases. Ela aparece
+  na caixa "Sua ideia" do Gerador, pronta para "Expandir com o assistente".
+  O prompt fica vazio: é onde o assistente vai escrever.
 - As chaves de `valores` são as dos campos. `seed: null` quer dizer aleatória.
-- `ideia` fica `null`, porque ainda não houve expansão.
 
 ## 7. Fechar
 

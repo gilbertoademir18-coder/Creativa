@@ -2,6 +2,7 @@ import { Clapperboard, FileText, Pencil, Plus, Trash } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { videosApi } from "../api.ts";
+import { BotaoDescricaoProjeto } from "../componentes/descricao-projeto.tsx";
 import { ModalDocumento, resumoMarkdown } from "../componentes/documento-markdown.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
 import { ListaOrdenavel, movido } from "../componentes/ordenavel.tsx";
@@ -63,6 +64,7 @@ export function PaginaVideo() {
         }
         acoes={
           <>
+            <BotaoDescricaoProjeto projeto={projeto} />
             <Botao icone={<FileText className="size-4" />} onClick={() => setSinopse(true)}>
               Sinopse
             </Botao>

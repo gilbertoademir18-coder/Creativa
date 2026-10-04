@@ -155,10 +155,11 @@ Duas coisas não funcionam do outro PC:
 ## Assistente de prompt (LLM local)
 
 No Gerador, depois do workflow, dá para escolher um **assistente de prompt**:
-você escreve a ideia ("salão de baile abandonado, fim de tarde"), clica em
-**Expandir com o assistente** e uma LLM local reescreve o campo com o prompt
-completo, do jeito que aquele workflow pede. O output guarda o assistente e a
-ideia de onde o prompt saiu.
+você escreve a ideia na caixa **Sua ideia** ("salão de baile abandonado, fim
+de tarde"), clica em **Expandir com o assistente** e uma LLM local escreve o
+prompt completo no campo de baixo, do jeito que aquele workflow pede. A ideia
+continua lá: dá para ajustar e expandir de novo, ou mexer no prompt à mão. O
+output guarda o assistente e a ideia de onde o prompt saiu.
 
 Um assistente é um markdown com instruções, como uma skill do Claude. Eles são
 cadastrados na página **Assistentes**: nome, projeto (sem projeto = vale para

@@ -2,7 +2,8 @@ import { ArrowLeft, Clapperboard, FileText, FolderKanban, Pencil, Plus, Shapes, 
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { assetsApi, cenasApi, projetosApi } from "../api.ts";
-import { ModalDocumento, resumoMarkdown } from "../componentes/documento-markdown.tsx";
+import { ModalDescricaoProjeto } from "../componentes/descricao-projeto.tsx";
+import { resumoMarkdown } from "../componentes/documento-markdown.tsx";
 import { FiltroBusca } from "../componentes/filtros.tsx";
 import { SecaoListasVideos } from "../componentes/listas-videos.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
@@ -212,19 +213,12 @@ export function PaginaProjeto() {
           projeto.setDados(novo);
         }}
       />
-      <ModalDocumento
-        titulo={`Descrição — ${p.nome}`}
-        valor={p.descricao}
-        placeholder="Escreva sobre o projeto: história, personagens, tom, estética, referências... Use # para títulos e - para listas."
+      <ModalDescricaoProjeto
+        projeto={p}
         aberto={descrevendo}
-        historico={{
-          atual: p.descricaoVersao,
-          listar: () => projetosApi.versoesDescricao(p.id),
-          ler: async (numero) => (await projetosApi.versaoDescricao(p.id, numero)).texto,
-        }}
         aoFechar={() => setDescrevendo(false)}
-        aoSalvar={async (texto, nota) => {
-          projeto.setDados(await projetosApi.salvarDescricao(p.id, texto, p.descricaoVersao, nota));
+        aoSalvar={(novo) => {
+          projeto.setDados(novo);
           setDescrevendo(false);
         }}
       />

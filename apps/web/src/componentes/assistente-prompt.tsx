@@ -1,12 +1,12 @@
 import { Square, Undo2, WandSparkles } from "lucide-react";
 import { Link } from "react-router";
 import type { AssistenteDisponivel, EstadoLlm } from "../tipos.ts";
-import { Aviso, Botao, Campo, Seletor } from "./ui.tsx";
+import { AreaTexto, Aviso, Botao, Campo, Seletor } from "./ui.tsx";
 
 /*
  * O assistente de prompt no Gerador: a escolha (logo abaixo do workflow) e a
- * barra embaixo do campo do prompt — escreve-se a ideia, "Expandir" e a LLM
- * local reescreve o campo com o prompt completo.
+ * caixa da ideia em cima do campo do prompt — escreve-se a ideia, "Expandir"
+ * e a LLM local escreve o prompt completo no campo. A ideia não se apaga.
  */
 
 export function SeletorAssistente({
@@ -24,7 +24,7 @@ export function SeletorAssistente({
   const dica =
     lista && lista.length === 0
       ? undefined
-      : (atual?.descricao ?? "Escreva a ideia no prompt e o assistente a expande no prompt completo, do jeito deste workflow.");
+      : (atual?.descricao ?? "Escreva sua ideia e o assistente escreve o prompt completo, do jeito deste workflow.");
   return (
     <Campo rotulo="Assistente de prompt" dica={dica}>
       {lista && lista.length === 0 ? (
@@ -53,21 +53,26 @@ export function BarraAssistente({
   estado,
   expandindo,
   ideia,
+  aoMudarIdeia,
+  deNovo,
+  podeDesfazer,
   aviso,
   erro,
   aoExpandir,
-  aoExpandirDeNovo,
   aoParar,
   aoDesfazer,
 }: {
   estado: EstadoLlm | null;
   expandindo: boolean;
-  /** A ideia de onde saiu o prompt atual — null se quem escreveu foi a pessoa. */
-  ideia: string | null;
+  /** O texto da pessoa: o assistente lê daqui e escreve no prompt, embaixo. */
+  ideia: string;
+  aoMudarIdeia: (texto: string) => void;
+  /** O prompt atual já saiu desta mesma ideia: expandir agora dá outra versão. */
+  deNovo: boolean;
+  podeDesfazer: boolean;
   aviso: string | null;
   erro: string | null;
   aoExpandir: () => void;
-  aoExpandirDeNovo: () => void;
   aoParar: () => void;
   aoDesfazer: () => void;
 }) {
@@ -80,12 +85,15 @@ export function BarraAssistente({
         ? `O modelo ${estado.modelo} não foi baixado. Rode no terminal: ollama pull ${estado.modelo}`
         : null;
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-violet-500/20 bg-violet-950/20 p-3">
+    <div className="flex flex-col gap-3 rounded-lg border border-violet-500/20 bg-violet-950/20 p-3">
+      <Campo rotulo="Sua ideia" dica="Em poucas palavras, em português. O assistente escreve o prompt no campo abaixo; a ideia fica aqui para você ajustar e expandir de novo.">
+        <AreaTexto value={ideia} onChange={(e) => aoMudarIdeia(e.target.value)} rows={3} disabled={expandindo} />
+      </Campo>
       <div className="flex flex-wrap items-center gap-2">
         {expandindo ? (
           <>
             <Botao variante="primario" carregando>
-              Escrevendo...
+              Escrevendo o prompt...
             </Botao>
             <Botao icone={<Square className="size-3.5" />} onClick={aoParar}>
               Parar
@@ -93,27 +101,23 @@ export function BarraAssistente({
           </>
         ) : (
           <>
-            <Botao variante="primario" icone={<WandSparkles className="size-4" />} onClick={aoExpandir} disabled={!!problema}>
-              Expandir com o assistente
+            <Botao
+              variante="primario"
+              icone={<WandSparkles className="size-4" />}
+              onClick={aoExpandir}
+              disabled={!!problema || !ideia.trim()}
+              title={deNovo ? "Outra versão do prompt, a partir da mesma ideia" : undefined}
+            >
+              {deNovo ? "Expandir de novo" : "Expandir com o assistente"}
             </Botao>
-            {ideia !== null && (
-              <>
-                <Botao icone={<WandSparkles className="size-4" />} onClick={aoExpandirDeNovo} disabled={!!problema} title="Outra versão, a partir da mesma ideia">
-                  Expandir de novo
-                </Botao>
-                <Botao variante="fantasma" icone={<Undo2 className="size-4" />} onClick={aoDesfazer} title="Volta o campo para a ideia">
-                  Desfazer
-                </Botao>
-              </>
+            {podeDesfazer && (
+              <Botao variante="fantasma" icone={<Undo2 className="size-4" />} onClick={aoDesfazer} title="Volta o prompt de antes da última expansão">
+                Desfazer
+              </Botao>
             )}
           </>
         )}
       </div>
-      {ideia !== null && !expandindo && (
-        <p className="line-clamp-2 text-xs text-zinc-400" title={ideia}>
-          <span className="text-zinc-500">Ideia:</span> {ideia}
-        </p>
-      )}
       {problema && <p className="text-xs text-amber-300">{problema}</p>}
       {aviso && expandindo && <p className="text-xs text-amber-300/90">{aviso}</p>}
       {erro && <Aviso>{erro}</Aviso>}

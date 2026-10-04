@@ -2,6 +2,7 @@ import { Box, Mountain, Pencil, Plus, Shapes, Trash, User } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { assetsApi, urlArquivo } from "../api.ts";
+import { BotaoDescricaoProjeto } from "../componentes/descricao-projeto.tsx";
 import { EscolhaProjeto, FiltroBusca, FiltroProjeto } from "../componentes/filtros.tsx";
 import { PainelGerador } from "../componentes/gerador.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
@@ -172,6 +173,7 @@ export function PaginaAsset() {
         }
         acoes={
           <>
+            <BotaoDescricaoProjeto projeto={a.projeto} />
             <Botao icone={<Pencil className="size-4" />} onClick={() => setEditando(true)}>
               Editar
             </Botao>

@@ -2,6 +2,7 @@ import { ArrowLeft, Pencil, Trash } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { shotsApi } from "../api.ts";
+import { BotaoDescricaoProjeto } from "../componentes/descricao-projeto.tsx";
 import { PainelGerador } from "../componentes/gerador.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
 import { PainelReferencias } from "../componentes/referencias.tsx";
@@ -34,6 +35,7 @@ export function PaginaShot() {
         subtitulo={s.descricao && <p className="max-w-3xl whitespace-pre-wrap">{s.descricao}</p>}
         acoes={
           <>
+            <BotaoDescricaoProjeto projeto={s.cena.projeto} />
             <Botao icone={<Pencil className="size-4" />} onClick={() => setEditando(true)}>
               Editar
             </Botao>
