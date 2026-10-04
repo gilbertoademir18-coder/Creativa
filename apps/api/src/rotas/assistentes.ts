@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { acharWorkflow, nomesDoCatalogo } from "../geracao/catalogo.ts";
 import type { CampoDe, DefWorkflow } from "../geracao/definicoes.ts";
+import { contextoDoProjeto } from "../geracao/descricao-projeto.ts";
 import { lerFila } from "../geracao/execucao.ts";
 import { configComfy } from "../lib/comfyui.ts";
 import { consultarOllama, gerarTexto } from "../lib/ollama.ts";
@@ -69,15 +70,17 @@ function queValem(workflow: string, projetoId: string | null) {
   };
 }
 
-/** O que o dono do Gerador conta à LLM: quem é, de que projeto, e as descrições. */
-async function contextoDoDono(assetId: string | null, shotId: string | null): Promise<{ projetoId: string | null; linhas: string[] }> {
+type Contexto = { projetoId: string | null; projeto: { nome: string; descricao: string | null } | null; linhas: string[] };
+
+/** O que o dono do Gerador conta à LLM: quem é e as descrições. O projeto vem à parte: a descrição dele é recortada para cada geração. */
+async function contextoDoDono(assetId: string | null, shotId: string | null): Promise<Contexto> {
   if (assetId) {
-    const a = await prisma.asset.findUnique({ where: { id: assetId }, include: { projeto: { select: { nome: true } } } });
+    const a = await prisma.asset.findUnique({ where: { id: assetId }, include: { projeto: { select: { nome: true, descricao: true } } } });
     if (!a) throw new ErroHttp(400, "Asset não encontrado.");
     return {
       projetoId: a.projetoId,
+      projeto: a.projeto,
       linhas: [
-        a.projeto && `Projeto: ${a.projeto.nome}`,
         `Asset: ${a.nome} (${TIPO_ASSET[a.tipo]})`,
         a.descricao && `Descrição do asset:\n${a.descricao}`,
       ].filter((l): l is string => !!l),
@@ -86,14 +89,14 @@ async function contextoDoDono(assetId: string | null, shotId: string | null): Pr
   const s = await prisma.shot.findUnique({
     where: { id: shotId! },
     include: {
-      cena: { include: { projeto: { select: { nome: true } }, video: { select: { nome: true, descricao: true, lista: { select: { nome: true } } } } } },
+      cena: { include: { projeto: { select: { nome: true, descricao: true } }, video: { select: { nome: true, descricao: true, lista: { select: { nome: true } } } } } },
     },
   });
   if (!s) throw new ErroHttp(400, "Shot não encontrado.");
   return {
     projetoId: s.cena.projetoId,
+    projeto: s.cena.projeto,
     linhas: [
-      s.cena.projeto && `Projeto: ${s.cena.projeto.nome}`,
       s.cena.video && `Vídeo: ${s.cena.video.nome} (lista "${s.cena.video.lista.nome}")`,
       // A sinopse pode ser longa: o começo basta para dar o tom.
       s.cena.video?.descricao && `Sinopse do vídeo:\n${s.cena.video.descricao.slice(0, 3000)}`,
@@ -242,7 +245,15 @@ export async function rotasAssistentes(app: FastifyInstance) {
       }).catch(() => {});
     }
 
-    const usuario = [`Ideia: ${p.ideia}`, "", "Contexto (use o que servir à ideia):", ...dono.linhas.map((l) => `- ${l}`)].join("\n");
+    // Do geral ao específico: o projeto (recortado para esta saída e para os
+    // personagens que aparecem), depois o asset ou o vídeo, a cena e o shot.
+    const tipo = await prisma.tipoGeracao.findUnique({ where: { chave: w.tipo }, select: { saida: true } });
+    const contexto = [
+      ...(dono.projeto ? [`Projeto: ${dono.projeto.nome}`] : []),
+      ...contextoDoProjeto(dono.projeto?.descricao ?? null, tipo?.saida ?? "OUTRO", [p.ideia, ...dono.linhas].join("\n")),
+      ...dono.linhas,
+    ];
+    const usuario = [`Ideia: ${p.ideia}`, "", "Contexto (use o que servir à ideia):", ...contexto.map((l) => `- ${l}`)].join("\n");
 
     // A pessoa fechou a página ou clicou de novo: para de gerar.
     const cancelar = new AbortController();

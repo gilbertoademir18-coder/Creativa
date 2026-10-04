@@ -122,6 +122,12 @@ export function PaginaProjeto() {
   /** Quem sai daqui para um asset ou cena volta para cá. */
   const volta = { para: `/projetos/${p.id}`, rotulo: p.nome };
 
+  /** A skill do Claude pode ter gravado uma versão nova com a página aberta: abre sempre da mais recente. */
+  async function abrirDescricao() {
+    await projeto.recarregar();
+    setDescrevendo(true);
+  }
+
   return (
     <>
       <Cabecalho
@@ -133,14 +139,14 @@ export function PaginaProjeto() {
         titulo={p.nome}
         subtitulo={
           p.descricao ? (
-            <button type="button" onClick={() => setDescrevendo(true)} className="line-clamp-2 max-w-4xl text-left hover:text-zinc-200" title="Abrir a descrição">
+            <button type="button" onClick={abrirDescricao} className="line-clamp-2 max-w-4xl text-left hover:text-zinc-200" title="Abrir a descrição">
               {resumoMarkdown(p.descricao, 300)}
             </button>
           ) : undefined
         }
         acoes={
           <>
-            <Botao icone={<FileText className="size-4" />} onClick={() => setDescrevendo(true)}>
+            <Botao icone={<FileText className="size-4" />} onClick={abrirDescricao}>
               Descrição do projeto
             </Botao>
             <Botao icone={<Pencil className="size-4" />} onClick={() => setEditando(true)}>
@@ -211,9 +217,14 @@ export function PaginaProjeto() {
         valor={p.descricao}
         placeholder="Escreva sobre o projeto: história, personagens, tom, estética, referências... Use # para títulos e - para listas."
         aberto={descrevendo}
+        historico={{
+          atual: p.descricaoVersao,
+          listar: () => projetosApi.versoesDescricao(p.id),
+          ler: async (numero) => (await projetosApi.versaoDescricao(p.id, numero)).texto,
+        }}
         aoFechar={() => setDescrevendo(false)}
-        aoSalvar={async (texto) => {
-          projeto.setDados(await projetosApi.salvarDescricao(p.id, texto));
+        aoSalvar={async (texto, nota) => {
+          projeto.setDados(await projetosApi.salvarDescricao(p.id, texto, p.descricaoVersao, nota));
           setDescrevendo(false);
         }}
       />

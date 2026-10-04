@@ -16,6 +16,7 @@ import type {
   Output,
   OutputDetalhe,
   Projeto,
+  VersaoDescricao,
   Referencia,
   ShotDetalhe,
   ShotResumo,
@@ -98,8 +99,12 @@ export const projetosApi = {
   ler: (id: string) => api<Projeto>(`/projetos/${id}`),
   criar: (p: ProjetoNovo) => api<Projeto>("/projetos", { method: "POST", corpo: p }),
   salvar: (id: string, p: ProjetoNovo) => api<Projeto>(`/projetos/${id}`, { method: "PUT", corpo: p }),
-  salvarDescricao: (id: string, descricao: string | null) =>
-    api<Projeto>(`/projetos/${id}/descricao`, { method: "PUT", corpo: { descricao } }),
+  /** `base`: a versão de onde a edição partiu — se outra entrou no meio, a API recusa (409). */
+  salvarDescricao: (id: string, descricao: string | null, base: number, nota: string | null) =>
+    api<Projeto>(`/projetos/${id}/descricao`, { method: "PUT", corpo: { descricao, base, nota } }),
+  versoesDescricao: (id: string) => api<VersaoDescricao[]>(`/projetos/${id}/descricao/versoes`),
+  versaoDescricao: (id: string, numero: number) =>
+    api<VersaoDescricao & { texto: string | null }>(`/projetos/${id}/descricao/versoes/${numero}`),
   apagar: (id: string) => api<void>(`/projetos/${id}`, { method: "DELETE" }),
 };
 

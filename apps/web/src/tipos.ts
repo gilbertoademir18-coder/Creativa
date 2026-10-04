@@ -15,9 +15,19 @@ export type Projeto = {
   id: string;
   nome: string;
   descricao: string | null;
+  /** O número da versão atual da descrição (0: nunca foi salva). */
+  descricaoVersao: number;
   criadoEm: string;
   editadoEm: string;
   _count: { assets: number; cenas: number };
+};
+
+/** Uma versão do histórico da descrição do projeto. */
+export type VersaoDescricao = {
+  numero: number;
+  origem: "TELA" | "CLAUDE";
+  nota: string | null;
+  criadoEm: string;
 };
 
 export type Asset = {

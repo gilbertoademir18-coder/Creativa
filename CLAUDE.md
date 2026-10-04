@@ -74,10 +74,26 @@ as cenas (`SetNull`), nunca as apaga.
   sempre com `React.lazy` (como em `documento-markdown.tsx`), nunca direto —
   senão vai para o pacote principal. O conteúdo usa a classe `.texto-md`
   (`app.css`), que devolve títulos e listas que o Tailwind zera.
+- Colar no `EditorMarkdown`: o MDXEditor sozinho cola o HTML que o VS Code põe
+  na área de transferência (uma `<div>` por linha → quebras dobradas). O
+  componente intercepta o colar e, se o texto tem cara de markdown, usa
+  `insertMarkdown`. Mexeu no editor? Teste colando um `.md` copiado do VS Code.
 - Onde só cabe um resumo (cartão, cabeçalho), mostre `resumoMarkdown()`, nunca
   o markdown cru com `#` e `**`.
 - A descrição do projeto é um documento à parte: modal própria e rota própria
   (`PUT /api/projetos/:id/descricao`). O "Editar" do projeto mexe só no nome.
+- **A descrição do projeto tem versões** (`versao_descricao`): cada gravação
+  com texto diferente vira versão nova; versões não se editam nem se apagam, e
+  restaurar é gravar o texto antigo de novo. Quem grava manda `base` (a
+  `descricaoVersao` que leu) e a API recusa com 409 se outra entrou no meio.
+  A skill `/descricao-projeto` grava sozinha (origem "Claude"), **só** pelo
+  script `descricao.mjs` dela — é a exceção autorizada à regra de não escrever
+  no banco, e só para a descrição.
+- **A descrição do projeto tem modelo fixo** (`docs/descricao-de-projeto.md`):
+  o assistente de prompt recebe só as seções `##` que servem à saída do tipo
+  e as fichas `###` dos personagens citados (`geracao/descricao-projeto.ts`).
+  Mudou um título ou uma seção? Mude o doc, o código e a skill
+  `.claude/skills/descricao-projeto` juntos.
 
 # O Gerador e os workflows do ComfyUI
 
@@ -148,6 +164,10 @@ O que isso muda nas escolhas:
   Creativa descarrega a LLM (`descarregar()` em `lib/ollama.ts`); antes de
   expandir um prompt, libera o ComfyUI com `/free` se ele estiver parado.
   Mantenha esse revezamento em qualquer coisa nova que use a GPU.
+- **O Ollama usa 4096 tokens de contexto se ninguém pedir outro** e corta o
+  começo calado (as instruções!). O `gerarTexto` pede `num_ctx` 16384: no
+  gemma4 12B custa só ~330 MB a mais. Confira com `GET :11434/api/ps`
+  (`context_length`).
 - 32 GB de RAM seguram um offload, mas modelos de vídeo grandes + offload
   chegam perto do limite.
 

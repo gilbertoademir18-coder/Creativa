@@ -53,6 +53,11 @@ export async function* gerarTexto(sistema: string, usuario: string, sinal?: Abor
       stream: true,
       think: false,
       keep_alive: "5m",
+      // Sem isto o Ollama usa 4096 tokens e, quando passa, corta o começo
+      // calado — justo as instruções do assistente. O assistente, o workflow
+      // e a descrição do projeto passam fácil disso. Com o gemma4 12B, 16k
+      // custa ~330 MB de VRAM a mais que 4k.
+      options: { num_ctx: 16_384 },
       messages: [
         { role: "system", content: sistema },
         { role: "user", content: usuario },

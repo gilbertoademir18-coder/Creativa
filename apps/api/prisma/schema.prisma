@@ -75,18 +75,52 @@ enum TipoOutput {
 
 /// "Poker de Camila", "Anime Katsuragi"...
 model Projeto {
-  id        String   @id @default(uuid()) @db.Uuid
-  nome      String
-  descricao String?
-  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz
-  editadoEm DateTime @updatedAt @map("editado_em") @db.Timestamptz
+  id              String   @id @default(uuid()) @db.Uuid
+  nome            String
+  /// A descrição atual (a última versão), no modelo de docs/descricao-de-projeto.md.
+  descricao       String?
+  /// O número da versão atual da descrição (0: nunca foi salva). Quem salva
+  /// manda o número em que se baseou: se outra versão entrou no meio, a API recusa.
+  descricaoVersao Int      @default(0) @map("descricao_versao")
+  criadoEm        DateTime @default(now()) @map("criado_em") @db.Timestamptz
+  editadoEm       DateTime @updatedAt @map("editado_em") @db.Timestamptz
 
-  assets      Asset[]
-  cenas       Cena[]
-  listas      ListaVideos[]
-  assistentes Assistente[]
+  assets           Asset[]
+  cenas            Cena[]
+  listas           ListaVideos[]
+  assistentes      Assistente[]
+  versoesDescricao VersaoDescricao[]
 
   @@map("projeto")
+}
+
+/// Quem salvou uma versão da descrição: a tela do Creativa ou a skill do Claude.
+enum OrigemVersao {
+  TELA
+  CLAUDE
+
+  @@map("origem_versao")
+}
+
+/// O histórico da descrição do projeto: cada vez que ela é salva com texto
+/// diferente, entra uma versão nova. Versões nunca se editam nem se apagam;
+/// restaurar uma antiga é salvar o texto dela como versão nova.
+model VersaoDescricao {
+  id        String       @id @default(uuid()) @db.Uuid
+  projetoId String       @map("projeto_id") @db.Uuid
+  /// 1, 2, 3... por projeto.
+  numero    Int
+  /// null: a descrição foi apagada nesta versão.
+  texto     String?
+  origem    OrigemVersao @default(TELA)
+  /// O que mudou, em uma linha ("+ Ficha do gato; Recorrentes: 1 gag").
+  nota      String?
+  criadoEm  DateTime     @default(now()) @map("criado_em") @db.Timestamptz
+
+  projeto Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+
+  @@unique([projetoId, numero])
+  @@map("versao_descricao")
 }
 
 /// Personagem, cenário, objeto... Pode pertencer a um projeto ou estar solto.
@@ -299,24 +333,24 @@ model Output {
   favorito     Boolean    @default(false)
 
   /// Chave do tipo de geração no código (ex.: "placa-cenario").
-  tipoGeracao  String     @map("tipo_geracao")
+  tipoGeracao  String   @map("tipo_geracao")
   /// Chave do workflow no código (ex.: "placa-cenario-zimage").
   workflow     String
   /// O modelo principal que o workflow usou.
   modelo       String?
   /// Cópia do campo "prompt" dos parâmetros: é o que a busca usa.
-  prompt       String     @default("")
+  prompt       String   @default("")
   /// A seed que fez esta imagem — repetir ela repete a imagem.
   seed         BigInt?
   /// Os valores de todos os campos do workflow, como foram enviados.
   parametros   Json
   /// O grafo exatamente como foi enviado ao ComfyUI.
-  grafoEnviado Json       @map("grafo_enviado")
+  grafoEnviado Json     @map("grafo_enviado")
   /// O assistente de prompt usado (o nome, copiado no envio — o assistente
   /// pode mudar ou sumir depois) e a ideia que a pessoa escreveu.
   assistente   String?
   ideia        String?
-  criadoEm     DateTime   @default(now()) @map("criado_em") @db.Timestamptz
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz
 
   /// Output tem arquivo em disco: barra apagar o asset ou o shot.
   asset    Asset?    @relation(fields: [assetId], references: [id], onDelete: Restrict)
