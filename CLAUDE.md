@@ -39,6 +39,21 @@ e diga na resposta final o que acrescentou ou mudou.
 - Assistentes de prompt prontos para importar ficam em `docs/assistentes/`
   (um `.md` por assistente, cabeçalho de skill `name`/`description`).
 
+# A hierarquia
+
+`Projeto → Lista de vídeos → Vídeo → Cena → Shot`, mais assets do projeto e
+"cenas sem vídeo". Lista e vídeo são **genéricos e só agrupam** — não chame
+de "temporada"/"episódio" no código nem na tela. Apagar lista ou vídeo solta
+as cenas (`SetNull`), nunca as apaga.
+
+- Cena num vídeo: o projeto dela é **sempre** o da lista do vídeo — quem
+  acerta é a API (`encaixarNoVideo` em `rotas/cenas.ts`), não a tela.
+- Quem salva uma cena manda o `videoId` junto (mesmo só mudando o
+  storyboard): sem ele, a cena sai do vídeo.
+- Listas, vídeos, cenas de um vídeo e shots têm `ordem`; a tela reordena com
+  `ListaOrdenavel` (`componentes/ordenavel.tsx`) e a API recebe a lista
+  inteira de ids na ordem nova.
+
 # Interface
 
 - Tela cheia, só desktop: monitores Full HD e QHD. Sem versão de celular.
@@ -56,7 +71,7 @@ e diga na resposta final o que acrescentou ou mudou.
   mandar o link de um filtro pronto.
 - **Texto longo em markdown** usa o editor visual `EditorMarkdown`
   (`componentes/editor-markdown.tsx`, MDXEditor). Ele pesa ~1,4 MB: importe
-  sempre com `React.lazy` (como em `descricao-projeto.tsx`), nunca direto —
+  sempre com `React.lazy` (como em `documento-markdown.tsx`), nunca direto —
   senão vai para o pacote principal. O conteúdo usa a classe `.texto-md`
   (`app.css`), que devolve títulos e listas que o Tailwind zera.
 - Onde só cabe um resumo (cartão, cabeçalho), mostre `resumoMarkdown()`, nunca

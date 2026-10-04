@@ -1,47 +1,50 @@
 import { lazy, Suspense, useState } from "react";
-import { projetosApi } from "../api.ts";
-import type { Projeto } from "../tipos.ts";
 import { Modal } from "./modal.tsx";
 import { Aviso, Botao, Carregando } from "./ui.tsx";
 
-/** O editor visual só carrega quando a janela abre (~1 MB). */
+/** O editor visual só carrega quando a janela abre (~1,4 MB). */
 const EditorMarkdown = lazy(() => import("./editor-markdown.tsx"));
 
 /**
- * A descrição do projeto, numa janela só dela: um documento longo em
- * markdown (roteiro, personagens, tom, referências), com editor visual.
+ * Um documento longo em markdown numa janela só dele, com o editor visual:
+ * a descrição do projeto, a sinopse de um vídeo.
  *
  * Fechar com alterações não salvas pergunta antes — texto longo perdido por
  * um clique no × dói.
  */
-export function ModalDescricaoProjeto({
-  projeto,
+export function ModalDocumento({
+  titulo,
+  valor,
+  placeholder,
   aberto,
   aoFechar,
   aoSalvar,
 }: {
-  projeto: Projeto;
+  titulo: string;
+  valor: string | null;
+  placeholder?: string;
   aberto: boolean;
   aoFechar: () => void;
-  aoSalvar: (p: Projeto) => void;
+  /** Recebe o texto (null se ficou vazio). Se lançar, a janela mostra o erro e continua aberta. */
+  aoSalvar: (texto: string | null) => Promise<void>;
 }) {
-  const [texto, setTexto] = useState(projeto.descricao ?? "");
+  const [texto, setTexto] = useState(valor ?? "");
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
-  const alterado = texto.trim() !== (projeto.descricao ?? "").trim();
+  const alterado = texto.trim() !== (valor ?? "").trim();
 
   // Reabriu: começa do que está salvo.
   const [ultimoAberto, setUltimoAberto] = useState(aberto);
   if (aberto !== ultimoAberto) {
     setUltimoAberto(aberto);
     if (aberto) {
-      setTexto(projeto.descricao ?? "");
+      setTexto(valor ?? "");
       setErro(null);
     }
   }
 
   function fechar() {
-    if (alterado && !window.confirm("A descrição tem alterações não salvas. Fechar e descartar?")) return;
+    if (alterado && !window.confirm("O texto tem alterações não salvas. Fechar e descartar?")) return;
     aoFechar();
   }
 
@@ -49,7 +52,7 @@ export function ModalDescricaoProjeto({
     setSalvando(true);
     setErro(null);
     try {
-      aoSalvar(await projetosApi.salvarDescricao(projeto.id, texto.trim() || null));
+      await aoSalvar(texto.trim() || null);
     } catch (e) {
       setErro((e as Error).message);
     } finally {
@@ -58,15 +61,11 @@ export function ModalDescricaoProjeto({
   }
 
   return (
-    <Modal aberto={aberto} titulo={`Descrição — ${projeto.nome}`} largura="enorme" aoFechar={fechar}>
+    <Modal aberto={aberto} titulo={titulo} largura="enorme" aoFechar={fechar}>
       <div className="flex flex-col gap-4">
         <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
           <Suspense fallback={<Carregando />}>
-            <EditorMarkdown
-              valor={texto}
-              aoMudar={setTexto}
-              placeholder="Escreva sobre o projeto: história, personagens, tom, estética, referências... Use # para títulos e - para listas."
-            />
+            <EditorMarkdown valor={texto} aoMudar={setTexto} placeholder={placeholder} />
           </Suspense>
         </div>
         {erro && <Aviso>{erro}</Aviso>}

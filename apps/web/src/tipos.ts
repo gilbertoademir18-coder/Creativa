@@ -45,9 +45,16 @@ export type ShotResumo = {
   _count: { referencias: number; outputs: number };
 };
 
+/** O vídeo em que uma cena entra, com a lista dele — para o caminho na tela. */
+export type VideoDaCena = { id: string; nome: string; lista: { id: string; nome: string } };
+
 export type Cena = {
   id: string;
   projetoId: string | null;
+  videoId: string | null;
+  /** Posição dentro do vídeo. */
+  ordem: number;
+  video: VideoDaCena | null;
   nome: string;
   descricao: string | null;
   storyboard: string;
@@ -58,8 +65,40 @@ export type Cena = {
 };
 
 export type ShotDetalhe = Omit<ShotResumo, "_count"> & {
-  cena: { id: string; nome: string; projeto: ProjetoRef | null; shots: { id: string; nome: string; ordem: number }[] };
+  cena: {
+    id: string;
+    nome: string;
+    projeto: ProjetoRef | null;
+    video: VideoDaCena | null;
+    shots: { id: string; nome: string; ordem: number }[];
+  };
   referencias: Referencia[];
+};
+
+/** Um vídeo na lista: o nome, a posição e quantas cenas tem. */
+export type VideoResumo = {
+  id: string;
+  listaId: string;
+  nome: string;
+  descricao: string | null;
+  ordem: number;
+  _count: { cenas: number };
+};
+
+/** Uma lista de vídeos de um projeto ("Temporada 1", "Trailers"), com os vídeos em ordem. */
+export type ListaVideos = {
+  id: string;
+  projetoId: string;
+  nome: string;
+  descricao: string | null;
+  ordem: number;
+  videos: VideoResumo[];
+};
+
+/** O vídeo aberto: a lista e o projeto, e as cenas em ordem. */
+export type VideoDetalhe = Omit<VideoResumo, "_count"> & {
+  lista: { id: string; nome: string; projeto: ProjetoRef };
+  cenas: Cena[];
 };
 
 /** O dono de uma referência ou output, com o caminho até o projeto. */

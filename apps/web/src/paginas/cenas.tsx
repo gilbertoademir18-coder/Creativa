@@ -1,9 +1,10 @@
-import { ChevronDown, ChevronUp, Clapperboard, Pencil, Plus, Trash } from "lucide-react";
+import { Clapperboard, Film, Pencil, Plus, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { cenasApi } from "../api.ts";
+import { cenasApi, listasApi } from "../api.ts";
 import { EscolhaProjeto, FiltroBusca, FiltroProjeto } from "../componentes/filtros.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
+import { ListaOrdenavel, movido } from "../componentes/ordenavel.tsx";
 import {
   AreaTexto,
   Aviso,
@@ -16,6 +17,7 @@ import {
   GRADE,
   LinkVoltar,
   Secao,
+  Seletor,
   Vazio,
 } from "../componentes/ui.tsx";
 import { useCarregar, useFiltros, useVolta, type Volta } from "../hooks.ts";
@@ -90,6 +92,11 @@ export function CartaoCena({ c, mostrarProjeto, volta }: { c: Cena; mostrarProje
         <Clapperboard className="size-5 shrink-0 text-violet-400" />
         <span className="truncate font-medium">{c.nome}</span>
       </div>
+      {c.video && (
+        <span className="flex items-center gap-1.5 truncate text-xs text-violet-300/80">
+          <Film className="size-3.5 shrink-0" /> {c.video.lista.nome} › {c.video.nome}
+        </span>
+      )}
       {(c.descricao || c.storyboard) && (
         <p className="line-clamp-3 text-sm whitespace-pre-wrap text-zinc-400">{c.descricao || c.storyboard}</p>
       )}
@@ -119,10 +126,13 @@ export function PaginaCena() {
       <Cabecalho
         voltar={
           <LinkVoltar
-            {...(volta ?? {
-              para: c.projeto ? `/cenas?projeto=${c.projeto.id}` : "/cenas",
-              rotulo: `Cenas${c.projeto ? ` de ${c.projeto.nome}` : ""}`,
-            })}
+            {...(volta ??
+              (c.video
+                ? { para: `/videos/${c.video.id}`, rotulo: c.video.nome }
+                : {
+                    para: c.projeto ? `/cenas?projeto=${c.projeto.id}` : "/cenas",
+                    rotulo: `Cenas${c.projeto ? ` de ${c.projeto.nome}` : ""}`,
+                  }))}
           />
         }
         titulo={c.nome}
@@ -134,6 +144,16 @@ export function PaginaCena() {
               </Link>
             ) : (
               "Sem projeto"
+            )}
+            {c.video && (
+              <>
+                {" › "}
+                {c.video.lista.nome}
+                {" › "}
+                <Link to={`/videos/${c.video.id}`} className="hover:text-violet-300">
+                  {c.video.nome}
+                </Link>
+              </>
             )}
             {c.descricao && <p className="mt-2 max-w-3xl whitespace-pre-wrap text-zinc-400">{c.descricao}</p>}
           </>
@@ -174,7 +194,7 @@ export function PaginaCena() {
         aoFechar={() => setExcluindo(false)}
         aoConfirmar={async () => {
           await cenasApi.apagar(c.id);
-          navegar("/cenas");
+          navegar(c.video ? `/videos/${c.video.id}` : "/cenas");
         }}
       />
     </>
@@ -205,6 +225,7 @@ function Storyboard({ cena, aoSalvar }: { cena: Cena; aoSalvar: (c: Cena) => voi
                 await cenasApi.salvar(cena.id, {
                   nome: cena.nome,
                   projetoId: cena.projetoId,
+                  videoId: cena.videoId,
                   descricao: cena.descricao,
                   storyboard: texto,
                 }),
@@ -238,9 +259,7 @@ function Shots({ cena, aoMudar }: { cena: Cena; aoMudar: (s: ShotResumo[]) => vo
   const shots = cena.shots;
 
   async function mover(i: number, delta: -1 | 1) {
-    const nova = [...shots];
-    const [s] = nova.splice(i, 1);
-    nova.splice(i + delta, 0, s!);
+    const nova = movido(shots, i, delta);
     aoMudar(nova); // otimista: a lista mexe na hora
     try {
       aoMudar(await cenasApi.reordenar(cena.id, nova.map((x) => x.id)));
@@ -276,40 +295,19 @@ function Shots({ cena, aoMudar }: { cena: Cena; aoMudar: (s: ShotResumo[]) => vo
       }
     >
       {erro && <Aviso>{erro}</Aviso>}
-      <ol className="flex flex-col gap-2">
-        {shots.map((s, i) => (
-          <li key={s.id} className="flex items-stretch overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 hover:border-zinc-600">
-            <span className="flex w-10 shrink-0 items-center justify-center bg-zinc-950 text-sm text-zinc-500 tabular-nums">{i + 1}</span>
-            <Link to={`/shots/${s.id}`} className="flex min-w-0 flex-1 flex-col gap-0.5 px-4 py-3">
-              <span className="truncate font-medium">{s.nome}</span>
-              {s.descricao && <span className="line-clamp-2 text-sm text-zinc-400">{s.descricao}</span>}
-              <span className="text-xs text-zinc-500">
-                {s._count.referencias} referências · {s._count.outputs} outputs
-              </span>
-            </Link>
-            <div className="flex flex-col border-l border-zinc-800">
-              <button
-                type="button"
-                aria-label="Subir"
-                disabled={i === 0}
-                onClick={() => mover(i, -1)}
-                className="flex flex-1 items-center px-2 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-100 disabled:opacity-20"
-              >
-                <ChevronUp className="size-4" />
-              </button>
-              <button
-                type="button"
-                aria-label="Descer"
-                disabled={i === shots.length - 1}
-                onClick={() => mover(i, 1)}
-                className="flex flex-1 items-center px-2 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-100 disabled:opacity-20"
-              >
-                <ChevronDown className="size-4" />
-              </button>
-            </div>
-          </li>
-        ))}
-      </ol>
+      <ListaOrdenavel
+        itens={shots}
+        aoMover={mover}
+        linha={(s) => (
+          <Link to={`/shots/${s.id}`} className="flex min-w-0 flex-col gap-0.5 px-4 py-3">
+            <span className="truncate font-medium">{s.nome}</span>
+            {s.descricao && <span className="line-clamp-2 text-sm text-zinc-400">{s.descricao}</span>}
+            <span className="text-xs text-zinc-500">
+              {s._count.referencias} referências · {s._count.outputs} outputs
+            </span>
+          </Link>
+        )}
+      />
     </Secao>
   );
 }
@@ -318,25 +316,41 @@ export function ModalCena({
   aberto,
   cena,
   projetoInicial = "",
+  videoInicial = "",
   aoFechar,
   aoSalvar,
 }: {
   aberto: boolean;
   cena?: Cena;
   projetoInicial?: string;
+  /** Criando de dentro de um vídeo: a cena já nasce nele. */
+  videoInicial?: string;
   aoFechar: () => void;
   aoSalvar: (c: Cena) => void;
 }) {
   return (
     <Modal aberto={aberto} titulo={cena ? "Editar cena" : "Nova cena"} aoFechar={aoFechar}>
-      <FormCena cena={cena} projetoInicial={projetoInicial} aoSalvar={aoSalvar} />
+      <FormCena cena={cena} projetoInicial={projetoInicial} videoInicial={videoInicial} aoSalvar={aoSalvar} />
     </Modal>
   );
 }
 
-function FormCena({ cena, projetoInicial, aoSalvar }: { cena?: Cena; projetoInicial: string; aoSalvar: (c: Cena) => void }) {
+function FormCena({
+  cena,
+  projetoInicial,
+  videoInicial,
+  aoSalvar,
+}: {
+  cena?: Cena;
+  projetoInicial: string;
+  videoInicial: string;
+  aoSalvar: (c: Cena) => void;
+}) {
   const [nome, setNome] = useState(cena?.nome ?? "");
   const [projetoId, setProjetoId] = useState(cena ? (cena.projetoId ?? "") : projetoInicial);
+  const [videoId, setVideoId] = useState(cena ? (cena.videoId ?? "") : videoInicial);
+  // Os vídeos que dá para escolher: os das listas do projeto escolhido.
+  const listas = useCarregar(() => (projetoId ? listasApi.listar(projetoId) : Promise.resolve([])), [projetoId]);
   const [descricao, setDescricao] = useState(cena?.descricao ?? "");
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -348,7 +362,13 @@ function FormCena({ cena, projetoInicial, aoSalvar }: { cena?: Cena; projetoInic
         setSalvando(true);
         setErro(null);
         try {
-          const dados = { nome, projetoId: projetoId || null, descricao: descricao || null, storyboard: cena?.storyboard ?? "" };
+          const dados = {
+            nome,
+            projetoId: projetoId || null,
+            videoId: videoId || null,
+            descricao: descricao || null,
+            storyboard: cena?.storyboard ?? "",
+          };
           aoSalvar(cena ? await cenasApi.salvar(cena.id, dados) : await cenasApi.criar(dados));
         } catch (er) {
           setErro((er as Error).message);
@@ -360,8 +380,33 @@ function FormCena({ cena, projetoInicial, aoSalvar }: { cena?: Cena; projetoInic
         <Entrada value={nome} onChange={(e) => setNome(e.target.value)} autoFocus required placeholder="Cena da ponte" />
       </Campo>
       <Campo rotulo="Projeto">
-        <EscolhaProjeto valor={projetoId} aoMudar={setProjetoId} />
+        <EscolhaProjeto
+          valor={projetoId}
+          aoMudar={(p) => {
+            setProjetoId(p);
+            // Vídeo é de um projeto: trocou o projeto, a cena sai do vídeo.
+            setVideoId("");
+          }}
+        />
       </Campo>
+      {projetoId && !!listas.dados?.some((l) => l.videos.length) && (
+        <Campo rotulo="Vídeo" dica="Opcional. Sem vídeo, a cena fica em “Cenas sem vídeo” do projeto.">
+          <Seletor value={videoId} onChange={(e) => setVideoId(e.target.value)}>
+            <option value="">— Sem vídeo —</option>
+            {listas.dados.map((l) =>
+              l.videos.length ? (
+                <optgroup key={l.id} label={l.nome}>
+                  {l.videos.map((v, i) => (
+                    <option key={v.id} value={v.id}>
+                      {i + 1}. {v.nome}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null,
+            )}
+          </Seletor>
+        </Campo>
+      )}
       <Campo rotulo="Descrição">
         <AreaTexto value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={4} />
       </Campo>

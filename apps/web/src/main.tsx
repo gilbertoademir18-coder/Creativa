@@ -11,6 +11,7 @@ import { PaginaProjeto, PaginaProjetos } from "./paginas/projetos.tsx";
 import { PaginaReferencias } from "./paginas/referencias.tsx";
 import { PaginaShot } from "./paginas/shot.tsx";
 import { PaginaTiposGeracao } from "./paginas/tipos-geracao.tsx";
+import { PaginaVideo } from "./paginas/video.tsx";
 import { PaginaWorkflows } from "./paginas/workflows.tsx";
 
 // Os itens do menu são rotas de primeiro nível; os detalhes ficam
@@ -30,6 +31,7 @@ const roteador = createBrowserRouter([
       { path: "cenas", element: <PaginaCenas /> },
       { path: "cenas/:id", element: <PaginaCena /> },
       { path: "shots/:id", element: <PaginaShot /> },
+      { path: "videos/:id", element: <PaginaVideo /> },
       { path: "outputs", element: <PaginaOutputs /> },
       { path: "assistentes", element: <PaginaAssistentes /> },
       { path: "tipos-geracao", element: <PaginaTiposGeracao /> },

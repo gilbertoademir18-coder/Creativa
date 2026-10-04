@@ -7,9 +7,13 @@
 // A árvore:
 //
 //   Projeto
-//   ├── Asset ─────────── Referências, Outputs
-//   └── Cena (storyboard)
-//       └── Shot ──────── Referências, Outputs
+//   ├── Asset ─────────────────── Referências, Outputs
+//   ├── Lista de vídeos ("Temporada 1", "Trailers")
+//   │   └── Vídeo ("EP01")
+//   │       └── Cena (storyboard)
+//   │           └── Shot ──────── Referências, Outputs
+//   └── Cena sem vídeo
+//       └── Shot
 //
 // Não há cadastro de "geração": o Gerador é um recurso do código
 // (src/geracao/), usado de dentro do asset ou do shot. Cada clique em
@@ -79,6 +83,7 @@ model Projeto {
 
   assets      Asset[]
   cenas       Cena[]
+  listas      ListaVideos[]
   assistentes Assistente[]
 
   @@map("projeto")
@@ -109,6 +114,12 @@ model Asset {
 model Cena {
   id         String   @id @default(uuid()) @db.Uuid
   projetoId  String?  @map("projeto_id") @db.Uuid
+  /// O vídeo em que a cena entra, se entra em algum. O projeto da cena é
+  /// sempre o da lista do vídeo (a API garante). Apagar o vídeo solta a
+  /// cena, que volta a ser "sem vídeo" do projeto.
+  videoId    String?  @map("video_id") @db.Uuid
+  /// Posição dentro do vídeo, a partir de 0. Fora de vídeo, não importa.
+  ordem      Int      @default(0)
   nome       String
   descricao  String?
   /// Texto livre por enquanto: roteiro, planos, intenção da cena.
@@ -117,10 +128,53 @@ model Cena {
   editadoEm  DateTime @updatedAt @map("editado_em") @db.Timestamptz
 
   projeto Projeto? @relation(fields: [projetoId], references: [id], onDelete: SetNull)
+  video   Video?   @relation(fields: [videoId], references: [id], onDelete: SetNull)
   shots   Shot[]
 
   @@index([projetoId])
+  @@index([videoId, ordem])
   @@map("cena")
+}
+
+/// Um agrupamento de vídeos de um projeto: "Temporada 1", "Trailers",
+/// "Aberturas". Genérico de propósito — nem todo projeto é uma série.
+model ListaVideos {
+  id        String   @id @default(uuid()) @db.Uuid
+  /// Lista é sempre de um projeto. Apagar o projeto leva as listas e os
+  /// vídeos (são só agrupadores); as cenas ficam, soltas.
+  projetoId String   @map("projeto_id") @db.Uuid
+  nome      String
+  descricao String?
+  /// Posição no projeto, a partir de 0.
+  ordem     Int      @default(0)
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz
+  editadoEm DateTime @updatedAt @map("editado_em") @db.Timestamptz
+
+  projeto Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  videos  Video[]
+
+  @@index([projetoId, ordem])
+  @@map("lista_videos")
+}
+
+/// Um vídeo de uma lista ("EP01 — O Clube"), feito de cenas em ordem.
+model Video {
+  id        String   @id @default(uuid()) @db.Uuid
+  listaId   String   @map("lista_id") @db.Uuid
+  nome      String
+  /// Sinopse, roteiro: markdown, com o editor visual.
+  descricao String?
+  /// Posição na lista, a partir de 0.
+  ordem     Int      @default(0)
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz
+  editadoEm DateTime @updatedAt @map("editado_em") @db.Timestamptz
+
+  /// Apagar a lista leva os vídeos; as cenas deles ficam, sem vídeo.
+  lista ListaVideos @relation(fields: [listaId], references: [id], onDelete: Cascade)
+  cenas Cena[]
+
+  @@index([listaId, ordem])
+  @@map("video")
 }
 
 /// Um plano da cena. Toda cena nasce com um; todo shot tem cena.

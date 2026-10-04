@@ -85,13 +85,18 @@ async function contextoDoDono(assetId: string | null, shotId: string | null): Pr
   }
   const s = await prisma.shot.findUnique({
     where: { id: shotId! },
-    include: { cena: { include: { projeto: { select: { nome: true } } } } },
+    include: {
+      cena: { include: { projeto: { select: { nome: true } }, video: { select: { nome: true, descricao: true, lista: { select: { nome: true } } } } } },
+    },
   });
   if (!s) throw new ErroHttp(400, "Shot não encontrado.");
   return {
     projetoId: s.cena.projetoId,
     linhas: [
       s.cena.projeto && `Projeto: ${s.cena.projeto.nome}`,
+      s.cena.video && `Vídeo: ${s.cena.video.nome} (lista "${s.cena.video.lista.nome}")`,
+      // A sinopse pode ser longa: o começo basta para dar o tom.
+      s.cena.video?.descricao && `Sinopse do vídeo:\n${s.cena.video.descricao.slice(0, 3000)}`,
       `Cena: ${s.cena.nome}`,
       s.cena.descricao && `Descrição da cena:\n${s.cena.descricao}`,
       // O storyboard pode ser longo: o começo basta para dar o tom.

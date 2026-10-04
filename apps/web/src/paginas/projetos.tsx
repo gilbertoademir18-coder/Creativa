@@ -2,8 +2,9 @@ import { ArrowLeft, Clapperboard, FileText, FolderKanban, Pencil, Plus, Shapes, 
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { assetsApi, cenasApi, projetosApi } from "../api.ts";
-import { ModalDescricaoProjeto, resumoMarkdown } from "../componentes/descricao-projeto.tsx";
+import { ModalDocumento, resumoMarkdown } from "../componentes/documento-markdown.tsx";
 import { FiltroBusca } from "../componentes/filtros.tsx";
+import { SecaoListasVideos } from "../componentes/listas-videos.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
 import {
   Aviso,
@@ -107,7 +108,8 @@ export function PaginaProjeto() {
   const navegar = useNavigate();
   const projeto = useCarregar(() => projetosApi.ler(id), [id]);
   const assets = useCarregar(() => assetsApi.listar({ projeto: id }), [id]);
-  const cenas = useCarregar(() => cenasApi.listar({ projeto: id }), [id]);
+  // Só as de fora de vídeo: as outras aparecem dentro dos vídeos, nas listas.
+  const cenas = useCarregar(() => cenasApi.listar({ projeto: id, video: "sem" }), [id]);
   const [editando, setEditando] = useState(false);
   const [descrevendo, setDescrevendo] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
@@ -171,8 +173,9 @@ export function PaginaProjeto() {
             </div>
           )}
         </Secao>
+        <SecaoListasVideos projetoId={p.id} volta={volta} />
         <Secao
-          titulo={`Cenas (${cenas.dados?.length ?? "…"})`}
+          titulo={`Cenas sem vídeo (${cenas.dados?.length ?? "…"})`}
           acoes={
             <>
               <BotaoLink para={`/cenas?projeto=${p.id}`}>Ver na lista de cenas</BotaoLink>
@@ -182,7 +185,9 @@ export function PaginaProjeto() {
             </>
           }
         >
-          {cenas.dados?.length === 0 && <Vazio icone={<Clapperboard />} titulo="Nenhuma cena neste projeto" />}
+          {cenas.dados?.length === 0 && (
+            <Vazio icone={<Clapperboard />} titulo="Nenhuma cena fora de vídeo" texto="Cenas soltas do projeto: rascunhos, ou o que ainda não foi para um vídeo." />
+          )}
           {!!cenas.dados?.length && (
             <div className={GRADE}>
               {cenas.dados.map((c) => (
@@ -201,13 +206,15 @@ export function PaginaProjeto() {
           projeto.setDados(novo);
         }}
       />
-      <ModalDescricaoProjeto
-        projeto={p}
+      <ModalDocumento
+        titulo={`Descrição — ${p.nome}`}
+        valor={p.descricao}
+        placeholder="Escreva sobre o projeto: história, personagens, tom, estética, referências... Use # para títulos e - para listas."
         aberto={descrevendo}
         aoFechar={() => setDescrevendo(false)}
-        aoSalvar={(novo) => {
+        aoSalvar={async (texto) => {
+          projeto.setDados(await projetosApi.salvarDescricao(p.id, texto));
           setDescrevendo(false);
-          projeto.setDados(novo);
         }}
       />
       <ConfirmarExclusao

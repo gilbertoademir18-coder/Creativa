@@ -32,9 +32,18 @@ outros projetos.
 ```
 Projeto
 ├── Asset (personagem, cenário, objeto...) ── Referências, Outputs  ← Gerador
-└── Cena (storyboard em texto)
-    └── Shot ──────────────────────────────── Referências, Outputs  ← Gerador
+├── Lista de vídeos ("Temporada 1", "Trailers", "Aberturas")
+│   └── Vídeo ("EP01 — O Clube"; sinopse em markdown)
+│       └── Cena (storyboard em texto)
+│           └── Shot ──────────────────────── Referências, Outputs  ← Gerador
+└── Cena sem vídeo
+    └── Shot
 ```
+
+Um projeto pode ter várias **listas de vídeos** independentes — genéricas de
+propósito: nem toda lista é uma temporada. Lista e vídeo só agrupam: apagar
+um deles **nunca apaga cena**; as cenas voltam para "Cenas sem vídeo" do
+projeto, com os shots e outputs.
 
 Não existe cadastro de "geração". O **Gerador** é um recurso do sistema que
 aparece dentro de cada asset e shot: o tipo e o workflow já vêm escolhidos
@@ -47,7 +56,9 @@ estas configurações" devolve tudo ao Gerador.
 | --- | --- |
 | `projeto` | O trabalho: "Poker de Camila", "Anime Katsuragi" |
 | `asset` | Personagem, cenário, objeto ou outro. Com projeto ou solto |
-| `cena` | Com projeto ou solta; tem o storyboard |
+| `lista_videos` | Um agrupamento de vídeos de um projeto, em ordem |
+| `video` | Um vídeo de uma lista, em ordem; a sinopse é markdown |
+| `cena` | Com projeto ou solta; tem o storyboard. Opcionalmente num vídeo, em ordem — aí o projeto é o da lista |
 | `shot` | Sempre numa cena, em ordem. Toda cena nasce com um e nunca fica sem |
 | `referencia` | Imagem, vídeo ou texto enviado. De um asset, de um shot, ou solta |
 | `output` | Um arquivo gerado, com todos os metadados de como foi gerado. De um asset ou de um shot |

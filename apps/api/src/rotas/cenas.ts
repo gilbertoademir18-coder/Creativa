@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import type { Prisma } from "../generated/prisma/client.ts";
 import { prisma } from "../lib/prisma.ts";
 import { referenciaParaJson } from "./referencias.ts";
 import {
@@ -20,10 +21,14 @@ import {
  *
  * Toda cena tem pelo menos um shot: nasce com o "Shot 1", e o último shot
  * de uma cena não pode ser apagado.
+ *
+ * A cena pode estar num vídeo (de uma lista de vídeos do projeto). Aí o
+ * projeto dela é o da lista — quem manda é o vídeo — e ela entra no fim.
  */
 
 const CorpoCena = z.object({
   projetoId: UuidOpcional,
+  videoId: UuidOpcional,
   nome: Nome,
   descricao: TextoOpcional(),
   storyboard: z.string().max(100_000, "storyboard longo demais").default(""),
@@ -41,14 +46,41 @@ const shotsResumidos = {
 
 const daCena = {
   projeto: { select: { id: true, nome: true } },
+  video: { select: { id: true, nome: true, lista: { select: { id: true, nome: true } } } },
   shots: shotsResumidos,
 };
 
+/**
+ * Projeto e ordem da cena a partir do vídeo: com vídeo, o projeto é o da
+ * lista dele, e a cena vai para o fim do vídeo (só quando muda de vídeo —
+ * editar o nome não mexe na posição).
+ */
+async function encaixarNoVideo(
+  tx: Prisma.TransactionClient,
+  dados: z.infer<typeof CorpoCena>,
+  atual?: { videoId: string | null; ordem: number },
+) {
+  if (!dados.videoId) return { ...dados, ordem: 0 };
+  const v = await tx.video.findUnique({ where: { id: dados.videoId }, select: { lista: { select: { projetoId: true } } } });
+  if (!v) throw new ErroHttp(400, "Vídeo não encontrado.");
+  if (atual?.videoId === dados.videoId) return { ...dados, projetoId: v.lista.projetoId, ordem: atual.ordem };
+  const ultima = await tx.cena.aggregate({ where: { videoId: dados.videoId }, _max: { ordem: true } });
+  return { ...dados, projetoId: v.lista.projetoId, ordem: (ultima._max.ordem ?? -1) + 1 };
+}
+
 export async function rotasCenas(app: FastifyInstance) {
   app.get("/", async (req) => {
-    const { projeto, busca } = validar(z.object({ projeto: FiltroProjeto, busca: Busca }), req.query);
+    const { projeto, video, busca } = validar(
+      z.object({ projeto: FiltroProjeto, video: z.union([Uuid, z.literal("sem")]).optional(), busca: Busca }),
+      req.query,
+    );
     return prisma.cena.findMany({
-      where: { projetoId: projeto === "sem" ? null : projeto, nome: contem(busca) },
+      where: {
+        projetoId: projeto === "sem" ? null : projeto,
+        // "sem": só as cenas fora de vídeo (a seção "Cenas sem vídeo" do projeto).
+        videoId: video === "sem" ? null : video,
+        nome: contem(busca),
+      },
       include: daCena,
       orderBy: { editadoEm: "desc" },
     });
@@ -63,18 +95,24 @@ export async function rotasCenas(app: FastifyInstance) {
 
   /** A cena e o primeiro shot nascem juntos, na mesma transação. */
   app.post("/", async (req, reply) => {
-    const dados = validar(CorpoCena, req.body);
-    const cena = await prisma.cena.create({
-      data: { ...dados, shots: { create: { nome: "Shot 1", ordem: 0 } } },
-      include: daCena,
-    });
+    const corpo = validar(CorpoCena, req.body);
+    const cena = await prisma.$transaction(async (tx) =>
+      tx.cena.create({
+        data: { ...(await encaixarNoVideo(tx, corpo)), shots: { create: { nome: "Shot 1", ordem: 0 } } },
+        include: daCena,
+      }),
+    );
     return reply.code(201).send(cena);
   });
 
   app.put("/:id", async (req) => {
     const { id } = validar(z.object({ id: Uuid }), req.params);
-    const dados = validar(CorpoCena, req.body);
-    return prisma.cena.update({ where: { id }, data: dados, include: daCena });
+    const corpo = validar(CorpoCena, req.body);
+    return prisma.$transaction(async (tx) => {
+      const atual = await tx.cena.findUnique({ where: { id }, select: { videoId: true, ordem: true } });
+      if (!atual) throw naoEncontrado("Cena não encontrada.");
+      return tx.cena.update({ where: { id }, data: await encaixarNoVideo(tx, corpo, atual), include: daCena });
+    });
   });
 
   /**
@@ -135,6 +173,7 @@ export async function rotasShots(app: FastifyInstance) {
             id: true,
             nome: true,
             projeto: { select: { id: true, nome: true } },
+            video: { select: { id: true, nome: true, lista: { select: { id: true, nome: true } } } },
             shots: { select: { id: true, nome: true, ordem: true }, orderBy: { ordem: "asc" } },
           },
         },

@@ -26,6 +26,7 @@ export function PaginaShot() {
         voltar={
           <Link to={`/cenas/${s.cena.id}`} className="inline-flex items-center gap-1.5 hover:text-zinc-100">
             <ArrowLeft className="size-4" /> {s.cena.projeto ? `${s.cena.projeto.nome} › ` : ""}
+            {s.cena.video ? `${s.cena.video.nome} › ` : ""}
             {s.cena.nome}
           </Link>
         }

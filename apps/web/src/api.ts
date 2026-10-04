@@ -10,6 +10,9 @@ import type {
   WorkflowResumo,
   Cena,
   Execucao,
+  ListaVideos,
+  VideoDetalhe,
+  VideoResumo,
   Output,
   OutputDetalhe,
   Projeto,
@@ -64,7 +67,10 @@ export type Dono = { assetId: string | null; shotId: string | null };
 /** A descrição do projeto tem rota própria (`salvarDescricao`): nome e descrição se salvam separados. */
 export type ProjetoNovo = { nome: string };
 export type AssetNovo = { nome: string; tipo: TipoAsset; projetoId: string | null; descricao: string | null };
-export type CenaNova = { nome: string; projetoId: string | null; descricao: string | null; storyboard: string };
+/** Com vídeo, o projeto da cena é o da lista do vídeo (a API acerta). */
+export type CenaNova = { nome: string; projetoId: string | null; videoId: string | null; descricao: string | null; storyboard: string };
+export type ListaNova = { nome: string; descricao: string | null };
+export type VideoNovo = { nome: string; descricao: string | null };
 export type ShotNovo = { nome: string; descricao: string | null };
 /** O que o Gerador manda ao clicar em "Gerar". */
 export type Pedido = Dono & {
@@ -107,7 +113,8 @@ export const assetsApi = {
 };
 
 export const cenasApi = {
-  listar: (f: Filtro = {}) => api<Cena[]>(`/cenas${consulta(f)}`),
+  /** `video: "sem"`: só as cenas fora de vídeo. */
+  listar: (f: Filtro & { video?: string } = {}) => api<Cena[]>(`/cenas${consulta(f)}`),
   ler: (id: string) => api<Cena>(`/cenas/${id}`),
   criar: (c: CenaNova) => api<Cena>("/cenas", { method: "POST", corpo: c }),
   salvar: (id: string, c: CenaNova) => api<Cena>(`/cenas/${id}`, { method: "PUT", corpo: c }),
@@ -115,6 +122,24 @@ export const cenasApi = {
   novoShot: (cenaId: string) => api<ShotResumo>(`/cenas/${cenaId}/shots`, { method: "POST", corpo: {} }),
   reordenar: (cenaId: string, shots: string[]) =>
     api<ShotResumo[]>(`/cenas/${cenaId}/ordem`, { method: "PUT", corpo: { shots } }),
+};
+
+export const listasApi = {
+  listar: (projetoId: string) => api<ListaVideos[]>(`/listas${consulta({ projeto: projetoId })}`),
+  criar: (projetoId: string, l: ListaNova) => api<ListaVideos>("/listas", { method: "POST", corpo: { ...l, projetoId } }),
+  salvar: (id: string, l: ListaNova) => api<ListaVideos>(`/listas/${id}`, { method: "PUT", corpo: l }),
+  apagar: (id: string) => api<void>(`/listas/${id}`, { method: "DELETE" }),
+  reordenar: (projetoId: string, listas: string[]) => api<ListaVideos[]>("/listas/ordem", { method: "PUT", corpo: { projetoId, listas } }),
+  novoVideo: (listaId: string, v: VideoNovo) => api<VideoResumo>(`/listas/${listaId}/videos`, { method: "POST", corpo: v }),
+  reordenarVideos: (listaId: string, videos: string[]) =>
+    api<VideoResumo[]>(`/listas/${listaId}/videos/ordem`, { method: "PUT", corpo: { videos } }),
+};
+
+export const videosApi = {
+  ler: (id: string) => api<VideoDetalhe>(`/videos/${id}`),
+  salvar: (id: string, v: VideoNovo) => api<VideoDetalhe>(`/videos/${id}`, { method: "PUT", corpo: v }),
+  apagar: (id: string) => api<void>(`/videos/${id}`, { method: "DELETE" }),
+  reordenarCenas: (id: string, cenas: string[]) => api<Cena[]>(`/videos/${id}/cenas/ordem`, { method: "PUT", corpo: { cenas } }),
 };
 
 export const shotsApi = {
