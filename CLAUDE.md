@@ -148,6 +148,11 @@ as cenas (`SetNull`), nunca as apaga.
   um). Ao gerar, `enviarImagens` (`geracao/imagens.ts`) manda o arquivo ao
   ComfyUI (`/upload/image`, em `input/creativa/`, com o nome pelo hash) e o
   nome vai para o `LoadImage`. O output guarda a referência, não o arquivo.
+- **Vídeo:** o `SaveVideo` aparece no histórico do ComfyUI na mesma lista
+  `images` (com `animated`); o tipo do output (IMAGEM, VIDEO, AUDIO) sai do
+  mime do arquivo (`tipoDoMime` em `geracao/execucao.ts`). Nó V3 com "combo
+  dinâmico" (o `format` do `SaveVideo`) vai no grafo API como valor, e as
+  sub-escolhas em chaves com ponto: `"format": "auto", "format.codec": "auto"`.
 - Ferramenta nova (fora do ComfyUI) = um adaptador em `geracao/execucao.ts`
   (hoje `executar` recusa o que não é `comfyui`) e uma linha em `FERRAMENTAS`.
 - Execuções, outputs e assistentes guardam as **chaves** (`tipo_geracao`,
@@ -164,13 +169,14 @@ as cenas (`SetNull`), nunca as apaga.
 
 # A máquina (o que importa para gerar com IA)
 
-Levantado em 2026-10-01. Tudo roda aqui: ComfyUI, API, banco.
+Levantado em 2026-10-01 (placa-mãe e RAM revistas em 2026-10-09). Tudo roda aqui: ComfyUI, API, banco.
 
 | Peça | Detalhe |
 | --- | --- |
 | GPU | **RTX 3080 Ti, 12 GB VRAM** — Ampere (compute 8.6), driver 617.14, CUDA 13 |
 | CPU | Ryzen 7 5800X, 8 núcleos / 16 threads |
-| RAM | 32 GB DDR4-3466 (o WMI lê um dos pentes como 1 GB; são 4×8) |
+| Placa-mãe | **Asus TUF Gaming B550M-Plus** (BIOS 3645), desde 2026-10-09 — a X570 Aorus Elite morreu ao salvar a BIOS |
+| RAM | 32 GB (kit 4×8 Kingston HyperX `KHX3466C16D4/8GX`) rodando a **3200, XMP desligado**. Os 32 GB estão em uso, mas a ficha (SPD) de dois pentes parece corrompida: o B1 se diz 1 GB e 8 bits, e o A1 se diz `KAX...` (na BIOS e no WMI, nas duas placas). O Diagnóstico de Memória do Windows passou sem erro (2026-10-09). Como o perfil XMP mora no SPD, não ligue o XMP com esses pentes |
 | `C:` | NVMe Samsung 980 PRO 2 TB — **todo modelo de IA fica em `C:\IA`**: `C:\IA\ComfyUI`, `C:\IA\Ollama\models`. Ferramenta nova de IA também vai para lá |
 | `D:` | HDD 4 TB ("Data") — bom para arquivar saídas, ruim para modelos (carrega devagar) |
 | SO | Windows 11 Home |
@@ -205,6 +211,25 @@ O que isso muda nas escolhas:
   (`lib/ollama.ts`).
 - 32 GB de RAM seguram um offload, mas modelos de vídeo grandes + offload
   chegam perto do limite.
+- **Histórico do MiniMax H3 derrubando o PC:** na placa-mãe antiga (X570, XMP
+  3466), o H3 reiniciou o PC duas vezes em 2026-10-04, sempre logo depois de
+  "Model MiniMaxH3 prepared for dynamic VRAM loading", antes do 1º passo —
+  Kernel-Power 41 com `BugcheckCode = 0`, sem minidump e sem WHEA (corte de
+  energia, não tela azul). Ao desligar o XMP, a X570 morreu. Na B550 nova,
+  com a RAM a 3200 sem XMP, o H3 rodou normal (5 s a 864×480, com som, em
+  ~2,3 min), e de novo com a GPU sem limite (370 W) — a fonte saiu da lista
+  de suspeitos. Sobram a X570 defeituosa e o XMP (o SPD de dois pentes está
+  corrompido, e o XMP mora lá); como mudaram juntos, a causa não está
+  provada. **Não ligue o XMP**
+  sem o usuário pedir. Se o PC voltar a cair: `Get-WinEvent` no log System
+  (Id 41, WHEA, nvlddmkm) e o fim de `C:\IA\ComfyUI\ComfyUI\user\comfyui_8188*.log`
+  (o `.prev` é o da sessão que caiu).
+- **A GPU roda no limite de fábrica** (370 W, lido como `power.default_limit`
+  desde a placa-mãe nova; antes lia 350 W). Contra os desligamentos houve uma
+  tarefa agendada que baixava para 280 W; com a B550 estável, foi apagada em
+  2026-10-09 a pedido do usuário. Mudar o limite exige administrador.
+- **Tempos medidos (5 s de vídeo):** Wan 2.2 a 832×480 em ~2,5 min; MiniMax
+  H3 a 864×480, com som, em ~2,3 min.
 - **Personagem de anime: Anima Aesthetic v1.1** (2B, ~6 GB de VRAM com o
   codificador), escolhido em 2026-10-03 contra Illustrious XL e Anima Turbo.
   O `CLIPLoader` dele é `type = stable_diffusion`, e com cfg 4 o negativo
@@ -214,6 +239,16 @@ O que isso muda nas escolhas:
   + `index_timestep_zero`). O modelo tem 13,5 GB, mais do que a placa, e roda
   com offload. O `CLIPLoader` é `type = krea2`, e com cfg 1 não há negativo.
   O prompt descreve só o conteúdo: o estilo vem da imagem.
+- **Vídeo a partir do primeiro quadro** (tipo "Vídeo do primeiro quadro", só
+  shots), dois workflows para comparar, escolhidos em 2026-10-04:
+  **Wan 2.2 I2V 14B fp8 + LightX2V 4 passos** (dois modelos de 14,3 GB,
+  high/low noise, 16 fps, mudo) e **MiniMax H3 FL2VA int8 + turbo 8 passos**
+  (21 GB + codificador Qwen3-VL 32B NVFP4 de 15,7 GB, 24 fps, **com som**).
+  Os dois passam muito da placa e rodam com offload; o H3 deixa a RAM no
+  limite e o NVFP4 não é nativo na Ampere. O nó do H3 **estica** o primeiro
+  quadro (o do Wan recorta no centro): o grafo tem um `ImageScale` com
+  `crop = center` antes. A seção Som da descrição vai para saídas de vídeo.
+  LTX 2.5 ficou de fora: o repositório é *gated* no Hugging Face.
 
 # Banco de dados
 
@@ -265,6 +300,10 @@ Coisas que já custaram tempo — e o contorno:
 - **Barras invertidas:** o Git Bash estraga caminhos do Windows em `sed` e em
   `node -e '...'`. Para editar texto com `C:\...`, escreva um script `.cjs` no
   scratchpad e rode com `node`.
+- **Regex dentro de heredoc ou template literal perde a barra:** `\b` vira
+  backspace e `\d` vira `d`, e o aviso do workflow nunca dispara (já
+  aconteceu, em silêncio). JSON com regex: escreva com a ferramenta Write ou
+  com `String.raw` num `.cjs`. A API recusa aviso com caractere de controle.
 - **Scripts de teste fora do projeto:** use extensão `.mts` (fora do pacote
   `"type": "module"` o `tsx` trata `.ts` como CommonJS), importe o projeto por
   `file:///C:/Projetos/Creativa/...` e rode de `apps/api` com

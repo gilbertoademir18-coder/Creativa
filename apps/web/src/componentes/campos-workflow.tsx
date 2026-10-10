@@ -13,8 +13,22 @@ import { AreaTexto, Campo, Entrada, Pilulas, Seletor } from "./ui.tsx";
 /** Os valores de um workflow: o que já havia nos campos de mesmo nome, ou o padrão. */
 export function valoresPara(campos: CampoWorkflow[], atuais: Record<string, unknown> = {}): Record<string, unknown> {
   const v: Record<string, unknown> = {};
-  for (const c of campos) v[c.chave] = c.chave in atuais ? atuais[c.chave] : padraoDe(c);
+  for (const c of campos) v[c.chave] = c.chave in atuais && serve(c, atuais[c.chave]) ? atuais[c.chave] : padraoDe(c);
   return v;
+}
+
+/**
+ * O valor que veio de outro workflow (ou de um rascunho antigo) ainda vale
+ * neste campo? Trocar do MiniMax H3 para o Wan levava junto o tamanho
+ * "864x480", que o Wan não tem: o seletor mostrava a primeira opção e a API
+ * recusava com "tamanho inválido".
+ */
+function serve(c: CampoWorkflow, valor: unknown): boolean {
+  if (c.tipo === "opcoes" || c.tipo === "tamanho") return (c.opcoes as { valor: unknown }[]).some((o) => o.valor === valor);
+  if (c.tipo === "numero") return typeof valor === "number" && (c.min === undefined || valor >= c.min) && (c.max === undefined || valor <= c.max);
+  if (c.tipo === "texto") return typeof valor === "string";
+  if (c.tipo === "seed") return valor === null || typeof valor === "number";
+  return true;
 }
 
 /** O valor inicial de um campo. Seed começa aleatória (null); imagem, sem nenhuma escolhida. */

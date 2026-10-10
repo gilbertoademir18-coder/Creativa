@@ -159,7 +159,11 @@ function CorpoVisor({
     <div className="grid grid-cols-[minmax(0,1fr)_26rem] gap-6">
       <div className="flex flex-col gap-2">
         <div className="relative flex min-h-[50vh] items-center justify-center rounded-lg bg-black">
-          {base && <img src={urlArquivo(base.arquivo)} alt="" className="max-h-[75vh] object-contain" />}
+          {base?.tipo === "VIDEO" ? (
+            <video key={base.arquivo} src={urlArquivo(base.arquivo)} controls autoPlay loop className="max-h-[75vh] object-contain" />
+          ) : (
+            base && <img src={urlArquivo(base.arquivo)} alt="" className="max-h-[75vh] object-contain" />
+          )}
           {varios && (
             <>
               <BotaoSeta lado="esquerda" onClick={() => ir(-1)} />

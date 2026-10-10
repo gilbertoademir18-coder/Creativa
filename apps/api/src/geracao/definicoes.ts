@@ -24,7 +24,20 @@ export type Alvo = z.infer<typeof Alvo>;
  */
 export const Aviso = z.object({
   quando: z.enum(["falta", "tem"]),
-  padrao: z.string().min(1, "o padrão do aviso não pode ficar vazio"),
+  padrao: z
+    .string()
+    .min(1, "o padrão do aviso não pode ficar vazio")
+    // Caractere de controle (um "\b" que virou backspace) é barra invertida
+    // que se perdeu no caminho: o aviso nunca dispararia.
+    .refine((p) => !/[\x00-\x1f]/.test(p), "o padrão do aviso tem caractere de controle — perdeu uma barra invertida (\\b, \\d)?")
+    .refine((p) => {
+      try {
+        new RegExp(p, "i");
+        return true;
+      } catch {
+        return false;
+      }
+    }, "o padrão do aviso não é uma expressão regular válida"),
   mensagem: z.string().min(1, "a mensagem do aviso não pode ficar vazia"),
 });
 export type Aviso = z.infer<typeof Aviso>;

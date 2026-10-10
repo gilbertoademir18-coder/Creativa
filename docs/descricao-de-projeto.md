@@ -26,7 +26,7 @@ A ordem é a da tabela. Pode faltar seção: o que não existe não vai.
 | `## Mundo` | Onde e quando, regras (do poder, da magia, da tecnologia), lugares que voltam. | Sempre |
 | `## Personagens` | Uma ficha `###` por personagem. | Só quem aparece na geração |
 | `## Recorrentes` | Gags, bordões, objetos e sequências que se repetem. | Sempre |
-| `## Som` | Trilha, ambiência, vozes, efeitos marcantes. | Só áudio |
+| `## Som` | Trilha, ambiência, vozes, efeitos marcantes. | Áudio e vídeo |
 | `## Evitar` | O que nunca pode aparecer. | Sempre |
 | `## Referências` | Obras que inspiram, com o que se pega de cada uma. | **Nunca** |
 

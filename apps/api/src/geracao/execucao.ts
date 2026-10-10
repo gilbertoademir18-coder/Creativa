@@ -190,8 +190,16 @@ async function tamanhoPng(absoluto: string): Promise<{ largura: number; altura: 
   }
 }
 
+/** O tipo do output pelo mime que o ComfyUI mandou: o SaveVideo também sai na lista "images". */
+function tipoDoMime(mime: string): "IMAGEM" | "VIDEO" | "AUDIO" | "OUTRO" {
+  if (mime.startsWith("image/")) return "IMAGEM";
+  if (mime.startsWith("video/")) return "VIDEO";
+  if (mime.startsWith("audio/")) return "AUDIO";
+  return "OUTRO";
+}
+
 /**
- * Traz as imagens de uma execução concluída para a pasta do Creativa e cria
+ * Traz as imagens (ou vídeos) de uma execução concluída para a pasta do Creativa e cria
  * os Outputs, cada um com a cópia de tudo o que a execução usou. Se algo
  * falha no meio, apaga o que já tinha copiado.
  */
@@ -231,7 +239,7 @@ async function coletar(e: Execucao, h: Historico, w: DefWorkflow | null): Promis
             grafoEnviado: e.grafoEnviado as object,
             assistente: e.assistente,
             ideia: e.ideia,
-            tipo: "IMAGEM",
+            tipo: tipoDoMime(c.mime),
             arquivo: c.relativo,
             mime: c.mime,
             tamanhoBytes: c.tamanho,

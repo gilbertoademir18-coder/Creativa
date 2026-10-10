@@ -882,11 +882,15 @@ function PainelTeste({ grafo, campos, saidas }: { grafo: GrafoApi | null; campos
           <>
             {estado.erro && <Aviso>{estado.erro}</Aviso>}
             <div className="grid w-full gap-3">
-              {estado.imagens.map((i) => (
-                <a key={`${i.subfolder}/${i.filename}`} href={workflowsApi.urlImagemTeste(i)} target="_blank" rel="noreferrer">
-                  <img src={workflowsApi.urlImagemTeste(i)} alt="" className="max-h-[60vh] w-full rounded-lg object-contain" />
-                </a>
-              ))}
+              {estado.imagens.map((i) =>
+                /\.(mp4|webm|mov|mkv)$/i.test(i.filename) ? (
+                  <video key={`${i.subfolder}/${i.filename}`} src={workflowsApi.urlImagemTeste(i)} controls autoPlay loop className="max-h-[60vh] w-full rounded-lg" />
+                ) : (
+                  <a key={`${i.subfolder}/${i.filename}`} href={workflowsApi.urlImagemTeste(i)} target="_blank" rel="noreferrer">
+                    <img src={workflowsApi.urlImagemTeste(i)} alt="" className="max-h-[60vh] w-full rounded-lg object-contain" />
+                  </a>
+                ),
+              )}
             </div>
             {teste?.seed && <span className="font-mono text-xs text-zinc-500">seed {teste.seed}</span>}
           </>

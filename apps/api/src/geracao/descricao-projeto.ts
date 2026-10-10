@@ -22,7 +22,8 @@ const SECOES: Record<string, (saida: TipoOutput) => boolean> = {
   mundo: () => true,
   personagens: () => true,
   recorrentes: () => true,
-  som: (s) => s === "AUDIO",
+  // Vídeo também: há modelos que geram o som junto (MiniMax H3).
+  som: (s) => s === "AUDIO" || s === "VIDEO",
   evitar: () => true,
 };
 

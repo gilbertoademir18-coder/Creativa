@@ -69,9 +69,16 @@ function entradas(info) {
   return lista;
 }
 
-/** Opções de um combo, nos dois formatos do ComfyUI: [[...], {}] e ["COMBO", {options}]. */
-const opcoesDe = (spec) => (Array.isArray(spec[0]) ? spec[0] : spec[0] === "COMBO" ? (spec[1]?.options ?? []) : null);
-const WIDGETS = new Set(["INT", "FLOAT", "STRING", "BOOLEAN", "COMBO"]);
+/**
+ * Combo dinâmico (nós V3, ex.: o `format` do SaveVideo): um combo cuja
+ * escolha abre sub-entradas. No formato API, elas vão em chaves com ponto:
+ * `"format": "mp4", "format.codec": "h264"`.
+ */
+const DINAMICO = "COMFY_DYNAMICCOMBO_V3";
+/** Opções de um combo, nos formatos do ComfyUI: [[...], {}], ["COMBO", {options}] e o dinâmico. */
+const opcoesDe = (spec) =>
+  Array.isArray(spec[0]) ? spec[0] : spec[0] === "COMBO" ? (spec[1]?.options ?? []) : spec[0] === DINAMICO ? (spec[1]?.options ?? []).map((o) => o.key) : null;
+const WIDGETS = new Set(["INT", "FLOAT", "STRING", "BOOLEAN", "COMBO", DINAMICO]);
 /** Widget (valor na tela) ou encaixe (ligação vinda de outro nó)? */
 const ehWidget = (spec) => (Array.isArray(spec[0]) || WIDGETS.has(spec[0])) && !spec[1]?.forceInput;
 const tipoDe = (spec) => (Array.isArray(spec[0]) ? "COMBO" : spec[0]);
@@ -218,7 +225,8 @@ if (comando === "modelos") {
     }
     if (i.output_node) temSaida = true;
     const es = entradas(i);
-    for (const nome of Object.keys(n.inputs ?? {})) if (!es.some((e) => e.nome === nome)) avisos.push(`#${id} ${n.class_type}: entrada "${nome}" não existe (vai ser ignorada).`);
+    const subDeDinamico = (nome) => nome.includes(".") && es.some((e) => e.nome === nome.split(".")[0] && tipoDe(e.spec) === DINAMICO);
+    for (const nome of Object.keys(n.inputs ?? {})) if (!es.some((e) => e.nome === nome) && !subDeDinamico(nome)) avisos.push(`#${id} ${n.class_type}: entrada "${nome}" não existe (vai ser ignorada).`);
     for (const e of es) {
       const v = n.inputs?.[e.nome];
       if (v === undefined) {
@@ -334,6 +342,9 @@ function paraTela(grafo, info, nota) {
       if (ehWidget(e.spec)) {
         if (ehLigacao(v)) no.inputs.push({ name: e.nome, type: tipoDe(e.spec), widget: { name: e.nome }, link: null, _de: v });
         no.widgets_values.push(ehLigacao(v) || v === undefined ? (e.spec[1]?.default ?? null) : v, ...extrasDe(e));
+        // As sub-escolhas de um combo dinâmico vêm logo depois dele, na ordem das chaves.
+        if (tipoDe(e.spec) === DINAMICO)
+          for (const [nome, sub] of Object.entries(n.inputs ?? {})) if (nome.startsWith(`${e.nome}.`)) no.widgets_values.push(sub);
       } else if (ehLigacao(v) || e.obrigatoria) {
         no.inputs.push({ name: e.nome, type: tipoDe(e.spec), link: null, ...(ehLigacao(v) ? { _de: v } : {}) });
       }
