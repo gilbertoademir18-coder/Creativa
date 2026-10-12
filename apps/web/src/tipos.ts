@@ -343,7 +343,15 @@ export type EstadoTeste = {
 };
 
 /** Uma conversa livre com a LLM local (página Conversas). */
-export type Conversa = { id: string; titulo: string; criadoEm: string; editadoEm: string };
+export type Conversa = {
+  id: string;
+  titulo: string;
+  criadoEm: string;
+  editadoEm: string;
+  /** Com projeto, a LLM recebe a descrição dele. */
+  projetoId: string | null;
+  projeto: ProjetoRef | null;
+};
 
 export type MensagemConversa = {
   id: string;

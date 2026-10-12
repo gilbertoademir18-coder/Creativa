@@ -2,13 +2,16 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { configOllama, conversar, LIMITE_CONTEXTO, type MensagemLlm } from "../lib/ollama.ts";
 import { prisma } from "../lib/prisma.ts";
-import { Busca, ErroHttp, naoEncontrado, Uuid, validar } from "../lib/validacao.ts";
+import { Busca, ErroHttp, FiltroProjeto, naoEncontrado, Uuid, UuidOpcional, validar } from "../lib/validacao.ts";
 import { abrirEspacoParaLlm, exigirOllama } from "./assistentes.ts";
 
 /**
  * Conversas livres com a LLM local (`/api/conversas`) — a página Conversas,
  * um chat no estilo do ChatGPT. Cada conversa guarda as mensagens; a cada
  * pergunta, a LLM recebe a conversa inteira (ou o fim dela, se não couber).
+ *
+ * Conversa de um projeto (aberta pela barra do projeto) leva a descrição
+ * inteira dele no sistema: dá para conversar sobre aquele projeto.
  *
  * A GPU se reveza com o ComfyUI do mesmo jeito que no assistente de prompt
  * (`abrirEspacoParaLlm`).
@@ -21,26 +24,43 @@ const Titulo = z.string().trim().min(1, "não pode ficar vazio").max(120, "no m�
 const PedidoMensagem = z.object({
   /** Sem conversa: começa uma nova. */
   conversaId: z.union([Uuid, z.null()]).default(null),
+  /** De que projeto é a conversa nova (só vale ao criar). */
+  projetoId: UuidOpcional,
   texto: z.string().trim().min(1, "escreva a mensagem").max(20_000, "mensagem longa demais"),
 });
 
-function sistema(): string {
+/** A descrição do projeto vai inteira, até este tamanho: a conversa é sobre ele. */
+const LIMITE_DESCRICAO = 15_000;
+
+type ProjetoDaConversa = { nome: string; descricao: string | null } | null;
+
+function sistema(projeto: ProjetoDaConversa): string {
   const hoje = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  return [
+  const linhas = [
     "Você é um assistente prestativo, conversando com uma pessoa que cria vídeos, imagens e sons com IA.",
     "Responda em português do Brasil, a não ser que ela peça outro idioma.",
     "Seja direto e natural. Use markdown (listas, negrito, blocos de código, tabelas) quando ajudar a ler.",
     "Se não souber algo, diga que não sabe — não invente.",
     `Hoje é ${hoje}.`,
-  ].join("\n");
+  ];
+  if (projeto) {
+    linhas.push(
+      "",
+      `# O projeto: ${projeto.nome}`,
+      "Esta conversa é sobre este projeto. Use a descrição abaixo (a \"bíblia\" do projeto) como a verdade sobre ele: personagens, mundo, tom, estilo. Quando a pessoa propuser algo que contradiz a descrição, aponte. Ideias novas são bem-vindas, mas diga que ainda não estão na descrição.",
+      "",
+      projeto.descricao?.trim() ? projeto.descricao.trim().slice(0, LIMITE_DESCRICAO) : "(O projeto ainda não tem descrição.)",
+    );
+  }
+  return linhas.join("\n");
 }
 
 /**
  * A conversa que vai à LLM: o sistema e as últimas falas que cabem no
  * contexto. A última (a pergunta nova) vai sempre, mesmo se for longa.
  */
-function montarConversa(falas: MensagemLlm[]): MensagemLlm[] {
-  const sis: MensagemLlm = { role: "system", content: sistema() };
+function montarConversa(falas: MensagemLlm[], projeto: ProjetoDaConversa): MensagemLlm[] {
+  const sis: MensagemLlm = { role: "system", content: sistema(projeto) };
   let espaco = LIMITE_CONTEXTO - sis.content.length;
   const cabem: MensagemLlm[] = [];
   for (const fala of [...falas].reverse()) {
@@ -76,18 +96,25 @@ async function tituloPara(pergunta: string, resposta: string): Promise<string> {
 }
 
 export async function rotasConversas(app: FastifyInstance) {
-  /** As conversas, a mais recente em cima. A busca procura no título. */
+  /** As conversas, a mais recente em cima. A busca procura no título; o projeto filtra ("sem": as livres). */
   app.get("/", async (req) => {
-    const { busca } = validar(z.object({ busca: Busca }), req.query);
+    const { busca, projeto } = validar(z.object({ busca: Busca, projeto: FiltroProjeto }), req.query);
     return prisma.conversa.findMany({
-      where: busca ? { titulo: { contains: busca, mode: "insensitive" } } : undefined,
+      where: {
+        ...(busca ? { titulo: { contains: busca, mode: "insensitive" as const } } : {}),
+        ...(projeto ? { projetoId: projeto === "sem" ? null : projeto } : {}),
+      },
+      include: { projeto: { select: { id: true, nome: true } } },
       orderBy: { editadoEm: "desc" },
     });
   });
 
   app.get("/:id", async (req) => {
     const { id } = validar(z.object({ id: Uuid }), req.params);
-    const c = await prisma.conversa.findUnique({ where: { id }, include: { mensagens: { orderBy: { criadoEm: "asc" } } } });
+    const c = await prisma.conversa.findUnique({
+      where: { id },
+      include: { mensagens: { orderBy: { criadoEm: "asc" } }, projeto: { select: { id: true, nome: true } } },
+    });
     if (!c) throw naoEncontrado("Conversa não encontrada.");
     return c;
   });
@@ -118,14 +145,19 @@ export async function rotasConversas(app: FastifyInstance) {
    * a tela recarrega a lista quando o streaming acaba).
    */
   app.post("/mensagens", async (req, reply) => {
-    const { conversaId, texto } = validar(PedidoMensagem, req.body);
+    const { conversaId, texto, projetoId } = validar(PedidoMensagem, req.body);
     const conversa = conversaId
       ? await prisma.conversa.findUnique({
           where: { id: conversaId },
           include: { mensagens: { orderBy: { criadoEm: "asc" }, select: { papel: true, conteudo: true } } },
         })
-      : { titulo: TITULO_PADRAO, mensagens: [] };
+      : { titulo: TITULO_PADRAO, mensagens: [], projetoId };
     if (!conversa) throw naoEncontrado("Conversa não encontrada.");
+    // O projeto é o da conversa (a nova herda o pedido); lido agora, para ir a descrição mais recente.
+    const projeto = conversa.projetoId
+      ? await prisma.projeto.findUnique({ where: { id: conversa.projetoId }, select: { nome: true, descricao: true } })
+      : null;
+    if (conversa.projetoId && !projeto) throw new ErroHttp(400, "O projeto desta conversa não existe mais.");
 
     await exigirOllama();
     const ocupado = await abrirEspacoParaLlm();
@@ -141,7 +173,7 @@ export async function rotasConversas(app: FastifyInstance) {
       if (!reply.raw.writableFinished) cancelar.abort();
     });
 
-    const resposta = conversar(montarConversa(falas), cancelar.signal);
+    const resposta = conversar(montarConversa(falas, projeto), cancelar.signal);
     let primeiro: IteratorResult<string>;
     try {
       primeiro = await resposta.next();
@@ -153,7 +185,7 @@ export async function rotasConversas(app: FastifyInstance) {
     const pergunta = { mensagens: { create: { papel: "USUARIO" as const, conteudo: texto } } };
     const { id } = conversaId
       ? await prisma.conversa.update({ where: { id: conversaId }, data: pergunta, select: { id: true } })
-      : await prisma.conversa.create({ data: { titulo: TITULO_PADRAO, ...pergunta }, select: { id: true } });
+      : await prisma.conversa.create({ data: { titulo: TITULO_PADRAO, projetoId, ...pergunta }, select: { id: true } });
 
     reply.hijack();
     reply.raw.writeHead(200, {

@@ -90,6 +90,7 @@ model Projeto {
   listas           ListaVideos[]
   assistentes      Assistente[]
   versoesDescricao VersaoDescricao[]
+  conversas        Conversa[]
 
   @@map("projeto")
 }
@@ -458,19 +459,23 @@ enum PapelMensagem {
 }
 
 /// Uma conversa livre com a LLM local (página Conversas), como um chat.
-/// Não tem projeto nem dono: é um caderno de rascunho à parte.
+/// Com projeto, a LLM recebe a descrição dele: é para conversar sobre ele.
 model Conversa {
   id        String   @id @default(uuid()) @db.Uuid
   /// Nasce da primeira mensagem; a pessoa pode renomear.
   titulo    String
+  /// Sem projeto: conversa livre. Apagar o projeto deixa a conversa solta.
+  projetoId String?  @map("projeto_id") @db.Uuid
   criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz
   /// Muda a cada mensagem: a lista mostra as mais recentes em cima.
   editadoEm DateTime @updatedAt @map("editado_em") @db.Timestamptz
 
   /// Apagar a conversa leva as mensagens junto.
   mensagens MensagemConversa[]
+  projeto   Projeto?           @relation(fields: [projetoId], references: [id], onDelete: SetNull)
 
   @@index([editadoEm])
+  @@index([projetoId])
   @@map("conversa")
 }
 

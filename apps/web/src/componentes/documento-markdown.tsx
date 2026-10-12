@@ -201,23 +201,31 @@ export function ModalDocumento({
                 </Botao>
               </div>
             )}
-            <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
+            {/* Sem overflow-hidden: ele prenderia a barra de ferramentas (sticky) aqui dentro, e ela rolaria junto com o texto. */}
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900">
               <Suspense fallback={<Carregando />}>
                 <EditorMarkdown key={chaveEditor} valor={texto} aoMudar={mudou} placeholder={placeholder} />
               </Suspense>
             </div>
           </div>
         </div>
-        {erro && <Aviso>{erro}</Aviso>}
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-xs text-zinc-500">{situacao}</span>
-          <div className="flex gap-2">
-            <Botao variante="fantasma" onClick={fechar}>
-              Fechar
-            </Botao>
-            <Botao variante="primario" carregando={salvando} disabled={!alterado} onClick={salvar}>
-              Salvar
-            </Botao>
+        {/*
+          O rodapé gruda embaixo de quem rola (o corpo da modal), como a barra
+          do editor gruda em cima: Salvar e Fechar ficam à vista em qualquer
+          ponto do texto. As margens negativas cobrem o padding da modal.
+        */}
+        <div className="sticky bottom-0 z-30 -mx-5 -mb-5 flex flex-col gap-3 border-t border-zinc-800 bg-zinc-950 px-5 py-3">
+          {erro && <Aviso>{erro}</Aviso>}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-zinc-500">{situacao}</span>
+            <div className="flex gap-2">
+              <Botao variante="fantasma" onClick={fechar}>
+                Fechar
+              </Botao>
+              <Botao variante="primario" carregando={salvando} disabled={!alterado} onClick={salvar}>
+                Salvar
+              </Botao>
+            </div>
           </div>
         </div>
       </div>

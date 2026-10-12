@@ -39,8 +39,8 @@ export function ModalDescricaoProjeto({
 }
 
 /**
- * "Descrição do projeto" nas páginas de dentro de um projeto (asset, vídeo,
- * cena, shot). Busca o projeto ao clicar: a descrição pode ter mudado (pela
+ * "Descrição do projeto" na barra do projeto (`barra-projeto.tsx`), em toda
+ * página de dentro de um projeto. Busca o projeto ao clicar: a descrição pode ter mudado (pela
  * skill do Claude, por exemplo) depois que a página abriu. Sem projeto, não
  * aparece.
  */

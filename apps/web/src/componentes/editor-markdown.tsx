@@ -22,7 +22,7 @@ import {
   UndoRedo,
 } from "@mdxeditor/editor";
 import "@mdxeditor/editor/style.css";
-import { useRef, type ClipboardEvent } from "react";
+import { useRef, useState, type ClipboardEvent } from "react";
 
 /** Tem cara de markdown: título, lista, citação, bloco de código, tabela, negrito ou link. */
 const pareceMarkdown = (t: string) =>
@@ -58,6 +58,13 @@ export default function EditorMarkdown({
   placeholder?: string;
 }) {
   const editor = useRef<MDXEditorMethods>(null);
+  /*
+   * Onde os menus do editor (o "Heading", o de link, o de tabela) se abrem.
+   * Sozinho, o MDXEditor os pendura no fim do <body>; mas a janela é um
+   * <dialog> nativo, que fica numa camada acima de tudo — e os menus abriam
+   * atrás dela, invisíveis. Pendurados aqui dentro, abrem na frente.
+   */
+  const [menus, setMenus] = useState<HTMLDivElement | null>(null);
 
   function colar(e: ClipboardEvent<HTMLDivElement>) {
     if ((e.target as HTMLElement).closest(".cm-editor")) return;
@@ -76,6 +83,7 @@ export default function EditorMarkdown({
         onChange={(md, normalizacao) => aoMudar(md, normalizacao)}
         placeholder={placeholder}
         autoFocus
+        overlayContainer={menus}
         className="dark-theme editor-md"
         contentEditableClassName="texto-md min-h-[55vh] px-6 py-5 outline-none"
         plugins={[
@@ -106,6 +114,8 @@ export default function EditorMarkdown({
           }),
         ]}
       />
+      {/* Os menus abrem aqui (veja `menus`). O MDXEditor cria dentro o container deles, já com o tema. */}
+      <div ref={setMenus} />
     </div>
   );
 }

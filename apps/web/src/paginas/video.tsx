@@ -1,13 +1,13 @@
+import { useProjetoAtual } from "../componentes/barra-projeto.tsx";
 import { Clapperboard, FileText, Pencil, Plus, Trash } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { videosApi } from "../api.ts";
-import { BotaoDescricaoProjeto } from "../componentes/descricao-projeto.tsx";
 import { ModalDocumento, resumoMarkdown } from "../componentes/documento-markdown.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
 import { ListaOrdenavel, movido } from "../componentes/ordenavel.tsx";
-import { Aviso, Botao, Cabecalho, Campo, Carregando, Entrada, LinkVoltar, Secao, Vazio } from "../componentes/ui.tsx";
-import { useCarregar, useVolta } from "../hooks.ts";
+import { Aviso, Botao, Cabecalho, Campo, Carregando, Entrada, Secao, Vazio } from "../componentes/ui.tsx";
+import { useCarregar } from "../hooks.ts";
 import type { VideoDetalhe } from "../tipos.ts";
 import { ModalCena } from "./cenas.tsx";
 
@@ -19,7 +19,7 @@ export function PaginaVideo() {
   const { id = "" } = useParams();
   const navegar = useNavigate();
   const { dados: v, erro, setDados } = useCarregar(() => videosApi.ler(id), [id]);
-  const volta = useVolta();
+  useProjetoAtual(v?.lista.projeto.id);
   const [editando, setEditando] = useState(false);
   const [sinopse, setSinopse] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
@@ -46,14 +46,10 @@ export function PaginaVideo() {
   return (
     <>
       <Cabecalho
-        voltar={<LinkVoltar {...(volta ?? { para: `/projetos/${projeto.id}`, rotulo: projeto.nome })} />}
+        // Vídeo é sempre de um projeto: quem navega é a barra do projeto.
         titulo={v.nome}
         subtitulo={
           <>
-            <Link to={`/projetos/${projeto.id}`} className="hover:text-violet-300">
-              {projeto.nome}
-            </Link>
-            {" › "}
             {v.lista.nome}
             {v.descricao && (
               <button type="button" onClick={() => setSinopse(true)} className="mt-2 line-clamp-2 block max-w-4xl text-left text-zinc-400 hover:text-zinc-200">
@@ -64,7 +60,6 @@ export function PaginaVideo() {
         }
         acoes={
           <>
-            <BotaoDescricaoProjeto projeto={projeto} />
             <Botao icone={<FileText className="size-4" />} onClick={() => setSinopse(true)}>
               Sinopse
             </Botao>

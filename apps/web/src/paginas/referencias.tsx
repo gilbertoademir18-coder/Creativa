@@ -1,3 +1,4 @@
+import { useProjetoAtual } from "../componentes/barra-projeto.tsx";
 import { FileText, Images } from "lucide-react";
 import { useState } from "react";
 import { referenciasApi } from "../api.ts";
@@ -12,6 +13,7 @@ const SOLTA = { assetId: null, shotId: null };
 
 export function PaginaReferencias() {
   const [f, mudar] = useFiltros(["projeto", "tipo", "vinculo", "busca"] as const);
+  useProjetoAtual(f.projeto);
   const { dados, erro, carregando, recarregar } = useCarregar(
     () =>
       referenciasApi.listar({

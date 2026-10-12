@@ -116,3 +116,16 @@ body {
   --baseBase: #121215;
   --font-body: inherit;
 }
+
+/*
+ * A barra de ferramentas do editor gruda no topo de quem rola (a janela da
+ * descrição) — o MDXEditor já a faz sticky. Aqui ela ganha um fundo opaco, a
+ * linha de baixo e uma sombra, para o texto que passa por baixo não se
+ * misturar com ela. Quem envolve o editor não pode ter overflow-hidden.
+ */
+.editor-md.editor-md .mdxeditor-toolbar {
+  z-index: 20;
+  border-radius: 0.75rem 0.75rem 0 0;
+  border-bottom: 1px solid #27272a;
+  box-shadow: 0 6px 12px -6px rgb(0 0 0 / 0.6);
+}

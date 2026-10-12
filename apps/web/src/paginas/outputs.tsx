@@ -1,3 +1,4 @@
+import { useProjetoAtual } from "../componentes/barra-projeto.tsx";
 import { Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
@@ -15,6 +16,7 @@ import type { Vinculo } from "../tipos.ts";
  */
 export function PaginaOutputs() {
   const [f, mudar] = useFiltros(["projeto", "tipo", "vinculo", "favoritos", "busca"] as const);
+  useProjetoAtual(f.projeto);
   const { dados, erro, carregando, recarregar } = useCarregar(
     () =>
       outputsApi.listar({

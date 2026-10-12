@@ -1,8 +1,8 @@
+import { useProjetoAtual } from "../componentes/barra-projeto.tsx";
 import { Clapperboard, Film, Pencil, Plus, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { cenasApi, listasApi } from "../api.ts";
-import { BotaoDescricaoProjeto } from "../componentes/descricao-projeto.tsx";
 import { EscolhaProjeto, FiltroBusca, FiltroProjeto } from "../componentes/filtros.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
 import { ListaOrdenavel, movido } from "../componentes/ordenavel.tsx";
@@ -26,6 +26,7 @@ import type { Cena, ShotResumo } from "../tipos.ts";
 
 export function PaginaCenas() {
   const [f, mudar] = useFiltros(["projeto", "busca"] as const);
+  useProjetoAtual(f.projeto);
   const { dados, erro, carregando } = useCarregar(() => cenasApi.listar({ projeto: f.projeto, busca: f.busca }), [f.projeto, f.busca]);
   const [nova, setNova] = useState(false);
   const navegar = useNavigate();
@@ -115,6 +116,7 @@ export function PaginaCena() {
   const { id = "" } = useParams();
   const navegar = useNavigate();
   const { dados: c, erro, setDados } = useCarregar(() => cenasApi.ler(id), [id]);
+  useProjetoAtual(c?.projeto?.id);
   const volta = useVolta();
   const [editando, setEditando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
@@ -125,43 +127,18 @@ export function PaginaCena() {
   return (
     <>
       <Cabecalho
-        voltar={
-          <LinkVoltar
-            {...(volta ??
-              (c.video
-                ? { para: `/videos/${c.video.id}`, rotulo: c.video.nome }
-                : {
-                    para: c.projeto ? `/cenas?projeto=${c.projeto.id}` : "/cenas",
-                    rotulo: `Cenas${c.projeto ? ` de ${c.projeto.nome}` : ""}`,
-                  }))}
-          />
-        }
+        // Com projeto, quem navega é a barra do projeto; aqui fica só o contexto.
+        voltar={c.projeto ? undefined : <LinkVoltar {...(volta ?? { para: "/cenas", rotulo: "Cenas" })} />}
         titulo={c.nome}
         subtitulo={
           <>
-            {c.projeto ? (
-              <Link to={`/projetos/${c.projeto.id}`} className="hover:text-violet-300">
-                {c.projeto.nome}
-              </Link>
-            ) : (
-              "Sem projeto"
-            )}
-            {c.video && (
-              <>
-                {" › "}
-                {c.video.lista.nome}
-                {" › "}
-                <Link to={`/videos/${c.video.id}`} className="hover:text-violet-300">
-                  {c.video.nome}
-                </Link>
-              </>
-            )}
+            {!c.projeto && "Sem projeto"}
+            {c.video && `${c.video.lista.nome} › ${c.video.nome}`}
             {c.descricao && <p className="mt-2 max-w-3xl whitespace-pre-wrap text-zinc-400">{c.descricao}</p>}
           </>
         }
         acoes={
           <>
-            <BotaoDescricaoProjeto projeto={c.projeto} />
             <Botao icone={<Pencil className="size-4" />} onClick={() => setEditando(true)}>
               Editar
             </Botao>

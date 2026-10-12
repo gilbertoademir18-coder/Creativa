@@ -1,4 +1,5 @@
-import { ArrowLeft, Clapperboard, FileText, FolderKanban, Pencil, Plus, Shapes, Trash } from "lucide-react";
+import { useProjetoAtual } from "../componentes/barra-projeto.tsx";
+import { Clapperboard, FileText, FolderKanban, Pencil, Plus, Shapes, Trash } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { assetsApi, cenasApi, projetosApi } from "../api.ts";
@@ -108,6 +109,7 @@ export function PaginaProjeto() {
   const { id = "" } = useParams();
   const navegar = useNavigate();
   const projeto = useCarregar(() => projetosApi.ler(id), [id]);
+  useProjetoAtual(id);
   const assets = useCarregar(() => assetsApi.listar({ projeto: id }), [id]);
   // Só as de fora de vídeo: as outras aparecem dentro dos vídeos, nas listas.
   const cenas = useCarregar(() => cenasApi.listar({ projeto: id, video: "sem" }), [id]);
@@ -132,11 +134,6 @@ export function PaginaProjeto() {
   return (
     <>
       <Cabecalho
-        voltar={
-          <Link to="/projetos" className="inline-flex items-center gap-1.5 hover:text-zinc-100">
-            <ArrowLeft className="size-4" /> Projetos
-          </Link>
-        }
         titulo={p.nome}
         subtitulo={
           p.descricao ? (

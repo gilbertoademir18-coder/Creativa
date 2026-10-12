@@ -308,24 +308,25 @@ async function textoEmStreaming(
 }
 
 export const conversasApi = {
-  listar: (busca?: string) => api<Conversa[]>(`/conversas${consulta({ busca })}`),
+  listar: (f: { busca?: string; projeto?: string } = {}) => api<Conversa[]>(`/conversas${consulta(f)}`),
   ler: (id: string) => api<ConversaDetalhe>(`/conversas/${id}`),
   renomear: (id: string, titulo: string) => api<Conversa>(`/conversas/${id}`, { method: "PUT", corpo: { titulo } }),
   excluir: (id: string) => api<void>(`/conversas/${id}`, { method: "DELETE" }),
   /**
    * Manda a mensagem; a resposta chega em pedaços. Sem conversa, começa uma
-   * nova: o id dela chega em `aoComecar`. A pergunta e a resposta ficam
-   * gravadas na conversa.
+   * nova (do projeto `projetoId`, se houver): o id dela chega em
+   * `aoComecar`. A pergunta e a resposta ficam gravadas na conversa.
    */
   enviar: (
     conversaId: string | null,
+    projetoId: string | null,
     texto: string,
     eventos: { aoComecar?: (comfyOcupado: boolean, conversaId: string) => void; aoPedaco: (texto: string) => void },
     sinal?: AbortSignal,
   ) =>
     textoEmStreaming(
       "/api/conversas/mensagens",
-      { conversaId, texto },
+      { conversaId, projetoId, texto },
       { aoPedaco: eventos.aoPedaco, aoComecar: (ocupado, h) => eventos.aoComecar?.(ocupado, h.get("X-Conversa-Id") ?? "") },
       sinal,
     ),

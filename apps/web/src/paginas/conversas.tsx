@@ -4,6 +4,7 @@ import { gfm, gfmHtml } from "micromark-extension-gfm";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { conversasApi } from "../api.ts";
+import { useProjetoAtual } from "../componentes/barra-projeto.tsx";
 import { FiltroBusca } from "../componentes/filtros.tsx";
 import { ConfirmarExclusao } from "../componentes/modal.tsx";
 import { Aviso, Botao, Carregando } from "../componentes/ui.tsx";
@@ -16,19 +17,25 @@ import type { Conversa, MensagemConversa } from "../tipos.ts";
  * — "Nova conversa" abre a tela vazia, sem deixar conversas em branco na
  * lista. O título vem sozinho (a LLM resume a primeira troca); dá para
  * renomear.
+ *
+ * Aberta pela barra do projeto (`?projeto=<id>`), a lista mostra só as
+ * conversas daquele projeto, a conversa nova nasce dele, e a LLM recebe a
+ * descrição do projeto. A conversa de um projeto mostra a barra dele.
  */
 
 export function PaginaConversas() {
   const { id } = useParams();
-  const [filtros, mudarFiltro] = useFiltros(["busca"] as const);
-  const lista = useCarregar(() => conversasApi.listar(filtros.busca), [filtros.busca]);
+  const [filtros, mudarFiltro] = useFiltros(["busca", "projeto"] as const);
+  const lista = useCarregar(() => conversasApi.listar({ busca: filtros.busca, projeto: filtros.projeto }), [filtros.busca, filtros.projeto]);
+  // Os links de dentro da página levam o filtro de projeto junto.
+  const sufixo = filtros.projeto ? `?projeto=${filtros.projeto}` : "";
 
   return (
     <div className="grid h-full grid-cols-[19rem_minmax(0,1fr)] overflow-hidden">
       <aside className="flex min-h-0 flex-col border-r border-zinc-800 bg-zinc-950/40">
         <div className="flex flex-col gap-3 border-b border-zinc-800 p-4">
           <Link
-            to="/conversas"
+            to={`/conversas${sufixo}`}
             className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-violet-600 px-3.5 text-sm font-medium text-white hover:bg-violet-500"
           >
             <Plus className="size-4" /> Nova conversa
@@ -42,16 +49,30 @@ export function PaginaConversas() {
             <div className="px-3 py-6 text-center text-sm text-zinc-500">{filtros.busca ? "Nenhuma conversa com esse título." : "Nenhuma conversa ainda."}</div>
           )}
           {lista.dados?.map((c) => (
-            <ItemConversa key={c.id} conversa={c} ativa={c.id === id} aoMudar={lista.recarregar} />
+            <ItemConversa key={c.id} conversa={c} ativa={c.id === id} sufixo={sufixo} mostrarProjeto={!filtros.projeto} aoMudar={lista.recarregar} />
           ))}
         </div>
       </aside>
-      <Chat id={id ?? null} aoMudarLista={lista.recarregar} />
+      <Chat id={id ?? null} projetoFiltro={filtros.projeto || null} sufixo={sufixo} aoMudarLista={lista.recarregar} />
     </div>
   );
 }
 
-function ItemConversa({ conversa, ativa, aoMudar }: { conversa: Conversa; ativa: boolean; aoMudar: () => void }) {
+function ItemConversa({
+  conversa,
+  ativa,
+  sufixo,
+  mostrarProjeto,
+  aoMudar,
+}: {
+  conversa: Conversa;
+  ativa: boolean;
+  /** O filtro de projeto, para os links levarem junto. */
+  sufixo: string;
+  /** Na lista de todas as conversas, diz de que projeto é cada uma. */
+  mostrarProjeto: boolean;
+  aoMudar: () => void;
+}) {
   const navegar = useNavigate();
   const [renomeando, setRenomeando] = useState(false);
   const [titulo, setTitulo] = useState(conversa.titulo);
@@ -114,9 +135,12 @@ function ItemConversa({ conversa, ativa, aoMudar }: { conversa: Conversa; ativa:
     <div
       className={`group flex items-center gap-1 rounded-lg pr-1 transition-colors ${ativa ? "bg-violet-600/15 text-violet-100" : "text-zinc-300 hover:bg-zinc-900"}`}
     >
-      <Link to={`/conversas/${conversa.id}`} className="min-w-0 flex-1 px-3 py-2">
+      <Link to={`/conversas/${conversa.id}${sufixo}`} className="min-w-0 flex-1 px-3 py-2">
         <div className="truncate text-sm">{conversa.titulo}</div>
-        <div className="text-xs text-zinc-500">{quando(conversa.editadoEm)}</div>
+        <div className="truncate text-xs text-zinc-500">
+          {quando(conversa.editadoEm)}
+          {mostrarProjeto && conversa.projeto && <span className="text-violet-400/80"> · {conversa.projeto.nome}</span>}
+        </div>
       </Link>
       <div className={`flex shrink-0 gap-0.5 ${ativa ? "" : "opacity-0 group-hover:opacity-100"}`}>
         <BotaoIcone rotulo="Renomear" aoClicar={() => setRenomeando(true)}>
@@ -137,7 +161,7 @@ function ItemConversa({ conversa, ativa, aoMudar }: { conversa: Conversa; ativa:
         aoConfirmar={async () => {
           await conversasApi.excluir(conversa.id);
           setExcluindo(false);
-          if (ativa) navegar("/conversas", { replace: true });
+          if (ativa) navegar(`/conversas${sufixo}`, { replace: true });
           aoMudar();
         }}
         aoFechar={() => setExcluindo(false)}
@@ -177,9 +201,23 @@ type Mensagem = Pick<MensagemConversa, "id" | "papel" | "conteudo">;
  * chega, o texto vai aparecendo; "Parar" interrompe, e o que já veio fica
  * gravado.
  */
-function Chat({ id, aoMudarLista }: { id: string | null; aoMudarLista: () => void }) {
+function Chat({
+  id,
+  projetoFiltro,
+  sufixo,
+  aoMudarLista,
+}: {
+  id: string | null;
+  /** O projeto da lista (`?projeto=`): a conversa nova nasce dele. */
+  projetoFiltro: string | null;
+  sufixo: string;
+  aoMudarLista: () => void;
+}) {
   const navegar = useNavigate();
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
+  // O projeto da conversa aberta (o da lista, numa conversa nova).
+  const [projetoDaConversa, setProjetoDaConversa] = useState<string | null>(null);
+  useProjetoAtual(projetoDaConversa ?? projetoFiltro);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [texto, setTexto] = useState("");
@@ -198,6 +236,7 @@ function Chat({ id, aoMudarLista }: { id: string | null; aoMudarLista: () => voi
     if (!id) {
       parar.current?.abort();
       setMensagens([]);
+      setProjetoDaConversa(null);
       caixa.current?.focus();
       return;
     }
@@ -210,7 +249,11 @@ function Chat({ id, aoMudarLista }: { id: string | null; aoMudarLista: () => voi
     setCarregando(true);
     conversasApi
       .ler(id)
-      .then((c) => vivo && setMensagens(c.mensagens))
+      .then((c) => {
+        if (!vivo) return;
+        setMensagens(c.mensagens);
+        setProjetoDaConversa(c.projetoId);
+      })
       .catch((e: Error) => vivo && setErro(e.message))
       .finally(() => {
         if (!vivo) return;
@@ -254,6 +297,7 @@ function Chat({ id, aoMudarLista }: { id: string | null; aoMudarLista: () => voi
     try {
       await conversasApi.enviar(
         id,
+        id ? null : projetoFiltro,
         t,
         {
           aoComecar: (ocupado, conversaId) => {
@@ -262,7 +306,8 @@ function Chat({ id, aoMudarLista }: { id: string | null; aoMudarLista: () => voi
             // Conversa nova: a URL passa a ser a dela, sem recarregar (a resposta ainda está chegando).
             if (!id && conversaId) {
               recemCriada.current = conversaId;
-              navegar(`/conversas/${conversaId}`, { replace: true });
+              setProjetoDaConversa(projetoFiltro);
+              navegar(`/conversas/${conversaId}${sufixo}`, { replace: true });
               aoMudarLista();
             }
           },
@@ -302,9 +347,13 @@ function Chat({ id, aoMudarLista }: { id: string | null; aoMudarLista: () => voi
           {!carregando && !mensagens.length && (
             <div className="flex flex-col items-center gap-3 py-24 text-center">
               <MessagesSquare className="size-10 text-zinc-600" />
-              <div className="text-lg font-medium text-zinc-300">Sobre o que vamos conversar?</div>
+              <div className="text-lg font-medium text-zinc-300">
+                {projetoDaConversa ?? projetoFiltro ? "Vamos conversar sobre este projeto?" : "Sobre o que vamos conversar?"}
+              </div>
               <div className="max-w-md text-sm text-zinc-500">
-                A conversa roda na LLM local (Ollama), nesta máquina. Se o ComfyUI estiver parado, ela tira os modelos dele da placa para responder mais rápido.
+                {projetoDaConversa ?? projetoFiltro
+                  ? "A descrição do projeto vai junto, inteira: pergunte das personagens, do mundo, peça ideias de episódio ou confira se algo bate com o que já está escrito."
+                  : "A conversa roda na LLM local (Ollama), nesta máquina. Se o ComfyUI estiver parado, ela tira os modelos dele da placa para responder mais rápido."}
               </div>
             </div>
           )}

@@ -1,8 +1,8 @@
+import { useProjetoAtual } from "../componentes/barra-projeto.tsx";
 import { ArrowLeft, Pencil, Trash } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { shotsApi } from "../api.ts";
-import { BotaoDescricaoProjeto } from "../componentes/descricao-projeto.tsx";
 import { PainelGerador } from "../componentes/gerador.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
 import { PainelReferencias } from "../componentes/referencias.tsx";
@@ -14,6 +14,7 @@ export function PaginaShot() {
   const { id = "" } = useParams();
   const navegar = useNavigate();
   const { dados: s, erro, setDados } = useCarregar(() => shotsApi.ler(id), [id]);
+  useProjetoAtual(s?.cena.projeto?.id);
   const [editando, setEditando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
 
@@ -24,18 +25,23 @@ export function PaginaShot() {
   return (
     <>
       <Cabecalho
+        // Com projeto, quem navega é a barra do projeto; aqui fica só o contexto.
         voltar={
-          <Link to={`/cenas/${s.cena.id}`} className="inline-flex items-center gap-1.5 hover:text-zinc-100">
-            <ArrowLeft className="size-4" /> {s.cena.projeto ? `${s.cena.projeto.nome} › ` : ""}
-            {s.cena.video ? `${s.cena.video.nome} › ` : ""}
-            {s.cena.nome}
-          </Link>
+          s.cena.projeto ? undefined : (
+            <Link to={`/cenas/${s.cena.id}`} className="inline-flex items-center gap-1.5 hover:text-zinc-100">
+              <ArrowLeft className="size-4" /> {s.cena.nome}
+            </Link>
+          )
         }
         titulo={s.nome}
-        subtitulo={s.descricao && <p className="max-w-3xl whitespace-pre-wrap">{s.descricao}</p>}
+        subtitulo={
+          <>
+            {s.cena.projeto && `${s.cena.video ? `${s.cena.video.nome} › ` : ""}${s.cena.nome}`}
+            {s.descricao && <p className={`${s.cena.projeto ? "mt-2 " : ""}max-w-3xl whitespace-pre-wrap`}>{s.descricao}</p>}
+          </>
+        }
         acoes={
           <>
-            <BotaoDescricaoProjeto projeto={s.cena.projeto} />
             <Botao icone={<Pencil className="size-4" />} onClick={() => setEditando(true)}>
               Editar
             </Botao>

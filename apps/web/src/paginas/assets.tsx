@@ -1,8 +1,8 @@
+import { useProjetoAtual } from "../componentes/barra-projeto.tsx";
 import { Box, Mountain, Pencil, Plus, Shapes, Trash, User } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { assetsApi, urlArquivo } from "../api.ts";
-import { BotaoDescricaoProjeto } from "../componentes/descricao-projeto.tsx";
 import { EscolhaProjeto, FiltroBusca, FiltroProjeto } from "../componentes/filtros.tsx";
 import { PainelGerador } from "../componentes/gerador.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
@@ -31,6 +31,7 @@ const ICONE_TIPO: Record<TipoAsset, typeof User> = { PERSONAGEM: User, CENARIO: 
 
 export function PaginaAssets() {
   const [f, mudar] = useFiltros(["projeto", "tipo", "busca"] as const);
+  useProjetoAtual(f.projeto);
   const { dados, erro, carregando, recarregar } = useCarregar(
     () => assetsApi.listar({ projeto: f.projeto, tipo: f.tipo as TipoAsset | "", busca: f.busca }),
     [f.projeto, f.tipo, f.busca],
@@ -136,6 +137,7 @@ export function PaginaAsset() {
   const { id = "" } = useParams();
   const navegar = useNavigate();
   const { dados: a, erro, setDados } = useCarregar(() => assetsApi.ler(id), [id]);
+  useProjetoAtual(a?.projeto?.id);
   const volta = useVolta();
   const [editando, setEditando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
@@ -146,14 +148,8 @@ export function PaginaAsset() {
   return (
     <>
       <Cabecalho
-        voltar={
-          <LinkVoltar
-            {...(volta ?? {
-              para: a.projeto ? `/assets?projeto=${a.projeto.id}` : "/assets",
-              rotulo: `Assets${a.projeto ? ` de ${a.projeto.nome}` : ""}`,
-            })}
-          />
-        }
+        // Com projeto, quem navega é a barra do projeto.
+        voltar={a.projeto ? undefined : <LinkVoltar {...(volta ?? { para: "/assets", rotulo: "Assets" })} />}
         titulo={
           <span className="flex items-center gap-3">
             {a.nome} <Etiqueta>{rotuloTipoAsset(a.tipo)}</Etiqueta>
@@ -161,19 +157,12 @@ export function PaginaAsset() {
         }
         subtitulo={
           <>
-            {a.projeto ? (
-              <Link to={`/projetos/${a.projeto.id}`} className="hover:text-violet-300">
-                {a.projeto.nome}
-              </Link>
-            ) : (
-              "Sem projeto"
-            )}
-            {a.descricao && <p className="mt-2 max-w-3xl whitespace-pre-wrap text-zinc-400">{a.descricao}</p>}
+            {!a.projeto && "Sem projeto"}
+            {a.descricao && <p className={`${a.projeto ? "" : "mt-2 "}max-w-3xl whitespace-pre-wrap text-zinc-400`}>{a.descricao}</p>}
           </>
         }
         acoes={
           <>
-            <BotaoDescricaoProjeto projeto={a.projeto} />
             <Botao icone={<Pencil className="size-4" />} onClick={() => setEditando(true)}>
               Editar
             </Botao>

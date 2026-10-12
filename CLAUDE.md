@@ -73,7 +73,12 @@ as cenas (`SetNull`), nunca as apaga.
   (`componentes/editor-markdown.tsx`, MDXEditor). Ele pesa ~1,4 MB: importe
   sempre com `React.lazy` (como em `documento-markdown.tsx`), nunca direto —
   senão vai para o pacote principal. O conteúdo usa a classe `.texto-md`
-  (`app.css`), que devolve títulos e listas que o Tailwind zera.
+  (`app.css`), que devolve títulos e listas que o Tailwind zera. A barra de
+  ferramentas dele é `sticky` (gruda no topo de quem rola): **nada em volta
+  do editor pode ter `overflow-hidden`**, senão ela rola junto com o texto.
+  Os menus dele (Heading, link, tabela) abrem num container que ele pendura
+  no `<body>` — atrás do `<dialog>` da `Modal`, invisíveis. Por isso o
+  `EditorMarkdown` passa `overlayContainer` com uma div de dentro dele.
 - Colar no `EditorMarkdown`: o MDXEditor sozinho cola o HTML que o VS Code põe
   na área de transferência (uma `<div>` por linha → quebras dobradas). O
   componente intercepta o colar e, se o texto tem cara de markdown, usa
@@ -87,11 +92,20 @@ as cenas (`SetNull`), nunca as apaga.
   o markdown cru com `#` e `**`.
 - A descrição do projeto é um documento à parte: modal própria e rota própria
   (`PUT /api/projetos/:id/descricao`). O "Editar" do projeto mexe só no nome.
-- **Toda página de dentro de um projeto** (asset, vídeo, cena, shot — e as
-  que vierem) tem o botão **"Descrição do projeto"** no cabeçalho:
-  `BotaoDescricaoProjeto` (`componentes/descricao-projeto.tsx`), que busca o
-  projeto ao clicar e abre a mesma janela, com as versões. Sem projeto, ele
-  não aparece.
+- **Toda página de dentro de um projeto** (o projeto, asset, vídeo, cena,
+  shot, as listas filtradas por um projeto — e as que vierem) mostra a
+  **barra do projeto** (`componentes/barra-projeto.tsx`), violeta, embaixo
+  da barra do ComfyUI: o nome, links fixos (Visão geral, Assets, Cenas,
+  Referências, Outputs, Conversas) e o botão "Descrição do projeto".
+  **Conversa de um projeto** (`conversa.projeto_id`; a página Conversas com
+  `?projeto=<id>`): a lista mostra só as dele, a nova nasce dele e a LLM
+  recebe a descrição inteira do projeto no sistema, lida a cada mensagem
+  (sempre a versão mais recente). A página só chama
+  `useProjetoAtual(idDoProjeto)` (aceita o filtro `projeto` da URL direto);
+  o Layout desenha. Página nova de dentro de um projeto: chame o hook antes
+  dos `return` antecipados. **Com a barra, a navegação é só por ela:** nada
+  de "← voltar" nem de link para o projeto no cabeçalho (o contexto, como
+  "Lista › Vídeo", fica como texto). O "← voltar" só aparece fora de projeto.
 - **A descrição do projeto tem versões** (`versao_descricao`): cada gravação
   com texto diferente vira versão nova; versões não se editam nem se apagam, e
   restaurar é gravar o texto antigo de novo. Quem grava manda `base` (a
@@ -254,7 +268,11 @@ O que isso muda nas escolhas:
   + `index_timestep_zero`). O template oficial usa o int8, que aqui é
   proibido. O modelo tem 13,1 GB, mais do que a placa, e roda
   com offload. O `CLIPLoader` é `type = krea2`, e com cfg 1 não há negativo.
-  O prompt descreve só o conteúdo: o estilo vem da imagem.
+  O prompt descreve só o conteúdo: o estilo vem da imagem. **Cor marcante da
+  referência vaza** (a Ami saía com o cabelo azul da Prompt): use como
+  referência uma imagem neutra — no Garota Mágica Prompt!, o asset "Folha de
+  estilo" (garota genérica, cabelo castanho-escuro) — e, se ainda vazar,
+  baixe a "Força do estilo" para 0,7–0,8.
 - **Vídeo a partir do primeiro quadro** (tipo "Vídeo do primeiro quadro", só
   shots), dois workflows para comparar, escolhidos em 2026-10-04:
   **Wan 2.2 I2V 14B fp8 + LightX2V 4 passos** (dois modelos de 14,3 GB,
@@ -338,5 +356,8 @@ Coisas que já custaram tempo — e o contorno:
 - **Ollama:** abra o app com `explorer.exe "<...>\ollama app.exe"`. Lançado
   direto do terminal do Claude, ele não consegue criar o processo do servidor
   (fica sem a porta 11434 e sem erro no log).
+- **Não rode `prettier`:** o projeto não tem configuração dele, e o padrão
+  (80 colunas) reformata o arquivo inteiro — o código usa linhas longas.
+  Formate à mão, no estilo do arquivo.
 - **`.ps1`:** depois de editar, confira que os 3 primeiros bytes continuam
   `EF BB BF` (o BOM).
