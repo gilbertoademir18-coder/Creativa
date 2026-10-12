@@ -223,8 +223,8 @@ O que isso muda nas escolhas:
   turbo de 4 passos, gerou 4 vezes seguidas sem cair.** Regra (decisão do
   usuário): **nunca use modelo `int8_convrot` (nem `w6a8`) nesta máquina** —
   use a variante `fp8_scaled` ou bf16. A skill `workflow-creativa` recusa no
-  `validar`. O Krea 2 ainda usa `krea2_turbo_int8_convrot` (rodou bem até
-  agora; existe `krea2_turbo_fp8_scaled`, 13,1 GB). Se o PC
+  `validar`. Desde 2026-10-12 nenhum modelo `int8_convrot` fica em `C:\IA`
+  (o Krea 2 passou para fp8 e os arquivos int8 foram apagados). Se o PC
   voltar a cair: `Get-WinEvent` no log System (Id 41, WHEA, nvlddmkm), o fim
   de `C:\IA\ComfyUI\ComfyUI\user\comfyui_8188*.log` (`.prev`/`.prev2` são
   as sessões anteriores) e um log do **HWiNFO64** (instalado; CSV a 200 ms
@@ -242,9 +242,10 @@ O que isso muda nas escolhas:
   codificador), escolhido em 2026-10-03 contra Illustrious XL e Anima Turbo.
   O `CLIPLoader` dele é `type = stable_diffusion`, e com cfg 4 o negativo
   funciona. O porquê e os números estão nas notas do workflow.
-- **Personagem com referência de estilo: Krea 2 Turbo int8 + o LoRA
-  `krea2_style_reference`** (ostris), em nós nativos (`TextEncodeQwenImageEditPlus`
-  + `index_timestep_zero`). O modelo tem 13,5 GB, mais do que a placa, e roda
+- **Personagem com referência de estilo: Krea 2 Turbo fp8 (`krea2_turbo_fp8_scaled`)
+  + o LoRA `krea2_style_reference`** (ostris), em nós nativos (`TextEncodeQwenImageEditPlus`
+  + `index_timestep_zero`). O template oficial usa o int8, que aqui é
+  proibido. O modelo tem 13,1 GB, mais do que a placa, e roda
   com offload. O `CLIPLoader` é `type = krea2`, e com cfg 1 não há negativo.
   O prompt descreve só o conteúdo: o estilo vem da imagem.
 - **Vídeo a partir do primeiro quadro** (tipo "Vídeo do primeiro quadro", só
