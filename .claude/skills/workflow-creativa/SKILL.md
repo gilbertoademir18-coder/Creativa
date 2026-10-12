@@ -227,6 +227,11 @@ para transformar uma ideia curta no prompt do workflow. O modelo é o
 - como **usar o contexto do projeto**: por exemplo, "descreva a personagem
   pela Aparência da ficha, nunca pelo nome; o estilo vem da seção Estilo
   visual";
+- **o enquadramento**, quando é personagem de corpo inteiro: sempre uma frase
+  pedindo a figura inteira, um pouco menor que o quadro, com espaço vazio
+  acima da cabeça e abaixo dos pés — sem ela, os modelos enchem o quadro e
+  cortam cabelo e pés. Com negativo (cfg > 1), também `cropped, head out of
+  frame, feet out of frame` no negativo padrão;
 - **um exemplo** curto de ideia → prompt.
 
 Se ele carrega o estilo do projeto, amarre-o ao projeto (`--projeto <id>`).

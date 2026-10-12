@@ -65,6 +65,19 @@ as cenas (`SetNull`), nunca as apaga.
   nova) grudados embaixo — `sticky` com fundo opaco e uma linha separando,
   como no rodapé da `ModalDocumento` e no painel do output. Cuidado com
   `overflow-hidden` entre o `sticky` e quem rola: ele prende o `sticky`.
+- **Outputs favoritos ficam numa seção própria, em cima** ("Favoritos" e
+  "Os outros"), no Gerador e na página Outputs: `GruposDeOutputs`
+  (`componentes/outputs.tsx`). A API já manda os favoritos primeiro, então o
+  visor (← →) segue a mesma ordem.
+- **Janela dentro de janela** (a `Modal` é um `<dialog>` nativo): o React
+  repassa o evento `close` da janela de dentro para a de fora. Por isso o
+  `onClose` da `Modal` confere `e.target === e.currentTarget` — sem isso, o
+  "Excluir?" fechava o visor de outputs junto.
+- **Miniatura de imagem sem corte:** em listas de imagens (cartões de asset,
+  a janela de escolher imagem), todas com a **mesma altura** e a largura pela
+  proporção — `flex flex-wrap`, cartão `w-min`, `<img class="h-… w-auto
+  max-w-none">` e o texto em `w-0 min-w-full` (não alarga o cartão). Nada de
+  `aspect-square` + `object-cover`, que corta personagem em pé.
 - **Filtros: todo campo de filtro com valor mostra um × à direita que limpa
   aquele filtro com um clique** — texto ou lista de escolha. A pessoa tem que
   conseguir desfazer qualquer filtro só com o mouse. Use os componentes de

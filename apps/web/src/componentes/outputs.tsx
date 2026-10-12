@@ -17,6 +17,52 @@ import { Aviso, Botao, Carregando } from "./ui.tsx";
 
 export const GRADE_OUTPUTS = "grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4";
 
+/**
+ * Os outputs em duas seções: os favoritos numa grade própria, em cima, e os
+ * outros embaixo. `antesDosOutros` entra no começo da segunda grade (no
+ * Gerador, as gerações ainda na fila). Sem favorito, é uma grade só, sem
+ * títulos. A ordem do visor (← →) segue a mesma: favoritos primeiro.
+ */
+export function GruposDeOutputs({
+  outputs,
+  cartao,
+  antesDosOutros,
+}: {
+  outputs: Output[];
+  cartao: (o: Output) => React.ReactNode;
+  antesDosOutros?: React.ReactNode;
+}) {
+  const favoritos = outputs.filter((o) => o.favorito);
+  const outros = outputs.filter((o) => !o.favorito);
+  const temOutros = outros.length > 0 || !!antesDosOutros;
+  if (!favoritos.length)
+    return (
+      <div className={GRADE_OUTPUTS}>
+        {antesDosOutros}
+        {outros.map(cartao)}
+      </div>
+    );
+  return (
+    <div className="flex flex-col gap-6">
+      <section className="flex flex-col gap-3">
+        <h3 className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-amber-300/90 uppercase">
+          <Star className="size-3.5 fill-amber-400 text-amber-400" /> Favoritos ({favoritos.length})
+        </h3>
+        <div className={GRADE_OUTPUTS}>{favoritos.map(cartao)}</div>
+      </section>
+      {temOutros && (
+        <section className="flex flex-col gap-3">
+          <h3 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">Os outros ({outros.length})</h3>
+          <div className={GRADE_OUTPUTS}>
+            {antesDosOutros}
+            {outros.map(cartao)}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
 /** O cartão da galeria: a imagem, a seed e a estrela de favorito. */
 export function CartaoOutput({
   o,
@@ -127,8 +173,11 @@ function CorpoVisor({
   const [excluindo, setExcluindo] = useState(false);
   const i = outputs.findIndex((x) => x.id === abertoId);
   const varios = outputs.length > 1 && i >= 0;
+  // Sem dar a volta: do primeiro não se volta ao último, nem do último ao primeiro.
+  const temAnterior = varios && i > 0;
+  const temProximo = varios && i < outputs.length - 1;
   const ir = (delta: number) => {
-    const proximo = outputs[(i + delta + outputs.length) % outputs.length];
+    const proximo = outputs[i + delta];
     if (proximo) aoMudar(proximo.id);
   };
 
@@ -166,8 +215,8 @@ function CorpoVisor({
           )}
           {varios && (
             <>
-              <BotaoSeta lado="esquerda" onClick={() => ir(-1)} />
-              <BotaoSeta lado="direita" onClick={() => ir(1)} />
+              {temAnterior && <BotaoSeta lado="esquerda" onClick={() => ir(-1)} />}
+              {temProximo && <BotaoSeta lado="direita" onClick={() => ir(1)} />}
             </>
           )}
         </div>
@@ -259,8 +308,8 @@ function CorpoVisor({
           aoConfirmar={async () => {
             await outputsApi.apagar(o.id);
             setExcluindo(false);
-            // Passa para o próximo; se era o único, fecha o visor.
-            const proximo = varios ? outputs[(i + 1) % outputs.length] : undefined;
+            // Passa para o próximo; se era o último, para o anterior; se era o único, fecha o visor.
+            const proximo = varios ? (outputs[i + 1] ?? outputs[i - 1]) : undefined;
             aoAlterar();
             if (proximo && proximo.id !== o.id) aoMudar(proximo.id);
             else aoFechar();

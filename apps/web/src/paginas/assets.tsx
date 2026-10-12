@@ -17,7 +17,6 @@ import {
   Carregando,
   Entrada,
   Etiqueta,
-  GRADE,
   LinkVoltar,
   Pilulas,
   Seletor,
@@ -76,7 +75,7 @@ export function PaginaAssets() {
           />
         )}
         {!!dados?.length && (
-          <div className={GRADE}>
+          <div className={FILEIRA_ASSETS}>
             {dados.map((a) => (
               // Filtrando por projeto, repetir o nome dele em todo cartão é ruído.
               <CartaoAsset key={a.id} a={a} mostrarProjeto={!f.projeto} />
@@ -100,34 +99,43 @@ export function PaginaAssets() {
 }
 
 /** `volta`: de onde se está abrindo o asset, para o "voltar" de lá trazer de volta. */
+/**
+ * Os cartões de asset numa fileira: todos com a mesma altura, cada um com a
+ * largura que a proporção da capa pede — personagem em pé fica estreito,
+ * cenário 16:9 fica largo, e a imagem aparece inteira, sem corte.
+ */
+export const FILEIRA_ASSETS = "flex flex-wrap items-start gap-4";
+
 export function CartaoAsset({ a, mostrarProjeto, volta }: { a: Asset; mostrarProjeto?: boolean; volta?: Volta }) {
   const Icone = ICONE_TIPO[a.tipo];
   return (
+    // w-min: o cartão tem a largura da capa (a imagem, na altura fixa, manda).
     <Link
       to={`/assets/${a.id}`}
       state={volta && { volta }}
-      className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition-colors hover:border-violet-500/60"
+      className="group flex w-min min-w-36 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition-colors hover:border-violet-500/60"
     >
-      <div className="aspect-square overflow-hidden bg-zinc-950">
+      <div className="h-64 overflow-hidden bg-zinc-950">
         {a.capa ? (
-          <img src={urlArquivo(a.capa)} alt="" loading="lazy" className="size-full object-cover transition-transform group-hover:scale-[1.02]" />
+          <img src={urlArquivo(a.capa)} alt="" loading="lazy" className="h-full w-auto max-w-none transition-transform group-hover:scale-[1.02]" />
         ) : (
-          <div className="flex size-full items-center justify-center text-zinc-700">
+          <div className="flex h-full w-48 items-center justify-center text-zinc-700">
             <Icone className="size-14" />
           </div>
         )}
       </div>
-      <div className="flex flex-col gap-1 px-3.5 py-3">
-        <div className="flex items-center justify-between gap-2">
-          <span className="truncate font-medium">{a.nome}</span>
+      {/* w-0 min-w-full: o texto ocupa a largura da capa sem alargar o cartão. */}
+      <div className="flex w-0 min-w-full flex-col gap-1 px-3.5 py-3">
+        <span className="truncate font-medium" title={a.nome}>
+          {a.nome}
+        </span>
+        <div className="flex items-center justify-between gap-2 text-xs text-zinc-500">
           <Etiqueta>{rotuloTipoAsset(a.tipo)}</Etiqueta>
-        </div>
-        <div className="flex justify-between gap-2 text-xs text-zinc-500">
-          <span className="truncate">{mostrarProjeto ? (a.projeto?.nome ?? "Sem projeto") : ""}</span>
           <span className="shrink-0">
             {a._count.referencias} ref · {a._count.outputs} out
           </span>
         </div>
+        {mostrarProjeto && <span className="truncate text-xs text-zinc-500">{a.projeto?.nome ?? "Sem projeto"}</span>}
       </div>
     </Link>
   );

@@ -1,6 +1,6 @@
 import { ImagePlus, Star, X } from "lucide-react";
 import { useState } from "react";
-import { geradorApi, type Dono } from "../api.ts";
+import { geradorApi, urlArquivo, type Dono } from "../api.ts";
 import { useCarregar } from "../hooks.ts";
 import type { CampoWorkflow, ImagemDisponivel, RefImagem } from "../tipos.ts";
 import { Miniatura } from "./midia.tsx";
@@ -149,19 +149,21 @@ function EscolherImagem({
               <h3 className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
                 {g.titulo} ({g.itens.length})
               </h3>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
+              {/* Mesma altura para todas, largura pela proporção: a imagem aparece inteira (como nos cartões de asset). */}
+              <div className="flex flex-wrap items-start gap-3">
                 {g.itens.map((i) => (
                   <button
                     key={`${i.origem}-${i.id}`}
                     type="button"
                     onClick={() => aoEscolher(i)}
-                    className={`group flex flex-col overflow-hidden rounded-lg border bg-zinc-900 text-left ${mesma(atual, i) ? "border-violet-500 ring-1 ring-violet-500" : "border-zinc-800 hover:border-violet-500/60"}`}
+                    className={`group flex w-min min-w-28 flex-col overflow-hidden rounded-lg border bg-zinc-900 text-left ${mesma(atual, i) ? "border-violet-500 ring-1 ring-violet-500" : "border-zinc-800 hover:border-violet-500/60"}`}
                   >
-                    <div className="relative aspect-square bg-zinc-950">
-                      <Miniatura tipo="IMAGEM" arquivo={i.arquivo} />
+                    <div className="relative h-44 bg-zinc-950">
+                      <img src={urlArquivo(i.arquivo)} alt="" loading="lazy" className="h-full w-auto max-w-none" />
                       {i.favorito && <Star className="absolute top-1.5 right-1.5 size-4 fill-amber-400 text-amber-400" />}
                     </div>
-                    <div className="flex flex-col px-2 py-1.5 text-xs">
+                    {/* w-0 min-w-full: o texto ocupa a largura da imagem sem alargar o cartão. */}
+                    <div className="flex w-0 min-w-full flex-col px-2 py-1.5 text-xs">
                       <span className="truncate text-zinc-300" title={i.nome}>
                         {i.nome}
                       </span>

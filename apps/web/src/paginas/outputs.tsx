@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { outputsApi } from "../api.ts";
 import { FiltroBusca, FiltroProjeto, FiltroSelecao } from "../componentes/filtros.tsx";
-import { CartaoOutput, GRADE_OUTPUTS, VisorOutputs } from "../componentes/outputs.tsx";
+import { CartaoOutput, GruposDeOutputs, VisorOutputs } from "../componentes/outputs.tsx";
 import { Aviso, BarraFiltros, Cabecalho, Carregando, Pilulas, Vazio } from "../componentes/ui.tsx";
 import { useCarregar, useFiltros } from "../hooks.ts";
 import type { Vinculo } from "../tipos.ts";
@@ -78,8 +78,9 @@ export function PaginaOutputs() {
           />
         )}
         {!!dados?.length && (
-          <div className={GRADE_OUTPUTS}>
-            {dados.map((o) => (
+          <GruposDeOutputs
+            outputs={dados}
+            cartao={(o) => (
               <CartaoOutput
                 key={o.id}
                 o={o}
@@ -90,8 +91,8 @@ export function PaginaOutputs() {
                   recarregar();
                 }}
               />
-            ))}
-          </div>
+            )}
+          />
         )}
       </div>
       <VisorOutputs

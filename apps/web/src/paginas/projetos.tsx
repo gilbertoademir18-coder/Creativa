@@ -23,7 +23,7 @@ import {
 } from "../componentes/ui.tsx";
 import { useCarregar, useFiltros } from "../hooks.ts";
 import type { Projeto } from "../tipos.ts";
-import { CartaoAsset, ModalAsset } from "./assets.tsx";
+import { CartaoAsset, FILEIRA_ASSETS, ModalAsset } from "./assets.tsx";
 import { CartaoCena, ModalCena } from "./cenas.tsx";
 
 export function PaginaProjetos() {
@@ -170,7 +170,7 @@ export function PaginaProjeto() {
         >
           {assets.dados?.length === 0 && <Vazio icone={<Shapes />} titulo="Nenhum asset neste projeto" />}
           {!!assets.dados?.length && (
-            <div className={GRADE}>
+            <div className={FILEIRA_ASSETS}>
               {assets.dados.map((a) => (
                 <CartaoAsset key={a.id} a={a} volta={volta} />
               ))}

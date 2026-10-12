@@ -40,7 +40,12 @@ export function Modal({
     <dialog
       ref={ref}
       onCancel={(e) => e.preventDefault()}
-      onClose={aoFechar}
+      // Só o fechamento DESTA janela: o React repassa o "close" de uma janela
+      // aberta dentro dela (o "Excluir?" do visor de outputs) para as de
+      // cima, e a de fora fechava junto.
+      onClose={(e) => {
+        if (e.target === e.currentTarget) aoFechar();
+      }}
       aria-label={titulo}
       className={`m-auto max-h-[90vh] max-w-[95vw] overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-0 text-zinc-100 backdrop:bg-black/70 ${larguras[largura]}`}
     >

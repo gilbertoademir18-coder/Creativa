@@ -6,7 +6,7 @@ import { useCarregar } from "../hooks.ts";
 import type { Execucao, OutputDetalhe, RascunhoGerador, TipoCatalogo } from "../tipos.ts";
 import { BarraAssistente, limparTextoLlm, SeletorAssistente } from "./assistente-prompt.tsx";
 import { CampoDinamico, SeletorQuantidade, valoresPara } from "./campos-workflow.tsx";
-import { CartaoOutput, GRADE_OUTPUTS, VisorOutputs } from "./outputs.tsx";
+import { CartaoOutput, GruposDeOutputs, VisorOutputs } from "./outputs.tsx";
 import { Aviso, Botao, Campo, Carregando, Seletor, Vazio } from "./ui.tsx";
 
 /*
@@ -299,11 +299,21 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     <div className="grid grid-cols-[minmax(30rem,5fr)_minmax(0,7fr)] items-start gap-8">
       {/* O formulário fica parado enquanto a galeria rola ao lado. */}
       <div ref={formulario} className="sticky top-6 scroll-mt-6 overflow-hidden rounded-xl border border-violet-500/30 bg-zinc-900/40">
-        <div className="flex items-center gap-2 border-b border-zinc-800 px-5 py-3.5">
+        {/* O "Gerar" mora no título: à vista em qualquer ponto do formulário, que rola embaixo. */}
+        <div className="flex items-center gap-2 border-b border-zinc-800 px-5 py-2.5">
           <Sparkles className="size-4 text-violet-300" />
           <h2 className="font-semibold">Gerador</h2>
+          {config && wfAtual && (
+            <div className="ml-auto flex items-center gap-2">
+              <SeletorQuantidade valor={quantidade} aoMudar={setQuantidade} />
+              <Botao variante="primario" icone={<Play className="size-4" />} carregando={gerando} disabled={expandindo} onClick={gerar}>
+                Gerar
+              </Botao>
+            </div>
+          )}
         </div>
-        <div className="flex max-h-[calc(100vh-14rem)] flex-col gap-5 overflow-y-auto p-5">
+        <div className="flex max-h-[calc(100vh-12rem)] flex-col gap-5 overflow-y-auto p-5">
+          {erro && <Aviso>{erro}</Aviso>}
           {catalogo.erro && <Aviso>{catalogo.erro}</Aviso>}
           {!catalogo.dados && !catalogo.erro && <Carregando />}
           {catalogo.dados && tipos.length === 0 && (
@@ -379,17 +389,6 @@ export function PainelGerador({ dono }: { dono: Dono }) {
             </>
           )}
         </div>
-        {config && wfAtual && (
-          <div className="flex flex-col gap-3 border-t border-zinc-800 px-5 py-4">
-            {erro && <Aviso>{erro}</Aviso>}
-            <div className="flex items-center justify-end gap-2">
-              <SeletorQuantidade valor={quantidade} aoMudar={setQuantidade} />
-              <Botao variante="primario" icone={<Play className="size-4" />} carregando={gerando} disabled={expandindo} onClick={gerar}>
-                Gerar
-              </Botao>
-            </div>
-          </div>
-        )}
       </div>
 
       <section className="flex min-w-0 flex-col gap-4">
@@ -408,11 +407,13 @@ export function PainelGerador({ dono }: { dono: Dono }) {
           <Vazio icone={<Sparkles />} titulo="Nenhum output ainda" texto="Escreva o prompt no Gerador e clique em Gerar — as imagens aparecem aqui." />
         )}
         {(lista.length > 0 || ativas.length > 0) && (
-          <div className={GRADE_OUTPUTS}>
-            {ativas.map((e, n) => (
-              <CartaoExecucao key={e.id} e={e} posicao={n + 1} aoCancelar={() => cancelar(e.id)} />
-            ))}
-            {lista.map((o) => (
+          <GruposDeOutputs
+            outputs={lista}
+            antesDosOutros={
+              ativas.length > 0 &&
+              ativas.map((e, n) => <CartaoExecucao key={e.id} e={e} posicao={n + 1} aoCancelar={() => cancelar(e.id)} />)
+            }
+            cartao={(o) => (
               <CartaoOutput
                 key={o.id}
                 o={o}
@@ -422,8 +423,8 @@ export function PainelGerador({ dono }: { dono: Dono }) {
                   outputs.recarregar();
                 }}
               />
-            ))}
-          </div>
+            )}
+          />
         )}
       </section>
 

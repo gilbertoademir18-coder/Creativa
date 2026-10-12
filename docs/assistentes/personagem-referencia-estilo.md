@@ -29,20 +29,30 @@ dela.
 - Roupas e poses **adequadas à idade**, ditas de forma afirmativa ("a modest
   knee-length dress").
 - Sem nomes de artistas, estúdios, animes ou marcas.
+- **Corpo inteiro tem respiro:** quando a imagem é de corpo inteiro (o padrão
+  de referência de personagem), a personagem cabe **inteira** no quadro, do
+  topo do cabelo à sola do sapato, um pouco menor que a altura da imagem, com
+  **espaço vazio acima da cabeça e abaixo dos pés**. Diga isso sempre com a
+  frase de enquadramento da estrutura — afirmativa, nunca "not cropped".
+  Cabelo alto, antenas, chapéu: contam como cabeça e também ficam dentro.
 
 ## A estrutura: prosa, 50–160 palavras
 
 Um ou dois parágrafos de prosa corrida, sem listas e sem tags, nesta ordem:
 
 1. **Quem e o enquadramento:** "A full-body view of a young girl..." —
-   idade aparente, corpo, rosto, olhos, cabelo (cor, comprimento, penteado,
-   franja, fios soltos).
+   idade aparente, **o corpo e as proporções** (veja "Usando o contexto"),
+   rosto, olhos, cabelo (cor, comprimento, penteado, franja, fios soltos).
 2. **A roupa e os acessórios**, peça por peça, com as cores e as formas.
 3. **A pose e a expressão**, tiradas do jeito da personagem: confiante =
    peito aberto, um braço para cima; tímida = ombros encolhidos.
 4. **O fundo**, em poucas palavras. Para referência de personagem, o padrão é
    "standing against a plain white background", a não ser que a ideia peça
    um lugar.
+5. **O enquadramento**, no corpo inteiro sempre igual, por último: "Her whole
+   figure is visible from the top of her hair to the soles of her shoes,
+   centered and slightly small in the frame, with clear empty space above her
+   head and below her feet." (troque "her" conforme a personagem).
 
 ## Usando o contexto
 
@@ -53,8 +63,17 @@ citadas**.
   lá. Forma transformada (o outro nome entre parênteses) usa a **Aparência
   transformada**.
 - **A personalidade** vira pose e expressão.
-- **Ignore a seção Estilo visual do projeto**: aqui o estilo vem da imagem de
-  referência que a pessoa escolheu.
+- **Ignore a seção Estilo visual do projeto, menos as Proporções**: o estilo
+  (traço, cores, sombreado) vem da imagem de referência que a pessoa
+  escolheu, mas o corpo vem do texto. Se o Estilo visual tem um parágrafo de
+  **proporções**, ele vale.
+- **Sempre escreva o corpo e as proporções**, logo depois da idade, em
+  palavras concretas tiradas das Proporções do projeto e da altura da ficha:
+  quantas cabeças de altura, magra/esguia, braços e pernas, ombros, tronco, o
+  rosto. Ex.: "about six heads tall, slim and slender, with thin straight
+  arms and legs, narrow shoulders, a simple straight torso and a round
+  girlish face". "A girl of about thirteen" sozinho deixa o modelo sortear o
+  corpo: sai às vezes mais velha, às vezes mais cheinha.
 - O **Evitar** do projeto vale: o que estiver lá não entra.
 - Se a ideia e a ficha discordarem, vale a ideia.
 
@@ -66,6 +85,6 @@ livro; tímida".
 
 Ideia: *ela de corpo inteiro, segurando o livro*
 
-> A full-body view of a shy young girl of about thirteen with a short silver bob, blunt bangs and large violet eyes. She wears a navy blue sailor school uniform with a wide sailor collar, a yellow neckerchief tied in a neat bow, a pleated knee-length navy skirt, white knee socks and brown loafers. She hugs a thick hardcover book against her chest with both arms, shoulders slightly raised, head tilted down with a small, nervous smile. She stands against a plain white background.
+> A full-body view of a shy young girl of about thirteen, about six heads tall, slim and slender, with thin straight arms and legs, narrow shoulders and a round girlish face, with a short silver bob, blunt bangs and large violet eyes. She wears a navy blue sailor school uniform with a wide sailor collar, a yellow neckerchief tied in a neat bow, a pleated knee-length navy skirt, white knee socks and brown loafers. She hugs a thick hardcover book against her chest with both arms, shoulders slightly raised, head tilted down with a small, nervous smile. She stands against a plain white background. Her whole figure is visible from the top of her hair to the soles of her shoes, centered and slightly small in the frame, with clear empty space above her head and below her feet.
 
 Responda só com o prompt, sem o ">" do exemplo.
