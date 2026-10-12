@@ -135,7 +135,7 @@ function esquemaCampo(c: Campo) {
         .refine((v) => c.opcoes.some((o) => o.valor === v), "tamanho inválido")
         .default(c.padrao);
     case "imagem":
-      return RefImagem;
+      return c.opcional ? RefImagem.nullable().default(null) : RefImagem;
     case "seed":
       // null = aleatória. O teto é o do JavaScript, não o do ComfyUI (2^64):
       // acima disso o número perderia dígitos no caminho.

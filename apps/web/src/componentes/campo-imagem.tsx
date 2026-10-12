@@ -35,7 +35,10 @@ export function CampoImagem({
   const atual = ref ? imagens.dados?.find((i) => mesma(ref, i)) : undefined;
 
   return (
-    <Campo rotulo={c.rotulo} dica={c.dica ?? "Uma imagem do projeto: referência ou output. Vai para o ComfyUI ao gerar."}>
+    <Campo
+      rotulo={c.opcional ? `${c.rotulo} (opcional)` : c.rotulo}
+      dica={c.dica ?? "Uma imagem do projeto: referência ou output. Vai para o ComfyUI ao gerar."}
+    >
       {ref && imagens.dados && !atual && <Aviso>A imagem escolhida não existe mais, ou não é deste projeto. Escolha outra.</Aviso>}
       {atual ? (
         <div className="flex items-center gap-3">

@@ -601,6 +601,13 @@ function EditorCampo({
           ))}
         </div>
       )}
+      {c.tipo === "imagem" && (
+        <Caixa
+          rotulo="Opcional — vazia, o LoadImage sai do grafo (ele precisa ligar direto numa entrada opcional)"
+          valor={!!c.opcional}
+          aoMudar={(v) => aoMudar({ ...c, opcional: v || undefined })}
+        />
+      )}
       {c.tipo === "opcoes" && <OpcoesLista c={c} entradas={entradas} aoMudar={aoMudar} />}
       {c.tipo === "tamanho" && <OpcoesTamanho c={c} aoMudar={aoMudar} />}
 

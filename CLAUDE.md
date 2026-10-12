@@ -148,6 +148,13 @@ as cenas (`SetNull`), nunca as apaga.
   um). Ao gerar, `enviarImagens` (`geracao/imagens.ts`) manda o arquivo ao
   ComfyUI (`/upload/image`, em `input/creativa/`, com o nome pelo hash) e o
   nome vai para o `LoadImage`. O output guarda a referência, não o arquivo.
+  Campo de imagem com `opcional: true` pode ficar vazio (null): o
+  `montarGrafo` tira o `LoadImage` e as ligações que saem dele, então ele
+  precisa ligar direto numa entrada opcional.
+- **Campo novo na definição + app da 3400 rodando a API velha = campo
+  perdido em silêncio:** o zod descarta chaves que não conhece, então salvar
+  um workflow com um campo recém-criado (ex.: `opcional`) antes de reiniciar
+  o servidor grava sem ele. Reinicie e salve de novo; confira com `ler-workflow`.
 - **Vídeo:** o `SaveVideo` aparece no histórico do ComfyUI na mesma lista
   `images` (com `animated`); o tipo do output (IMAGEM, VIDEO, AUDIO) sai do
   mime do arquivo (`tipoDoMime` em `geracao/execucao.ts`). Nó V3 com "combo
@@ -262,6 +269,13 @@ O que isso muda nas escolhas:
   com o mesmo assistente. O workflow H3 `int8_convrot` + 8 passos foi
   removido do Creativa em 2026-10-12 (os outputs dele ficaram).
   LTX 2.5 ficou de fora: o repositório é *gated* no Hugging Face.
+- **Primeiro quadro de shot: Qwen Image Edit 2511 fp8mixed + Lightning 4
+  passos** (escolhido em 2026-10-12 contra FLUX.2 Klein 4B; o Klein 9B é
+  *gated* e não comercial). Até **3 referências**, em posições fixas: Personagem 1
+  = "Picture 1", Personagem 2 = "Picture 2", Cenário = "Picture 3" — o
+  `TextEncodeQwenImageEditPlus` numera pela entrada, então o cenário segue
+  "Picture 3" mesmo sem a Personagem 2. As três são opcionais. A imagem nasce
+  de um `EmptySD3LatentImage` 16:9 (não da imagem 1, como no template de edição).
 
 # Banco de dados
 

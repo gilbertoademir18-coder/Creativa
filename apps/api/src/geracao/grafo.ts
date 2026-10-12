@@ -60,6 +60,18 @@ export function erroDosCampos(grafo: GrafoApi, campos: Campo[]): string | null {
 }
 
 /**
+ * Tira nós do grafo e as ligações que saíam deles. É o que faz uma imagem
+ * opcional vazia: o LoadImage some, e a entrada (opcional) que ele
+ * alimentava fica sem nada — o ComfyUI segue sem aquela referência.
+ */
+function tirarNos(g: GrafoApi, ids: string[]) {
+  for (const id of ids) delete g[id];
+  for (const no of Object.values(g))
+    for (const [entrada, v] of Object.entries(no.inputs))
+      if (Array.isArray(v) && ids.includes(String(v[0]))) delete no.inputs[entrada];
+}
+
+/**
  * Copia o grafo e escreve o valor de cada campo nos alvos dele. Os campos de
  * imagem recebem o nome do arquivo já enviado ao ComfyUI (`imagens`, por
  * chave do campo — ver `enviarImagens`).
@@ -77,6 +89,10 @@ export function montarGrafo(grafo: GrafoApi, campos: Campo[], v: Valores, imagen
       escrever(c.altura, o.altura);
     } else if (c.tipo === "imagem") {
       const nome = imagens[c.chave];
+      if (!nome && c.opcional && !valor) {
+        tirarNos(g, c.alvos.map((a) => a.no));
+        continue;
+      }
       if (!nome) throw new Error(`a imagem do campo “${c.rotulo}” não foi enviada ao ComfyUI`);
       escrever(c.alvos, nome);
     } else {

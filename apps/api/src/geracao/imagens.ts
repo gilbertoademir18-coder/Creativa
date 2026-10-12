@@ -153,8 +153,10 @@ export async function enviarImagens(w: Pick<DefWorkflow, "campos">, valores: Rec
   const nomes: Record<string, string> = {};
   for (const c of w.campos) {
     if (c.tipo !== "imagem") continue;
-    const ref = valores[c.chave] as RefImagem;
-    nomes[c.chave] = await enviarArquivo(await arquivoDa(ref, dono));
+    const ref = valores[c.chave] as RefImagem | null;
+    // Opcional e vazia: não vai nada (o LoadImage sai do grafo).
+    if (!ref && c.opcional) continue;
+    nomes[c.chave] = await enviarArquivo(await arquivoDa(ref as RefImagem, dono));
   }
   return nomes;
 }

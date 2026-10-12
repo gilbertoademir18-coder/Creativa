@@ -231,8 +231,11 @@ export type CampoWorkflow =
   | (BaseCampo & { tipo: "numero"; alvos: Alvo[]; padrao: number; min?: number; max?: number; passo?: number })
   | (BaseCampo & { tipo: "opcoes"; alvos: Alvo[]; opcoes: { valor: string | number; rotulo: string }[]; padrao: string | number })
   | (BaseCampo & { tipo: "seed"; alvos: Alvo[] })
-  /** Uma imagem do projeto (referência ou output), enviada ao ComfyUI ao gerar. Alvo: o `image` de um LoadImage. */
-  | (BaseCampo & { tipo: "imagem"; alvos: Alvo[] })
+  /**
+   * Uma imagem do projeto (referência ou output), enviada ao ComfyUI ao gerar. Alvo: o `image` de um LoadImage.
+   * Opcional: vazia, o LoadImage sai do grafo (ele precisa ligar direto numa entrada opcional).
+   */
+  | (BaseCampo & { tipo: "imagem"; alvos: Alvo[]; opcional?: boolean })
   | (BaseCampo & {
       tipo: "tamanho";
       largura: Alvo[];

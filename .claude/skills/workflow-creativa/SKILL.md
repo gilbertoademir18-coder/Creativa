@@ -188,8 +188,12 @@ normal:
 - **`seed`.**
 - **`imagem`**, para workflows com referência (edição, personagem numa
   cena, first frame): um campo por `LoadImage`, com alvo na entrada `image`
-  e `rotulo` que diga o papel ("Personagem", "Cenário"). Ele sempre é
-  obrigatório. No Gerador, a pessoa escolhe uma referência ou um output de
+  e `rotulo` que diga o papel ("Personagem", "Cenário"). É obrigatório, a não
+  ser com `"opcional": true`: vazio, o `LoadImage` sai do grafo junto com as
+  ligações que saem dele — então o `LoadImage` tem de ligar **direto** numa
+  entrada opcional (ex.: `image2` do `TextEncodeQwenImageEditPlus`), sem nó no
+  meio. Use opcional quando o número de referências varia de uma geração para
+  outra (ex.: uma ou duas personagens). No Gerador, a pessoa escolhe uma referência ou um output de
   imagem **do projeto**, e o Creativa envia o arquivo ao ComfyUI na hora de
   gerar. No grafo, deixe no `image` o nome de qualquer arquivo: o `validar` só
   avisa. No rascunho de exemplo, o valor é `{ "origem": "output" | "referencia",
