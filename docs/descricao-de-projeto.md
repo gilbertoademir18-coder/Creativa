@@ -12,9 +12,12 @@ histórico fica no painel de versões, à esquerda na janela da descrição do p
 
 ## O modelo
 
-Os títulos são `##` e têm que ser **exatamente estes**. Maiúsculas e acentos
-não importam, mas um título com outro nome vira texto só para leitura humana.
-A ordem é a da tabela. Pode faltar seção: o que não existe não vai.
+Os títulos são `##` e têm que ser **exatamente estes**. Maiúsculas, acentos e
+negrito não importam. Um `##` com outro nome é uma **seção extra**: ela vai para
+o assistente em **toda** geração (cortada em 2.500 caracteres), sem o recorte
+por tipo de saída — e o editor avisa. Prefira pôr o assunto numa seção do modelo
+(o uniforme da escola é Mundo). A ordem é a da tabela. Pode faltar seção: o que
+não existe não vai.
 
 | Seção | O que vai nela | Vai para o assistente? |
 | --- | --- | --- |

@@ -4,6 +4,7 @@ import type {
   Assistente,
   AssistenteDisponivel,
   EstadoLlm,
+  PreviaAssistente,
   EstadoTeste,
   TipoGeracao,
   WorkflowDetalhe,
@@ -255,6 +256,9 @@ export const assistentesApi = {
     api<AssistenteDisponivel[]>(`/assistentes/disponiveis${consulta({ asset: dono.assetId, shot: dono.shotId, workflow })}`),
   /** A LLM local (Ollama) está no ar, com o modelo baixado? */
   estado: () => api<EstadoLlm>("/assistentes/estado"),
+  /** O que a expansão mandaria à LLM — sem chamar a LLM. */
+  previa: (id: string, pedido: Dono & { workflow: string; ideia: string }) =>
+    api<PreviaAssistente>(`/assistentes/${id}/previa`, { method: "POST", corpo: pedido }),
   /**
    * Expande a ideia no prompt completo. O texto chega em pedaços
    * (`aoPedaco`), conforme a LLM escreve; `aoComecar` diz se o ComfyUI estava

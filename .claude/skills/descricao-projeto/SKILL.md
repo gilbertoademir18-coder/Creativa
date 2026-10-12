@@ -49,7 +49,9 @@ O usuário é criativo, não quer um formulário. Então:
 ## 3. O que conferir antes de entregar
 
 - **Os títulos são os do modelo**, escritos igual, na ordem da tabela.
-  Seções extras só se o usuário pedir, e avise que elas não vão para o assistente.
+  Seções extras só se o usuário pedir, e avise que elas vão para o assistente
+  em toda geração, sem recorte. Se o assunto cabe numa seção do modelo (o
+  uniforme é Mundo), proponha pôr lá.
 - **Estilo visual em palavras visíveis:** técnica, traço, paleta com nomes de
   cor, luz, câmera, efeitos. Corte adjetivos vagos ("lindo", "épico",
   "marcante") ou troque pelo que se vê.

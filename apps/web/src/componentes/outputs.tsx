@@ -233,7 +233,8 @@ function CorpoVisor({
             </div>
           </details>
 
-          <div className="mt-auto flex flex-wrap justify-between gap-2 border-t border-zinc-800 pt-4">
+          {/* Grudado embaixo do painel, que rola: "aba nova" e "Excluir" à vista em qualquer ponto. */}
+          <div className="sticky bottom-0 mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-zinc-800 bg-zinc-950 py-3">
             <a href={urlArquivo(o.arquivo)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-violet-300 hover:underline">
               <ExternalLink className="size-4" /> Tamanho real numa aba nova
             </a>

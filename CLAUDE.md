@@ -60,6 +60,11 @@ as cenas (`SetNull`), nunca as apaga.
 - **O estado do ComfyUI fica sempre à vista**, na barra do topo (`BarraComfy`
   em `componentes/layout.tsx`), em todas as páginas. Nenhuma tela esconde ou
   cobre essa barra.
+- **Ações de uma janela ou painel que rola ficam sempre à vista:** barra de
+  ferramentas grudada em cima, botões (Salvar, Fechar, Excluir, abrir em aba
+  nova) grudados embaixo — `sticky` com fundo opaco e uma linha separando,
+  como no rodapé da `ModalDocumento` e no painel do output. Cuidado com
+  `overflow-hidden` entre o `sticky` e quem rola: ele prende o `sticky`.
 - **Filtros: todo campo de filtro com valor mostra um × à direita que limpa
   aquele filtro com um clique** — texto ou lista de escolha. A pessoa tem que
   conseguir desfazer qualquer filtro só com o mouse. Use os componentes de
@@ -116,8 +121,16 @@ as cenas (`SetNull`), nunca as apaga.
 - **A descrição do projeto tem modelo fixo** (`docs/descricao-de-projeto.md`):
   o assistente de prompt recebe só as seções `##` que servem à saída do tipo
   e as fichas `###` dos personagens citados (`geracao/descricao-projeto.ts`).
-  Mudou um título ou uma seção? Mude o doc, o código e a skill
+  Seção `##` **fora do modelo vai sempre** (antes era ignorada calada, e o
+  uniforme novo nunca chegou à LLM); o editor avisa com `avisosDaDescricao`
+  (`componentes/descricao-projeto.tsx`, que repete a lista de títulos).
+  Formato, Público-alvo e Referências nunca vão. Mudou um título ou uma
+  seção? Mude o doc, o código (API e a lista do front) e a skill
   `.claude/skills/descricao-projeto` juntos.
+- **Uma fonte só para cada coisa:** a descrição do asset também vai à LLM, e
+  mais perto da ideia — se ela repete a aparência da ficha (ou o uniforme do
+  Mundo) e as duas divergem, a do asset ganha. Na descrição do asset, aponte
+  para a do projeto em vez de copiar.
 
 # O Gerador e os workflows do ComfyUI
 
@@ -130,7 +143,11 @@ as cenas (`SetNull`), nunca as apaga.
   usuário: markdown que a LLM local segue para expandir a ideia no campo
   marcado `assistivel` do workflow (a caixa "O assistente de prompt escreve
   aqui", no editor de campos). O código acrescenta sozinho a dica, as palavras
-  e os avisos do campo.
+  e os avisos do campo. Tudo o que vai à LLM sai de `montarPedido`
+  (`rotas/assistentes.ts`), que a expansão e a **prévia** usam igual: o botão
+  "Ver o que vai para a LLM" no Gerador (`POST /api/assistentes/:id/previa`,
+  só lê) mostra as instruções, o pedido e quais seções e fichas entraram.
+  Mexeu no que vai à LLM? Mexa em `montarPedido`, e a prévia acompanha.
 - **Tipos de geração e workflows são cadastros do usuário** (páginas Tipos de
   geração e Workflows; tabelas `tipo_geracao` e `workflow`) — não existe mais
   workflow em código. Como dados do usuário, **não crie nem edite** registros

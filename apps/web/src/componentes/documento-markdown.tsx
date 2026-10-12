@@ -32,6 +32,7 @@ export function ModalDocumento({
   placeholder,
   aberto,
   historico,
+  avisos,
   aoFechar,
   aoSalvar,
 }: {
@@ -40,6 +41,8 @@ export function ModalDocumento({
   placeholder?: string;
   aberto: boolean;
   historico?: Historico;
+  /** Avisos sobre o texto, recalculados enquanto se escreve (ex.: seção fora do modelo). */
+  avisos?: (texto: string) => string[];
   aoFechar: () => void;
   /**
    * Recebe o texto (null se ficou vazio) e uma nota do que foi feito ("Restaurada
@@ -190,6 +193,11 @@ export function ModalDocumento({
             </aside>
           )}
           <div className="flex min-w-0 flex-col gap-3">
+            {avisos?.(texto).map((a) => (
+              <p key={a} className="rounded-lg border border-amber-900/50 bg-amber-950/30 px-3 py-2 text-xs text-amber-200">
+                {a}
+              </p>
+            ))}
             {vendo && (
               <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-900/60 bg-amber-950/30 px-4 py-2.5 text-sm text-amber-200">
                 <span>

@@ -187,6 +187,23 @@ export type Assistente = {
 /** O que o Gerador lista: os assistentes que valem para o workflow e o projeto do dono. */
 export type AssistenteDisponivel = Pick<Assistente, "id" | "nome" | "descricao" | "projetoId" | "projeto">;
 
+/** Exatamente o que uma expansão mandaria à LLM, e um resumo do que entrou (`POST /assistentes/:id/previa`). */
+export type PreviaAssistente = {
+  sistema: string;
+  usuario: string;
+  resumo: {
+    assistente: string;
+    workflow: string;
+    projeto: string | null;
+    /** O cabeçalho de cada bloco da descrição do projeto que entrou. */
+    secoes: string[];
+    /** Os títulos das fichas de personagem citadas. */
+    personagens: string[];
+    /** O que veio do asset ou do vídeo, da cena e do shot. */
+    dono: string[];
+  };
+};
+
 export type EstadoLlm = { noAr: boolean; modelo: string; modeloBaixado: boolean };
 
 

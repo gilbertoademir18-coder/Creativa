@@ -365,6 +365,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
                       aoExpandir={expandir}
                       aoParar={() => parar.current?.abort()}
                       aoDesfazer={desfazer}
+                      aoPrevia={() => assistentesApi.previa(assistenteId, { ...dono, workflow: config!.workflow, ideia: ideia.trim() })}
                     />
                   )}
                   <CampoDinamico

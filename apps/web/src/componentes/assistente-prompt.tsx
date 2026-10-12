@@ -1,7 +1,9 @@
-import { Square, Undo2, WandSparkles } from "lucide-react";
+import { Eye, Square, Undo2, WandSparkles } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import type { AssistenteDisponivel, EstadoLlm } from "../tipos.ts";
-import { AreaTexto, Aviso, Botao, Campo, Seletor } from "./ui.tsx";
+import type { AssistenteDisponivel, EstadoLlm, PreviaAssistente } from "../tipos.ts";
+import { Modal } from "./modal.tsx";
+import { AreaTexto, Aviso, Botao, Campo, Carregando, Etiqueta, Seletor } from "./ui.tsx";
 
 /*
  * O assistente de prompt no Gerador: a escolha (logo abaixo do workflow) e a
@@ -61,6 +63,7 @@ export function BarraAssistente({
   aoExpandir,
   aoParar,
   aoDesfazer,
+  aoPrevia,
 }: {
   estado: EstadoLlm | null;
   expandindo: boolean;
@@ -75,7 +78,10 @@ export function BarraAssistente({
   aoExpandir: () => void;
   aoParar: () => void;
   aoDesfazer: () => void;
+  /** Busca o que a expansão mandaria à LLM (sem chamar a LLM). */
+  aoPrevia: () => Promise<PreviaAssistente>;
 }) {
+  const [vendoPrevia, setVendoPrevia] = useState(false);
   // A LLM fora do ar não é erro do Creativa: diz o que fazer.
   const problema = !estado
     ? null
@@ -115,9 +121,22 @@ export function BarraAssistente({
                 Desfazer
               </Botao>
             )}
+            <Botao
+              variante="fantasma"
+              icone={<Eye className="size-4" />}
+              onClick={() => setVendoPrevia(true)}
+              disabled={!ideia.trim()}
+              title="Mostra as instruções e o contexto que a LLM recebe com esta ideia — sem chamar a LLM"
+              className="ml-auto"
+            >
+              Ver o que vai para a LLM
+            </Botao>
           </>
         )}
       </div>
+      <Modal aberto={vendoPrevia} titulo="O que vai para a LLM" largura="enorme" aoFechar={() => setVendoPrevia(false)}>
+        <JanelaPrevia buscar={aoPrevia} />
+      </Modal>
       {problema && <p className="text-xs text-amber-300">{problema}</p>}
       {aviso && expandindo && <p className="text-xs text-amber-300/90">{aviso}</p>}
       {erro && <Aviso>{erro}</Aviso>}
@@ -136,4 +155,71 @@ export function limparTextoLlm(texto: string): string {
     .replace(/^(prompt|here is the prompt|aqui está o prompt)\s*:\s*/i, "")
     .replace(/^["“](.*)["”]$/s, "$1")
     .trim();
+}
+
+/**
+ * A prévia de uma expansão: um resumo do que entrou (seções da descrição,
+ * fichas de personagem, o que veio do asset ou do shot) e os dois textos
+ * exatos — as instruções e o pedido. Só existe enquanto a janela está aberta:
+ * cada abertura busca de novo, com a ideia e a descrição de agora.
+ */
+function JanelaPrevia({ buscar }: { buscar: () => Promise<PreviaAssistente> }) {
+  const [previa, setPrevia] = useState<PreviaAssistente | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    buscar()
+      .then((p) => vivo && setPrevia(p))
+      .catch((e: Error) => vivo && setErro(e.message));
+    return () => {
+      vivo = false;
+    };
+    // Uma busca por abertura: a janela desmonta ao fechar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  if (erro) return <Aviso>{erro}</Aviso>;
+  if (!previa) return <Carregando />;
+  const { resumo: r } = previa;
+  const lista = (itens: string[], vazio: string) =>
+    itens.length ? (
+      <div className="flex flex-wrap gap-1.5">
+        {itens.map((i) => (
+          <Etiqueta key={i}>{i}</Etiqueta>
+        ))}
+      </div>
+    ) : (
+      <span className="text-sm text-zinc-500">{vazio}</span>
+    );
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="grid grid-cols-[10rem_1fr] items-start gap-x-4 gap-y-2.5 text-sm">
+        <span className="text-zinc-500">Assistente</span>
+        <span className="text-zinc-200">{r.assistente}</span>
+        <span className="text-zinc-500">Workflow</span>
+        <span className="text-zinc-200">{r.workflow}</span>
+        <span className="text-zinc-500">Da descrição do projeto</span>
+        {lista(r.secoes, r.projeto ? "nada (a descrição está vazia?)" : "sem projeto")}
+        <span className="text-zinc-500">Personagens</span>
+        {lista(r.personagens, "nenhuma ficha — ninguém da descrição foi citado na ideia nem no asset/shot")}
+        <span className="text-zinc-500">Do asset ou do shot</span>
+        {lista(r.dono, "nada")}
+      </div>
+      <TextoPrevia titulo="Instruções (o assistente + o que o Creativa sabe do workflow)" texto={previa.sistema} />
+      <TextoPrevia titulo="Pedido (a ideia e o contexto)" texto={previa.usuario} />
+    </div>
+  );
+}
+
+function TextoPrevia({ titulo, texto }: { titulo: string; texto: string }) {
+  return (
+    <section className="flex flex-col gap-2">
+      <h3 className="flex items-baseline justify-between gap-3 text-sm font-semibold text-zinc-300">
+        {titulo}
+        <span className="text-xs font-normal text-zinc-500 tabular-nums">{texto.length.toLocaleString("pt-BR")} caracteres</span>
+      </h3>
+      <pre className="max-h-[50vh] overflow-auto rounded-lg border border-zinc-800 bg-zinc-900 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap text-zinc-300">
+        {texto}
+      </pre>
+    </section>
+  );
 }

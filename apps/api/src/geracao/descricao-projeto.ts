@@ -14,7 +14,14 @@ import { paraChave } from "../lib/chave.ts";
 /** Cada seção que vai é cortada aqui: o modelo pede que elas sejam diretas. */
 const LIMITE = 2_500;
 
-/** As seções do modelo que vão ao assistente, e quando. As outras (Formato, Público-alvo, Referências...) ficam só para leitura. */
+/** As seções do modelo que ficam só para leitura: nunca vão ao assistente. */
+const SO_LEITURA = new Set(["formato", "publico-alvo", "referencias"]);
+
+/**
+ * As seções do modelo que vão ao assistente, e quando. Seção fora do modelo
+ * (um `##` que o usuário inventou, como "Uniforme Escolar") vai sempre: quem
+ * escreve um título espera que ele conte — ignorar calado já enganou.
+ */
 const SECOES: Record<string, (saida: TipoOutput) => boolean> = {
   premissa: () => true,
   tom: () => true,
@@ -74,17 +81,35 @@ const nomesDoPersonagem = (titulo: string) =>
  * Descrição fora do modelo (sem nenhum título conhecido) vai inteira, cortada
  * no começo — melhor do que nada.
  */
+/** Os títulos das fichas de personagem que entram numa geração (os citados em `mencoes`) — para a prévia do assistente mostrar. */
+export function personagensCitados(descricao: string | null, mencoes: string): string[] {
+  const md = descricao?.trim();
+  if (!md) return [];
+  const sec = secoes(md, 2).find((s) => paraChave(s.titulo) === "personagens");
+  if (!sec) return [];
+  const texto = palavras(mencoes);
+  return secoes(sec.corpo, 3)
+    .filter((p) => nomesDoPersonagem(p.titulo).some((n) => texto.includes(palavras(n))))
+    .map((p) => p.titulo);
+}
+
 export function contextoDoProjeto(descricao: string | null, saida: TipoOutput, mencoes: string): string[] {
   const md = descricao?.trim();
   if (!md) return [];
-  const doModelo = secoes(md, 2).filter((s) => paraChave(s.titulo) in SECOES);
-  if (!doModelo.length) return [`Descrição do projeto:\n${md.slice(0, 3_000)}`];
+  const todas = secoes(md, 2);
+  if (!todas.some((s) => paraChave(s.titulo) in SECOES)) return [`Descrição do projeto:\n${md.slice(0, 3_000)}`];
 
   const texto = palavras(mencoes);
   const linhas: string[] = [];
-  for (const s of doModelo) {
+  for (const s of todas) {
     const chave = paraChave(s.titulo);
-    if (!SECOES[chave]!(saida) || !s.corpo) continue;
+    if (SO_LEITURA.has(chave) || !s.corpo) continue;
+    // Fora do modelo: vai sempre, na ordem em que está.
+    if (!(chave in SECOES)) {
+      linhas.push(`Projeto — ${s.titulo}:\n${cortar(s.corpo)}`);
+      continue;
+    }
+    if (!SECOES[chave]!(saida)) continue;
     if (chave !== "personagens") {
       linhas.push(`Projeto — ${s.titulo}:\n${cortar(s.corpo)}`);
       continue;

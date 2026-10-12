@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { acharWorkflow, nomesDoCatalogo } from "../geracao/catalogo.ts";
 import type { CampoDe, DefWorkflow } from "../geracao/definicoes.ts";
-import { contextoDoProjeto } from "../geracao/descricao-projeto.ts";
+import { contextoDoProjeto, personagensCitados } from "../geracao/descricao-projeto.ts";
 import { lerFila } from "../geracao/execucao.ts";
 import { configComfy } from "../lib/comfyui.ts";
 import { consultarOllama, gerarTexto } from "../lib/ollama.ts";
@@ -182,6 +182,49 @@ export async function exigirOllama() {
   return estado;
 }
 
+/**
+ * Tudo o que vai à LLM numa expansão, sem chamar a LLM: as instruções
+ * (`sistema`: o assistente + o que o código sabe do workflow) e o pedido
+ * (`usuario`: a ideia e o contexto — o projeto recortado, depois o asset ou
+ * o vídeo, a cena e o shot). A expansão e a prévia usam a mesma montagem: o
+ * que a prévia mostra é exatamente o que a LLM recebe.
+ */
+async function montarPedido(id: string, p: z.output<typeof PedidoExpandir>) {
+  const assistente = await prisma.assistente.findUnique({ where: { id } });
+  if (!assistente) throw naoEncontrado("Assistente não encontrado.");
+  const w = await acharWorkflow(p.workflow);
+  if (!w) throw new ErroHttp(400, `O workflow ${p.workflow} não existe (mais) no cadastro.`);
+  const campo = campoAssistivel(w);
+  if (!campo) throw new ErroHttp(400, `O workflow “${w.nome}” não tem campo para o assistente escrever.`);
+
+  const dono = await contextoDoDono(p.assetId, p.shotId);
+  // Do geral ao específico: o projeto (recortado para esta saída e para os
+  // personagens que aparecem), depois o asset ou o vídeo, a cena e o shot.
+  const tipo = await prisma.tipoGeracao.findUnique({ where: { chave: w.tipo }, select: { saida: true } });
+  const mencoes = [p.ideia, ...dono.linhas].join("\n");
+  const doProjeto = contextoDoProjeto(dono.projeto?.descricao ?? null, tipo?.saida ?? "OUTRO", mencoes);
+  const contexto = [...(dono.projeto ? [`Projeto: ${dono.projeto.nome}`] : []), ...doProjeto, ...dono.linhas];
+  const usuario = [`Ideia: ${p.ideia}`, "", "Contexto (use o que servir à ideia):", ...contexto.map((l) => `- ${l}`)].join("\n");
+
+  const [extra, nomes] = await Promise.all([
+    prisma.workflow.findUnique({ where: { chave: w.chave }, select: { descricao: true } }),
+    nomesDoCatalogo(),
+  ]);
+  const sistema = montarSistema(assistente.instrucoes, { nome: w.nome, descricao: extra?.descricao ?? null, tipoNome: nomes.tipo(w.tipo) }, campo);
+
+  // O resumo da prévia: o cabeçalho de cada bloco do contexto (a linha antes do texto).
+  const titulo = (l: string) => l.split("\n")[0]!.replace(/:$/, "");
+  const resumo = {
+    assistente: assistente.nome,
+    workflow: w.nome,
+    projeto: dono.projeto?.nome ?? null,
+    secoes: doProjeto.map(titulo),
+    personagens: personagensCitados(dono.projeto?.descricao ?? null, mencoes),
+    dono: dono.linhas.map(titulo),
+  };
+  return { sistema, usuario, resumo };
+}
+
 export async function rotasAssistentes(app: FastifyInstance) {
   app.get("/", async (req) => {
     const f = validar(FiltroAssistentes, req.query);
@@ -240,6 +283,16 @@ export async function rotasAssistentes(app: FastifyInstance) {
   });
 
   /**
+   * A prévia de uma expansão: exatamente o que iria à LLM (instruções e
+   * pedido), mais um resumo do que entrou — sem chamar a LLM nem usar a GPU.
+   * É POST só porque leva o mesmo corpo da expansão; não grava nada.
+   */
+  app.post("/:id/previa", async (req) => {
+    const { id } = validar(z.object({ id: Uuid }), req.params);
+    return montarPedido(id, validar(PedidoExpandir, req.body));
+  });
+
+  /**
    * Expande a ideia no prompt completo, com a LLM local. A resposta é o
    * texto puro, em streaming: a tela vai preenchendo a caixa conforme chega.
    *
@@ -248,26 +301,10 @@ export async function rotasAssistentes(app: FastifyInstance) {
   app.post("/:id/expandir", async (req, reply) => {
     const { id } = validar(z.object({ id: Uuid }), req.params);
     const p = validar(PedidoExpandir, req.body);
-    const assistente = await prisma.assistente.findUnique({ where: { id } });
-    if (!assistente) throw naoEncontrado("Assistente não encontrado.");
-    const w = await acharWorkflow(p.workflow);
-    if (!w) throw new ErroHttp(400, `O workflow ${p.workflow} não existe (mais) no cadastro.`);
-    const campo = campoAssistivel(w);
-    if (!campo) throw new ErroHttp(400, `O workflow “${w.nome}” não tem campo para o assistente escrever.`);
+    const { sistema, usuario } = await montarPedido(id, p);
 
     await exigirOllama();
-    const dono = await contextoDoDono(p.assetId, p.shotId);
     const ocupado = await abrirEspacoParaLlm();
-
-    // Do geral ao específico: o projeto (recortado para esta saída e para os
-    // personagens que aparecem), depois o asset ou o vídeo, a cena e o shot.
-    const tipo = await prisma.tipoGeracao.findUnique({ where: { chave: w.tipo }, select: { saida: true } });
-    const contexto = [
-      ...(dono.projeto ? [`Projeto: ${dono.projeto.nome}`] : []),
-      ...contextoDoProjeto(dono.projeto?.descricao ?? null, tipo?.saida ?? "OUTRO", [p.ideia, ...dono.linhas].join("\n")),
-      ...dono.linhas,
-    ];
-    const usuario = [`Ideia: ${p.ideia}`, "", "Contexto (use o que servir à ideia):", ...contexto.map((l) => `- ${l}`)].join("\n");
 
     // A pessoa fechou a página ou clicou de novo: para de gerar.
     const cancelar = new AbortController();
@@ -275,11 +312,6 @@ export async function rotasAssistentes(app: FastifyInstance) {
 
     // O primeiro pedaço antes de responder: se o Ollama recusar, ainda dá
     // para devolver um erro HTTP normal, com a mensagem na tela.
-    const [extra, nomes] = await Promise.all([
-      prisma.workflow.findUnique({ where: { chave: w.chave }, select: { descricao: true } }),
-      nomesDoCatalogo(),
-    ]);
-    const sistema = montarSistema(assistente.instrucoes, { nome: w.nome, descricao: extra?.descricao ?? null, tipoNome: nomes.tipo(w.tipo) }, campo);
     const texto = gerarTexto(sistema, usuario, cancelar.signal);
     let primeiro: IteratorResult<string>;
     try {
