@@ -1,8 +1,8 @@
 import { useProjetoAtual } from "../componentes/barra-projeto.tsx";
-import { ArrowLeft, Pencil, Trash } from "lucide-react";
+import { ArrowLeft, Pencil, Plus, Trash } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { shotsApi } from "../api.ts";
+import { cenasApi, shotsApi } from "../api.ts";
 import { PainelGerador } from "../componentes/gerador.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
 import { PainelReferencias } from "../componentes/referencias.tsx";
@@ -17,6 +17,8 @@ export function PaginaShot() {
   useProjetoAtual(s?.cena.projeto?.id);
   const [editando, setEditando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
+  const [criando, setCriando] = useState(false);
+  const [erroNovo, setErroNovo] = useState<string | null>(null);
 
   if (erro) return <div className="p-8"><Aviso>{erro}</Aviso></div>;
   if (!s) return <Carregando />;
@@ -70,6 +72,28 @@ export function PaginaShot() {
             {i + 1}. {x.nome}
           </Link>
         ))}
+        {/* Cria no fim da cena, com o nome automático ("Shot 3"), e já abre: renomear é no "Editar". */}
+        <button
+          type="button"
+          disabled={criando}
+          onClick={async () => {
+            setCriando(true);
+            setErroNovo(null);
+            try {
+              const novo = await cenasApi.novoShot(s.cena.id);
+              navegar(`/shots/${novo.id}`);
+            } catch (e) {
+              setErroNovo((e as Error).message);
+            } finally {
+              setCriando(false);
+            }
+          }}
+          className="flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-zinc-500 hover:bg-zinc-900 hover:text-violet-200 disabled:opacity-50"
+          title="Criar um shot no fim desta cena"
+        >
+          <Plus className="size-4" /> Novo shot
+        </button>
+        {erroNovo && <span className="shrink-0 self-center text-sm text-red-400">{erroNovo}</span>}
       </nav>
       {/* key: trocar de shot pela barra recria os painéis (o Gerador começa do rascunho do shot novo). */}
       <div key={s.id} className="flex flex-col gap-10 p-8">
