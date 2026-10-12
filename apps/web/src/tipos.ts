@@ -8,6 +8,8 @@ export type TipoOutput = "IMAGEM" | "VIDEO" | "AUDIO" | "OUTRO";
 export type StatusExecucao = "NA_FILA" | "EXECUTANDO" | "CONCLUIDA" | "FALHOU" | "CANCELADA";
 /** A quem uma referência ou output pertence. */
 export type Vinculo = "asset" | "shot" | "solta";
+/** O vínculo de uma referência: também pode ser do projeto em si (sem asset nem shot). */
+export type VinculoReferencia = Vinculo | "projeto";
 
 export type ProjetoRef = { id: string; nome: string };
 
@@ -121,6 +123,9 @@ export type Referencia = {
   id: string;
   assetId: string | null;
   shotId: string | null;
+  /** Só na referência do projeto em si (sem asset nem shot). */
+  projetoId: string | null;
+  projeto?: ProjetoRef | null;
   tipo: TipoReferencia;
   nome: string;
   texto: string | null;
@@ -272,7 +277,7 @@ export type ImagemDisponivel = RefImagem & {
   arquivo: string;
   favorito: boolean;
   criadoEm: string;
-  dono: { tipo: "asset" | "shot"; id: string; nome: string };
+  dono: { tipo: "asset" | "shot" | "projeto" | "solta"; id: string; nome: string };
   /** É do próprio asset ou shot do Gerador? */
   doDono: boolean;
 };

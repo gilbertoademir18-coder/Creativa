@@ -91,6 +91,8 @@ model Projeto {
   assistentes      Assistente[]
   versoesDescricao VersaoDescricao[]
   conversas        Conversa[]
+  /// Referências do projeto em si (moodboard, inspiração), sem asset nem shot.
+  referencias      Referencia[]
 
   @@map("projeto")
 }
@@ -247,6 +249,9 @@ model Referencia {
   id           String         @id @default(uuid()) @db.Uuid
   assetId      String?        @map("asset_id") @db.Uuid
   shotId       String?        @map("shot_id") @db.Uuid
+  /// Só na referência do projeto em si (sem asset nem shot): a de um asset
+  /// ou shot chega ao projeto por eles. Apagar o projeto deixa ela solta.
+  projetoId    String?        @map("projeto_id") @db.Uuid
   tipo         TipoReferencia
   nome         String
   /// O conteúdo, quando é TEXTO. Texto mora no banco, não em arquivo.
@@ -260,11 +265,13 @@ model Referencia {
   criadoEm     DateTime       @default(now()) @map("criado_em") @db.Timestamptz
   editadoEm    DateTime       @updatedAt @map("editado_em") @db.Timestamptz
 
-  asset Asset? @relation(fields: [assetId], references: [id], onDelete: Restrict)
-  shot  Shot?  @relation(fields: [shotId], references: [id], onDelete: Restrict)
+  asset   Asset?   @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  shot    Shot?    @relation(fields: [shotId], references: [id], onDelete: Restrict)
+  projeto Projeto? @relation(fields: [projetoId], references: [id], onDelete: SetNull)
 
   @@index([assetId])
   @@index([shotId])
+  @@index([projetoId])
   @@index([tipo])
   @@map("referencia")
 }

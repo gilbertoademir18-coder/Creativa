@@ -71,7 +71,8 @@ export function PaginaShot() {
           </Link>
         ))}
       </nav>
-      <div className="flex flex-col gap-10 p-8">
+      {/* key: trocar de shot pela barra recria os painéis (o Gerador começa do rascunho do shot novo). */}
+      <div key={s.id} className="flex flex-col gap-10 p-8">
         <PainelGerador dono={{ assetId: null, shotId: s.id }} />
         <PainelReferencias dono={{ assetId: null, shotId: s.id }} />
       </div>

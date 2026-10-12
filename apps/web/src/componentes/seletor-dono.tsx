@@ -1,18 +1,20 @@
-import { assetsApi, cenasApi, type Dono } from "../api.ts";
+import { assetsApi, cenasApi, projetosApi, type DonoReferencia } from "../api.ts";
 import { useCarregar } from "../hooks.ts";
 import { rotuloTipoAsset } from "../rotulos.ts";
 import type { Asset, Cena } from "../tipos.ts";
 import { Pilulas, Seletor } from "./ui.tsx";
 
 /**
- * A quem pertence uma referência ou geração: um asset, um shot, ou ninguém
- * (solta). Assets e shots aparecem agrupados por projeto e cena, para dar
- * para achar o "Shot 2" certo entre várias cenas.
+ * A quem pertence uma referência: um asset, um shot, o projeto em si (sem
+ * asset nem shot) ou ninguém (solta). Assets e shots aparecem agrupados por
+ * projeto e cena, para dar para achar o "Shot 2" certo entre várias cenas.
  */
-export function SeletorDono({ valor, aoMudar }: { valor: Dono; aoMudar: (d: Dono) => void }) {
+export function SeletorDono({ valor, aoMudar }: { valor: DonoReferencia; aoMudar: (d: DonoReferencia) => void }) {
   const { dados: assets } = useCarregar(() => assetsApi.listar(), []);
   const { dados: cenas } = useCarregar(() => cenasApi.listar(), []);
-  const modo = valor.assetId ? "asset" : valor.shotId ? "shot" : "solta";
+  const { dados: projetos } = useCarregar(() => projetosApi.listar(), []);
+  const modo = valor.assetId ? "asset" : valor.shotId ? "shot" : valor.projetoId ? "projeto" : "solta";
+  const nada = { assetId: null, shotId: null, projetoId: null };
 
   return (
     <div className="flex flex-col gap-2">
@@ -20,17 +22,29 @@ export function SeletorDono({ valor, aoMudar }: { valor: Dono; aoMudar: (d: Dono
         valor={modo}
         opcoes={[
           { valor: "solta", rotulo: "Solta" },
+          { valor: "projeto", rotulo: "Projeto" },
           { valor: "asset", rotulo: "Asset" },
           { valor: "shot", rotulo: "Shot" },
         ]}
         aoMudar={(m) => {
-          if (m === "solta") aoMudar({ assetId: null, shotId: null });
-          if (m === "asset") aoMudar({ assetId: assets?.[0]?.id ?? null, shotId: null });
-          if (m === "shot") aoMudar({ assetId: null, shotId: cenas?.[0]?.shots[0]?.id ?? null });
+          if (m === "solta") aoMudar(nada);
+          if (m === "projeto") aoMudar({ ...nada, projetoId: projetos?.[0]?.id ?? null });
+          if (m === "asset") aoMudar({ ...nada, assetId: assets?.[0]?.id ?? null });
+          if (m === "shot") aoMudar({ ...nada, shotId: cenas?.[0]?.shots[0]?.id ?? null });
         }}
       />
+      {modo === "projeto" && (
+        <Seletor value={valor.projetoId ?? ""} onChange={(e) => aoMudar({ ...nada, projetoId: e.target.value || null })}>
+          {!projetos?.length && <option value="">Nenhum projeto cadastrado</option>}
+          {(projetos ?? []).map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nome}
+            </option>
+          ))}
+        </Seletor>
+      )}
       {modo === "asset" && (
-        <Seletor value={valor.assetId ?? ""} onChange={(e) => aoMudar({ assetId: e.target.value || null, shotId: null })}>
+        <Seletor value={valor.assetId ?? ""} onChange={(e) => aoMudar({ ...nada, assetId: e.target.value || null })}>
           {!assets?.length && <option value="">Nenhum asset cadastrado</option>}
           {agrupar(assets ?? [], (a) => a.projeto?.nome ?? "Sem projeto").map(([grupo, itens]) => (
             <optgroup key={grupo} label={grupo}>
@@ -44,7 +58,7 @@ export function SeletorDono({ valor, aoMudar }: { valor: Dono; aoMudar: (d: Dono
         </Seletor>
       )}
       {modo === "shot" && (
-        <Seletor value={valor.shotId ?? ""} onChange={(e) => aoMudar({ assetId: null, shotId: e.target.value || null })}>
+        <Seletor value={valor.shotId ?? ""} onChange={(e) => aoMudar({ ...nada, shotId: e.target.value || null })}>
           {!cenas?.length && <option value="">Nenhuma cena cadastrada</option>}
           {(cenas ?? []).map((c) => (
             <optgroup key={c.id} label={rotuloCena(c)}>

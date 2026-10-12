@@ -20,6 +20,7 @@ import type {
   OutputDetalhe,
   Projeto,
   VersaoDescricao,
+  VinculoReferencia,
   Referencia,
   ShotDetalhe,
   ShotResumo,
@@ -69,6 +70,8 @@ export const urlArquivo = (relativo: string) => `/api/arquivos/${relativo}`;
 
 /** Dono de uma referência ou output: um asset, um shot, ou nenhum. */
 export type Dono = { assetId: string | null; shotId: string | null };
+/** O dono de uma referência: também pode ser o projeto em si (sem asset nem shot). */
+export type DonoReferencia = Dono & { projetoId?: string | null };
 
 /** A descrição do projeto tem rota própria (`salvarDescricao`): nome e descrição se salvam separados. */
 export type ProjetoNovo = { nome: string };
@@ -163,7 +166,7 @@ export const referenciasApi = {
     f: {
       projeto?: string;
       tipo?: TipoReferencia | "";
-      vinculo?: Vinculo | "";
+      vinculo?: VinculoReferencia | "";
       asset?: string;
       shot?: string;
       busca?: string;
@@ -171,10 +174,11 @@ export const referenciasApi = {
   ) => api<Referencia[]>(`/referencias${consulta(f)}`),
   ler: (id: string) => api<Referencia>(`/referencias/${id}`),
   /** Upload de arquivos (multipart). Cada arquivo vira uma referência. */
-  enviar: async (arquivos: File[], dono: Dono): Promise<Referencia[]> => {
+  enviar: async (arquivos: File[], dono: DonoReferencia): Promise<Referencia[]> => {
     const form = new FormData();
     if (dono.assetId) form.set("assetId", dono.assetId);
     if (dono.shotId) form.set("shotId", dono.shotId);
+    if (dono.projetoId) form.set("projetoId", dono.projetoId);
     for (const a of arquivos) form.append("arquivos", a, a.name);
     let resposta: Response;
     try {
@@ -184,9 +188,9 @@ export const referenciasApi = {
     }
     return lerResposta<Referencia[]>(resposta);
   },
-  criarTexto: (r: Dono & { nome: string; texto: string }) =>
+  criarTexto: (r: DonoReferencia & { nome: string; texto: string }) =>
     api<Referencia>("/referencias/texto", { method: "POST", corpo: r }),
-  salvar: (id: string, r: Dono & { nome: string; texto?: string }) =>
+  salvar: (id: string, r: DonoReferencia & { nome: string; texto?: string }) =>
     api<Referencia>(`/referencias/${id}`, { method: "PUT", corpo: r }),
   apagar: (id: string) => api<void>(`/referencias/${id}`, { method: "DELETE" }),
 };

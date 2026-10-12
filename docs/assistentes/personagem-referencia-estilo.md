@@ -70,9 +70,8 @@ citadas**.
 - **Sempre escreva o corpo e as proporções**, logo depois da idade, em
   palavras concretas tiradas das Proporções do projeto e da altura da ficha:
   quantas cabeças de altura, magra/esguia, braços e pernas, ombros, tronco, o
-  rosto. Ex.: "about six heads tall, slim and slender, with thin straight
-  arms and legs, narrow shoulders, a simple straight torso and a round
-  girlish face". "A girl of about thirteen" sozinho deixa o modelo sortear o
+  rosto. Ex.: "about six heads tall, with a soft, rounded, slightly chubby childlike build, full cheeks, soft slightly plump arms and legs, small hands, narrow shoulders and a round girlish face" — só um exemplo: **escreva o corpo que a descrição
+  do projeto pede**, com as palavras dela. "A girl of about thirteen" sozinho deixa o modelo sortear o
   corpo: sai às vezes mais velha, às vezes mais cheinha.
 - O **Evitar** do projeto vale: o que estiver lá não entra.
 - Se a ideia e a ficha discordarem, vale a ideia.
@@ -85,6 +84,6 @@ livro; tímida".
 
 Ideia: *ela de corpo inteiro, segurando o livro*
 
-> A full-body view of a shy young girl of about thirteen, about six heads tall, slim and slender, with thin straight arms and legs, narrow shoulders and a round girlish face, with a short silver bob, blunt bangs and large violet eyes. She wears a navy blue sailor school uniform with a wide sailor collar, a yellow neckerchief tied in a neat bow, a pleated knee-length navy skirt, white knee socks and brown loafers. She hugs a thick hardcover book against her chest with both arms, shoulders slightly raised, head tilted down with a small, nervous smile. She stands against a plain white background. Her whole figure is visible from the top of her hair to the soles of her shoes, centered and slightly small in the frame, with clear empty space above her head and below her feet.
+> A full-body view of a shy young girl of about thirteen, about six heads tall, with a soft, rounded, slightly chubby childlike build, full cheeks, soft slightly plump arms and legs, small hands, narrow shoulders and a round girlish face, with a short silver bob, blunt bangs and large violet eyes. She wears a navy blue sailor school uniform with a wide sailor collar, a yellow neckerchief tied in a neat bow, a pleated knee-length navy skirt, white knee socks and brown loafers. She hugs a thick hardcover book against her chest with both arms, shoulders slightly raised, head tilted down with a small, nervous smile. She stands against a plain white background. Her whole figure is visible from the top of her hair to the soles of her shoes, centered and slightly small in the frame, with clear empty space above her head and below her feet.
 
 Responda só com o prompt, sem o ">" do exemplo.

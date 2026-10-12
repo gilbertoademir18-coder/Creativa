@@ -26,8 +26,8 @@ export type ImagemDisponivel = RefImagem & {
   arquivo: string;
   favorito: boolean;
   criadoEm: Date;
-  /** De onde vem: o asset ou o shot (com a cena) dono da imagem. */
-  dono: { tipo: "asset" | "shot"; id: string; nome: string };
+  /** De onde vem: o asset, o shot (com a cena), o projeto em si (referência do projeto) ou nada (solta). */
+  dono: { tipo: "asset" | "shot" | "projeto" | "solta"; id: string; nome: string };
   /** É do próprio dono do Gerador? Essas vêm primeiro na lista. */
   doDono: boolean;
 };
@@ -49,14 +49,14 @@ async function projetoDo(dono: DonoImagens): Promise<string | null> {
 
 /**
  * O filtro de "pode usar": do projeto do dono, ou do próprio dono quando ele
- * não tem projeto. Sem dono, tudo. Serve igual para referências e outputs
- * (os dois têm asset e shot).
+ * não tem projeto. Sem dono, tudo. Referência tem mais um caminho: a do
+ * projeto em si (`projetoId`, sem asset nem shot); output, não.
  */
-async function filtroDono(dono: DonoImagens) {
+async function filtroDono(dono: DonoImagens, referencia = false) {
   if (!dono.assetId && !dono.shotId) return {};
   const projetoId = await projetoDo(dono);
   if (!projetoId) return dono.assetId ? { assetId: dono.assetId } : { shotId: dono.shotId };
-  return { OR: [{ asset: { projetoId } }, { shot: { cena: { projetoId } } }] };
+  return { OR: [{ asset: { projetoId } }, { shot: { cena: { projetoId } } }, ...(referencia ? [{ projetoId }] : [])] };
 }
 
 const comDono = {
@@ -68,23 +68,28 @@ type ComDono = {
   assetId: string | null;
   asset: { id: string; nome: string } | null;
   shot: { id: string; nome: string; cena: { nome: string } } | null;
+  projeto?: { id: string; nome: string } | null;
 };
 
-function donoDa(x: ComDono, dono: DonoImagens) {
-  const d = x.asset
-    ? { tipo: "asset" as const, id: x.asset.id, nome: x.asset.nome }
-    : { tipo: "shot" as const, id: x.shot!.id, nome: `${x.shot!.cena.nome} › ${x.shot!.nome}` };
-  return { dono: d, doDono: d.id === (dono.assetId ?? dono.shotId) };
+function donoDa(x: ComDono, dono: DonoImagens): Pick<ImagemDisponivel, "dono" | "doDono"> {
+  const d: ImagemDisponivel["dono"] = x.asset
+    ? { tipo: "asset", id: x.asset.id, nome: x.asset.nome }
+    : x.shot
+      ? { tipo: "shot", id: x.shot.id, nome: `${x.shot.cena.nome} › ${x.shot.nome}` }
+      : x.projeto
+        ? { tipo: "projeto", id: x.projeto.id, nome: `Projeto ${x.projeto.nome}` }
+        : { tipo: "solta", id: "", nome: "Solta" };
+  return { dono: d, doDono: !!d.id && d.id === (dono.assetId ?? dono.shotId) };
 }
 
 /** As imagens que o dono pode usar: as dele primeiro, depois os favoritos, depois as mais novas. */
 export async function imagensDisponiveis(dono: DonoImagens): Promise<ImagemDisponivel[]> {
-  const filtro = await filtroDono(dono);
+  const [filtroRef, filtro] = await Promise.all([filtroDono(dono, true), filtroDono(dono)]);
   const take = dono.assetId || dono.shotId ? undefined : LIMITE_SEM_DONO;
   const [refs, outs] = await Promise.all([
     prisma.referencia.findMany({
-      where: { ...filtro, tipo: "IMAGEM", arquivo: { not: null } },
-      select: { id: true, nome: true, arquivo: true, criadoEm: true, assetId: true, ...comDono },
+      where: { ...filtroRef, tipo: "IMAGEM", arquivo: { not: null } },
+      select: { id: true, nome: true, arquivo: true, criadoEm: true, assetId: true, ...comDono, projeto: { select: { id: true, nome: true } } },
       orderBy: { criadoEm: "desc" },
       take,
     }),
@@ -114,11 +119,10 @@ export async function imagensDisponiveis(dono: DonoImagens): Promise<ImagemDispo
 
 /** O arquivo de uma imagem escolhida, conferindo que o dono pode usá-la. */
 async function arquivoDa(ref: RefImagem, dono: DonoImagens): Promise<string> {
-  const filtro = await filtroDono(dono);
   const achada =
     ref.origem === "referencia"
-      ? await prisma.referencia.findFirst({ where: { ...filtro, id: ref.id, tipo: "IMAGEM" }, select: { arquivo: true } })
-      : await prisma.output.findFirst({ where: { ...filtro, id: ref.id, tipo: "IMAGEM" }, select: { arquivo: true } });
+      ? await prisma.referencia.findFirst({ where: { ...(await filtroDono(dono, true)), id: ref.id, tipo: "IMAGEM" }, select: { arquivo: true } })
+      : await prisma.output.findFirst({ where: { ...(await filtroDono(dono)), id: ref.id, tipo: "IMAGEM" }, select: { arquivo: true } });
   if (!achada?.arquivo) throw new ErroHttp(400, "A imagem escolhida não existe mais, ou não é deste projeto.");
   return achada.arquivo;
 }

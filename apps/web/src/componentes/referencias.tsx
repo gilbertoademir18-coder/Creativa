@@ -1,7 +1,7 @@
 import { FileText, Trash, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { Link } from "react-router";
-import { referenciasApi, urlArquivo, type Dono } from "../api.ts";
+import { referenciasApi, urlArquivo, type DonoReferencia } from "../api.ts";
 import { useCarregar } from "../hooks.ts";
 import { formatarBytes, formatarData, TIPOS_REFERENCIA } from "../rotulos.ts";
 import type { Referencia } from "../tipos.ts";
@@ -11,7 +11,7 @@ import { SeletorDono } from "./seletor-dono.tsx";
 import { AreaTexto, Aviso, Botao, Campo, Carregando, Entrada, GRADE, Secao } from "./ui.tsx";
 
 /** De onde uma referência é: "Asset Camila", "Cena da ponte › Shot 2", ou solta. */
-export function DescricaoDono({ r }: { r: Pick<Referencia, "asset" | "shot"> }) {
+export function DescricaoDono({ r }: { r: Pick<Referencia, "asset" | "shot"> & { projeto?: Referencia["projeto"] } }) {
   if (r.asset) {
     return (
       <Link to={`/assets/${r.asset.id}`} className="hover:text-violet-300">
@@ -23,6 +23,13 @@ export function DescricaoDono({ r }: { r: Pick<Referencia, "asset" | "shot"> }) 
     return (
       <Link to={`/shots/${r.shot.id}`} className="hover:text-violet-300">
         {r.shot.cena.nome} › {r.shot.nome}
+      </Link>
+    );
+  }
+  if (r.projeto) {
+    return (
+      <Link to={`/projetos/${r.projeto.id}`} className="hover:text-violet-300">
+        Projeto {r.projeto.nome}
       </Link>
     );
   }
@@ -63,7 +70,7 @@ export function CartaoReferencia({
  * Arraste arquivos aqui ou clique para escolher. Imagem, vídeo, .txt e .md;
  * cada arquivo vira uma referência do dono indicado.
  */
-export function ZonaUpload({ dono, aoEnviar }: { dono: Dono; aoEnviar: (novas: Referencia[]) => void }) {
+export function ZonaUpload({ dono, aoEnviar }: { dono: DonoReferencia; aoEnviar: (novas: Referencia[]) => void }) {
   const entrada = useRef<HTMLInputElement>(null);
   const [sobre, setSobre] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -127,7 +134,7 @@ export function ModalTexto({
   aoCriar,
 }: {
   aberto: boolean;
-  dono: Dono;
+  dono: DonoReferencia;
   aoFechar: () => void;
   aoCriar: (r: Referencia) => void;
 }) {
@@ -138,7 +145,7 @@ export function ModalTexto({
   );
 }
 
-function FormTexto({ dono, aoCriar }: { dono: Dono; aoCriar: (r: Referencia) => void }) {
+function FormTexto({ dono, aoCriar }: { dono: DonoReferencia; aoCriar: (r: Referencia) => void }) {
   const [nome, setNome] = useState("");
   const [texto, setTexto] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -195,7 +202,7 @@ export function ModalReferencia({
 function DetalheReferencia({ referencia: r, aoMudar }: { referencia: Referencia; aoMudar: (r: Referencia | null) => void }) {
   const [nome, setNome] = useState(r.nome);
   const [texto, setTexto] = useState(r.texto ?? "");
-  const [dono, setDono] = useState<Dono>({ assetId: r.assetId, shotId: r.shotId });
+  const [dono, setDono] = useState<DonoReferencia>({ assetId: r.assetId, shotId: r.shotId, projetoId: r.projetoId });
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
@@ -281,7 +288,7 @@ function DetalheReferencia({ referencia: r, aoMudar }: { referencia: Referencia;
 /**
  * O bloco de referências de um asset ou shot: upload, texto e a grade.
  */
-export function PainelReferencias({ dono }: { dono: Dono }) {
+export function PainelReferencias({ dono }: { dono: DonoReferencia }) {
   const filtro = dono.assetId ? { asset: dono.assetId } : { shot: dono.shotId ?? undefined };
   const { dados, erro, carregando, recarregar } = useCarregar(() => referenciasApi.listar(filtro), [dono.assetId, dono.shotId]);
   const [aberta, setAberta] = useState<Referencia | null>(null);

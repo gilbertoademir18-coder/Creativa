@@ -31,6 +31,13 @@ type Config = { tipo: string; workflow: string; valores: Record<string, unknown>
  * para o primeiro, workflow que não é do tipo cai para o primeiro dele, e os
  * campos ganham os padrões que faltam.
  */
+/** JSON com as chaves em ordem: o banco (jsonb) devolve o rascunho com outra ordem, e o mesmo rascunho parecia mudado. */
+function jsonEstavel(v: unknown): string {
+  return JSON.stringify(v, (_, x) =>
+    x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => (a < b ? -1 : 1))) : x,
+  );
+}
+
 function ajustar(c: Config, catalogo: TipoCatalogo[]): Config {
   const tipo = catalogo.find((t) => t.chave === c.tipo) ?? catalogo[0];
   if (!tipo) return { tipo: "", workflow: "", valores: c.valores };
@@ -165,11 +172,14 @@ export function PainelGerador({ dono }: { dono: Dono }) {
   const chaveDono = dono.assetId ?? dono.shotId ?? "";
   /** O último rascunho que está no banco, para não salvar o mesmo de novo. */
   const ultimoSalvo = useRef<string | null>(null);
+  /** O rascunho esperando os 800 ms: sair do dono antes disso salva na hora (no dono certo). */
+  const pendente = useRef<(() => void) | null>(null);
+  useEffect(() => () => pendente.current?.(), []);
   useEffect(() => {
     if (!catalogo.dados || !outputs.dados || (!salvo.dados && !salvo.erro) || iniciado.current === chaveDono) return;
     iniciado.current = chaveDono;
     const r = salvo.dados?.rascunho;
-    ultimoSalvo.current = r ? JSON.stringify(r) : null;
+    ultimoSalvo.current = r ? jsonEstavel(r) : null;
     const usar = params.get("usar");
     if (usar) {
       outputsApi
@@ -223,15 +233,21 @@ export function PainelGerador({ dono }: { dono: Dono }) {
       assistente: assistenteNome,
       ideia: ideia.trim() ? ideia : null,
     };
-    const json = JSON.stringify(r);
+    const json = jsonEstavel(r);
     if (json === ultimoSalvo.current) return;
-    const t = setTimeout(() => {
+    const salvar = () => {
+      pendente.current = null;
       geradorApi
         .salvarRascunho(dono, r)
         .then(() => (ultimoSalvo.current = json))
         .catch(() => {}); // Rascunho é conveniência: falhar não atrapalha gerar.
-    }, 800);
-    return () => clearTimeout(t);
+    };
+    pendente.current = salvar;
+    const t = setTimeout(salvar, 800);
+    return () => {
+      clearTimeout(t);
+      if (pendente.current === salvar) pendente.current = null;
+    };
   }, [config, assistenteNome, ideia, expandindo, disponiveis.carregando, chaveDono]);
 
   /** Leva as configurações de um output ao formulário. `seedAleatoria`: não repete a seed dele. */

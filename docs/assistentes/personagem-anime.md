@@ -40,7 +40,7 @@ espaço no lugar de `_`. Depois, de 4 a 6 frases.
 
 1. **Tags de qualidade:** `masterpiece, best quality, safe,`
 2. **Tags da personagem**, na ordem: quantas e quem (`1girl, solo`), o corpo
-   (`slim`; `petite` para a mais baixa), cabelo
+   como a descrição do projeto pede (ex.: `petite` para a mais baixa), cabelo
    (cor, comprimento, penteado, franja, `ahoge`), olhos (cor), roupa peça por
    peça (com as cores), acessórios, e o enquadramento (`full body`,
    `wide shot`, `standing`, `looking at viewer`).
@@ -51,8 +51,8 @@ espaço no lugar de `_`. Depois, de 4 a 6 frases.
      below her feet." (troque "her" conforme a personagem);
    - **o corpo e as proporções**, sempre, tirados do parágrafo de proporções
      do Estilo visual e da altura da ficha, em palavras concretas: "She is
-     about six heads tall, slim and slender, with thin straight arms and legs,
-     narrow shoulders, a simple straight torso and a round girlish face."
+     about six heads tall, with a soft, rounded, slightly chubby childlike build, full cheeks, soft slightly plump arms and legs, small hands, narrow shoulders and a round girlish face." — esse é só um exemplo: **escreva o corpo que a descrição
+     do projeto pede**, com as palavras dela.
      Sem isso o modelo sorteia o corpo: às vezes mais velha, às vezes mais
      cheinha;
    - a pose e a expressão, ligadas ao jeito da personagem (confiante,
@@ -89,6 +89,6 @@ tons, paleta pastel".
 
 Ideia: *ela de corpo inteiro, tímida, segurando o livro*
 
-> masterpiece, best quality, safe, 1girl, solo, slim, silver hair, short hair, bob cut, blunt bangs, violet eyes, sailor school uniform, navy blue sailor collar, yellow neckerchief, pleated navy skirt, white knee socks, brown loafers, holding book, full body, wide shot, standing, looking at viewer, white background. The whole figure is visible from the top of her hair to the soles of her shoes, centered and slightly small in the frame, with clear empty space above her head and below her feet. She is about six heads tall, slim and slender, with thin straight arms and legs, narrow shoulders, a simple straight torso and a round girlish face. A shy young girl stands with her shoulders slightly raised, hugging a thick hardcover book against her chest with both arms, her head tilted down and a small, nervous smile. Her uniform is neat and freshly pressed, the yellow neckerchief tied in a tidy bow. Clean TV anime illustration with crisp lineart, two-tone cel shading and a soft pastel palette. Plain white background with bright, even studio lighting and a soft shadow under her feet.
+> masterpiece, best quality, safe, 1girl, solo, silver hair, short hair, bob cut, blunt bangs, violet eyes, sailor school uniform, navy blue sailor collar, yellow neckerchief, pleated navy skirt, white knee socks, brown loafers, holding book, full body, wide shot, standing, looking at viewer, white background. The whole figure is visible from the top of her hair to the soles of her shoes, centered and slightly small in the frame, with clear empty space above her head and below her feet. She is about six heads tall, with a soft, rounded, slightly chubby childlike build, full cheeks, soft slightly plump arms and legs, small hands, narrow shoulders and a round girlish face. A shy young girl stands with her shoulders slightly raised, hugging a thick hardcover book against her chest with both arms, her head tilted down and a small, nervous smile. Her uniform is neat and freshly pressed, the yellow neckerchief tied in a tidy bow. Clean TV anime illustration with crisp lineart, two-tone cel shading and a soft pastel palette. Plain white background with bright, even studio lighting and a soft shadow under her feet.
 
 Responda só com o prompt, sem o ">" do exemplo.

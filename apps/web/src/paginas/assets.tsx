@@ -181,7 +181,7 @@ export function PaginaAsset() {
         }
       />
       <div className="flex flex-col gap-10 p-8">
-        <PainelGerador dono={{ assetId: a.id, shotId: null }} />
+        <PainelGerador key={a.id} dono={{ assetId: a.id, shotId: null }} />
         <PainelReferencias dono={{ assetId: a.id, shotId: null }} />
       </div>
       <ModalAsset

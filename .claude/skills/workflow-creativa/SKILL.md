@@ -232,7 +232,11 @@ para transformar uma ideia curta no prompt do workflow. O modelo é o
   acima da cabeça e abaixo dos pés — sem ela, os modelos enchem o quadro e
   cortam cabelo e pés. Com negativo (cfg > 1), também `cropped, head out of
   frame, feet out of frame` no negativo padrão;
-- **um exemplo** curto de ideia → prompt.
+- **um exemplo** curto de ideia → prompt. **O exemplo não fixa detalhe do
+  projeto** (corpo, cores, roupa): a LLM copia o exemplo, e quando a
+  descrição muda ("menos magras"), o exemplo puxa de volta. Diga que o
+  detalhe vem da descrição, e use no exemplo uma personagem que não é do
+  projeto.
 
 Se ele carrega o estilo do projeto, amarre-o ao projeto (`--projeto <id>`).
 Se é só a técnica do modelo, deixe sem projeto e ele vale para todos. Os

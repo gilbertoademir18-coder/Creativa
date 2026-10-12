@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import type { Referencia } from "../generated/prisma/client.ts";
+import type { Prisma, Referencia } from "../generated/prisma/client.ts";
 import { TipoReferencia } from "../generated/prisma/enums.ts";
 import { apagar, gravar } from "../lib/arquivos.ts";
 import { doProjeto, doVinculo, incluirDono } from "../lib/filtros.ts";
@@ -23,6 +23,10 @@ import {
  * Referência é material externo: imagem, vídeo ou texto. Imagem e vídeo
  * chegam por upload e vão para a pasta de arquivos; texto mora no banco —
  * digitado, ou lido de um .txt/.md enviado.
+ *
+ * Dono: um asset, um shot, o projeto em si (moodboard, inspiração — sem
+ * asset nem shot) ou ninguém (solta). A de um asset ou shot chega ao projeto
+ * por eles; `projetoId` só existe na referência do projeto em si.
  */
 
 /** O tamanho em bytes vem do banco como BigInt, que o JSON não sabe escrever. */
@@ -31,8 +35,27 @@ export function referenciaParaJson<T extends Pick<Referencia, "tamanhoBytes">>(r
 }
 
 const Dono = z
-  .object({ assetId: UuidOpcional, shotId: UuidOpcional })
-  .refine((d) => !(d.assetId && d.shotId), "a referência pertence a um asset ou a um shot, não aos dois");
+  .object({ assetId: UuidOpcional, shotId: UuidOpcional, projetoId: UuidOpcional })
+  .refine((d) => !(d.assetId && d.shotId), "a referência pertence a um asset ou a um shot, não aos dois")
+  // Com asset ou shot, o projeto vem por eles: a coluna fica vazia (o banco também confere).
+  .transform((d) => ({ ...d, projetoId: d.assetId || d.shotId ? null : d.projetoId }));
+
+/** O dono com o caminho até o projeto — e o projeto direto, na referência do projeto em si. */
+const incluirDonoRef = { ...incluirDono, projeto: { select: { id: true, nome: true } } } as const;
+
+/** "Do projeto X": pelo asset, pelo shot ou direto. "sem": sem projeto nenhum. */
+function refDoProjeto(projeto: string | undefined): Prisma.ReferenciaWhereInput | undefined {
+  if (!projeto) return undefined;
+  if (projeto === "sem") return { AND: [doProjeto("sem") ?? {}, { projetoId: null }] };
+  return { OR: [...(doProjeto(projeto)?.OR ?? []), { projetoId: projeto }] };
+}
+
+/** O vínculo, com "projeto" (a referência do projeto em si) e "solta" (sem dono nenhum). */
+function refDoVinculo(vinculo: "asset" | "shot" | "projeto" | "solta" | undefined): Prisma.ReferenciaWhereInput | undefined {
+  if (vinculo === "projeto") return { assetId: null, shotId: null, projetoId: { not: null } };
+  if (vinculo === "solta") return { assetId: null, shotId: null, projetoId: null };
+  return doVinculo(vinculo);
+}
 
 const CorpoTexto = z.object({
   nome: Nome,
@@ -48,7 +71,7 @@ const CorpoEdicao = z.object({
 const FiltroReferencias = z.object({
   projeto: FiltroProjeto,
   tipo: z.enum(TipoReferencia, "tipo inválido").optional().or(z.literal("").transform(() => undefined)),
-  vinculo: z.enum(["asset", "shot", "solta"], "vínculo inválido").optional().or(z.literal("").transform(() => undefined)),
+  vinculo: z.enum(["asset", "shot", "projeto", "solta"], "vínculo inválido").optional().or(z.literal("").transform(() => undefined)),
   asset: Uuid.optional(),
   shot: Uuid.optional(),
   busca: Busca,
@@ -73,12 +96,12 @@ export async function rotasReferencias(app: FastifyInstance) {
     const referencias = await prisma.referencia.findMany({
       where: {
         AND: [
-          doProjeto(f.projeto) ?? {},
-          doVinculo(f.vinculo) ?? {},
+          refDoProjeto(f.projeto) ?? {},
+          refDoVinculo(f.vinculo) ?? {},
           { tipo: f.tipo, assetId: f.asset, shotId: f.shot, nome: contem(f.busca) },
         ],
       },
-      include: incluirDono,
+      include: incluirDonoRef,
       orderBy: { criadoEm: "desc" },
     });
     return referencias.map(referenciaParaJson);
@@ -88,7 +111,7 @@ export async function rotasReferencias(app: FastifyInstance) {
     const { id } = validar(z.object({ id: Uuid }), req.params);
     const r = await prisma.referencia.findUnique({
       where: { id },
-      include: incluirDono,
+      include: incluirDonoRef,
     });
     if (!r) throw naoEncontrado("Referência não encontrada.");
     return referenciaParaJson(r);
@@ -96,7 +119,7 @@ export async function rotasReferencias(app: FastifyInstance) {
 
   /**
    * Upload de um ou mais arquivos (multipart). Cada arquivo vira uma
-   * referência. Campos opcionais: `assetId` ou `shotId`.
+   * referência. Campos opcionais: `assetId`, `shotId` ou `projetoId`.
    *
    * Os arquivos são gravados à medida que chegam — os campos podem vir antes
    * ou depois deles no formulário. Se algo falha depois, o que já foi gravado
@@ -154,7 +177,7 @@ export async function rotasReferencias(app: FastifyInstance) {
               tamanhoBytes: r.tamanho ?? null,
               texto: r.texto ?? null,
             },
-            include: incluirDono,
+            include: incluirDonoRef,
           }),
         ),
       );
@@ -168,7 +191,7 @@ export async function rotasReferencias(app: FastifyInstance) {
   /** Referência de texto digitada na hora. */
   app.post("/texto", async (req, reply) => {
     const dados = validar(CorpoTexto.and(Dono), req.body);
-    const r = await prisma.referencia.create({ data: { ...dados, tipo: "TEXTO" }, include: incluirDono });
+    const r = await prisma.referencia.create({ data: { ...dados, tipo: "TEXTO" }, include: incluirDonoRef });
     return reply.code(201).send(referenciaParaJson(r));
   });
 
@@ -184,9 +207,10 @@ export async function rotasReferencias(app: FastifyInstance) {
         nome: dados.nome,
         assetId: dados.assetId,
         shotId: dados.shotId,
+        projetoId: dados.projetoId,
         ...(atual.tipo === "TEXTO" && dados.texto !== undefined ? { texto: dados.texto } : {}),
       },
-      include: incluirDono,
+      include: incluirDonoRef,
     });
     return referenciaParaJson(r);
   });

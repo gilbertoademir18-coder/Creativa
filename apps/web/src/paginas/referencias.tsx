@@ -7,19 +7,22 @@ import { CartaoReferencia, ModalReferencia, ModalTexto, ZonaUpload } from "../co
 import { Aviso, BarraFiltros, Botao, Cabecalho, Carregando, GRADE, Pilulas, Vazio } from "../componentes/ui.tsx";
 import { useCarregar, useFiltros } from "../hooks.ts";
 import { TIPOS_REFERENCIA } from "../rotulos.ts";
-import type { Referencia, TipoReferencia, Vinculo } from "../tipos.ts";
+import type { Referencia, TipoReferencia, VinculoReferencia } from "../tipos.ts";
 
-const SOLTA = { assetId: null, shotId: null };
+const SOLTA = { assetId: null, shotId: null, projetoId: null };
+const UUID = /^[0-9a-f-]{36}$/i;
 
 export function PaginaReferencias() {
   const [f, mudar] = useFiltros(["projeto", "tipo", "vinculo", "busca"] as const);
   useProjetoAtual(f.projeto);
+  // Filtrando por um projeto, o que se envia aqui é do projeto em si (aparece na lista); sem filtro, fica solto.
+  const dono = UUID.test(f.projeto) ? { ...SOLTA, projetoId: f.projeto } : SOLTA;
   const { dados, erro, carregando, recarregar } = useCarregar(
     () =>
       referenciasApi.listar({
         projeto: f.projeto,
         tipo: f.tipo as TipoReferencia | "",
-        vinculo: f.vinculo as Vinculo | "",
+        vinculo: f.vinculo as VinculoReferencia | "",
         busca: f.busca,
       }),
     [f.projeto, f.tipo, f.vinculo, f.busca],
@@ -31,7 +34,11 @@ export function PaginaReferencias() {
     <>
       <Cabecalho
         titulo="Referências"
-        subtitulo="Imagens, vídeos e textos externos. Envie aqui para guardar soltas, ou dentro de um asset ou shot."
+        subtitulo={
+          dono.projetoId
+            ? "Imagens, vídeos e textos externos. O que você envia aqui fica no projeto (moodboard, inspiração); para um asset ou shot, envie dentro dele."
+            : "Imagens, vídeos e textos externos. Envie aqui para guardar soltas, ou dentro de um projeto, asset ou shot."
+        }
         acoes={
           <Botao icone={<FileText className="size-4" />} onClick={() => setNovoTexto(true)}>
             Nova referência de texto
@@ -52,13 +59,14 @@ export function PaginaReferencias() {
             { valor: "", rotulo: "Qualquer vínculo" },
             { valor: "asset", rotulo: "De assets" },
             { valor: "shot", rotulo: "De shots" },
+            { valor: "projeto", rotulo: "Do projeto" },
             { valor: "solta", rotulo: "Soltas" },
           ]}
         />
         <FiltroBusca valor={f.busca} aoMudar={(v) => mudar("busca", v)} />
       </BarraFiltros>
       <div className="flex flex-col gap-6 p-8">
-        <ZonaUpload dono={SOLTA} aoEnviar={() => recarregar()} />
+        <ZonaUpload dono={dono} aoEnviar={() => recarregar()} />
         {erro && <Aviso>{erro}</Aviso>}
         {carregando && !dados && <Carregando />}
         {dados?.length === 0 && <Vazio icone={<Images />} titulo="Nenhuma referência com esses filtros" />}
@@ -80,7 +88,7 @@ export function PaginaReferencias() {
       />
       <ModalTexto
         aberto={novoTexto}
-        dono={SOLTA}
+        dono={dono}
         aoFechar={() => setNovoTexto(false)}
         aoCriar={() => {
           setNovoTexto(false);

@@ -33,7 +33,9 @@ e diga na resposta final o que acrescentou ou mudou.
 - Prisma fixado em `^7.10.0` — a tag `latest` é um RC da v8.
 - Antes de concluir: `npm run typecheck` e `npm run build`.
 - **O app da 3400 roda o código de quando subiu.** O `npm run build` troca na
-  hora o front que ele serve, mas a API continua a velha: depois de mudar API ou
+  hora o front que ele serve (o `fastifyStatic` do front procura o arquivo a
+  cada pedido; com `wildcard: false` ele só conhecia os `.js` de quando
+  subiu, e depois de um build a página ficava em branco), mas a API continua a velha: depois de mudar API ou
   schema, avise o usuário para usar "Reiniciar o servidor" (ou "Publicar a
   versão nova") no ícone da bandeja. Até lá, front novo + API velha podem quebrar.
 - Assistentes de prompt prontos para importar ficam em `docs/assistentes/`
@@ -106,6 +108,15 @@ as cenas (`SetNull`), nunca as apaga.
   Para saber se a pessoa mexeu, compare com o texto normalizado (a `base` da
   `ModalDocumento`), nunca com o do banco: senão "alterações não salvas" aparece
   sem ninguém tocar.
+- **Página que troca de registro sem desmontar** (a barra de shots, `/shots/A`
+  → `/shots/B`): o `useCarregar` guarda os dados velhos até os novos chegarem,
+  e o estado interno fica. Os painéis com estado (Gerador, Referências) ficam
+  numa `div key={id}` — sem ela, o Gerador mostrava o rascunho do shot
+  anterior e o gravava no novo. **A `key` vai no invólucro, nunca repetida em
+  irmãos:** dois irmãos com a mesma `key` fazem o React deixar os velhos na
+  página (os Geradores se empilhavam). Para ver isso de verdade, um Edge
+  headless pelo DevTools Protocol (`--remote-debugging-port`) com o domínio
+  `Fetch` barrando todo pedido que não é GET: clica, lê o DOM e não grava nada.
 - Onde só cabe um resumo (cartão, cabeçalho), mostre `resumoMarkdown()`, nunca
   o markdown cru com `#` e `**`.
 - A descrição do projeto é um documento à parte: modal própria e rota própria
@@ -186,10 +197,18 @@ as cenas (`SetNull`), nunca as apaga.
   de campo: texto, numero, opcoes, seed, tamanho (largura **e** altura) e
   imagem. O formato e a validação moram em `geracao/definicoes.ts` (zod) —
   campo novo começa ali e no `CampoDinamico` do front.
+- **Dono de uma referência:** um asset, um shot, **o projeto em si**
+  (`referencia.projeto_id`: moodboard, inspiração) ou ninguém (solta).
+  `projeto_id` só existe sem asset e sem shot (um CHECK no banco garante); a
+  de um asset ou shot chega ao projeto por eles. Na página Referências
+  filtrada por projeto, o upload cria a referência do projeto — antes criava
+  solta, e ela sumia do filtro (parecia que o upload falhava). Os filtros de
+  referência (`refDoProjeto`, `refDoVinculo` em `rotas/referencias.ts`) não
+  são os de output, que não têm esse vínculo.
 - **Campo de imagem** (referência de workflow): o valor é
   `{ origem: "referencia" | "output", id }`, de qualquer asset ou shot **do
-  projeto do dono** (sem projeto, só do próprio dono; no "Testar", qualquer
-  um). Ao gerar, `enviarImagens` (`geracao/imagens.ts`) manda o arquivo ao
+  projeto do dono**, ou referência do projeto em si (sem projeto, só do
+  próprio dono; no "Testar", qualquer um, inclusive as soltas). Ao gerar, `enviarImagens` (`geracao/imagens.ts`) manda o arquivo ao
   ComfyUI (`/upload/image`, em `input/creativa/`, com o nome pelo hash) e o
   nome vai para o `LoadImage`. O output guarda a referência, não o arquivo.
   Campo de imagem com `opcional: true` pode ficar vazio (null): o
@@ -317,6 +336,10 @@ O que isso muda nas escolhas:
   com o mesmo assistente. O workflow H3 `int8_convrot` + 8 passos foi
   removido do Creativa em 2026-10-12 (os outputs dele ficaram).
   LTX 2.5 ficou de fora: o repositório é *gated* no Hugging Face.
+- **Placa de cenário em anime: o mesmo Anima Aesthetic** (2026-10-12), 16:9 e
+  **sempre vazia** — decisão do usuário. O vazio se segura nas duas pontas:
+  `scenery, no humans` no começo do prompt e pessoas no negativo (cfg 4). A
+  placa da Z-Image é fotográfica: fica para projetos que não são anime.
 - **Primeiro quadro de shot: Qwen Image Edit 2511 fp8mixed + Lightning 4
   passos** (escolhido em 2026-10-12 contra FLUX.2 Klein 4B; o Klein 9B é
   *gated* e não comercial). Até **3 referências**, em posições fixas: Personagem 1

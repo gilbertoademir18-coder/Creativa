@@ -124,10 +124,15 @@ await app.register(fastifyStatic, {
  * O front pronto (`npm run build`) é servido por este mesmo processo: uma
  * porta só para o Tailscale publicar, sem CORS, sem segundo servidor para o
  * ícone vigiar. Em desenvolvimento quem serve o front é o Vite.
+ *
+ * Sem `wildcard: false`: com ele, a lista de arquivos é lida só ao subir, e
+ * depois de um `npm run build` o index.html novo pede um `.js` que o
+ * servidor não conhece (404, página em branco) até reiniciar. Assim, o
+ * arquivo é procurado a cada pedido; o que não existe cai no 404 abaixo.
  */
 const SERVIR_FRONT = !MODO_DEV && existsSync(WEB_DIST);
 if (SERVIR_FRONT) {
-  await app.register(fastifyStatic, { root: WEB_DIST, wildcard: false });
+  await app.register(fastifyStatic, { root: WEB_DIST });
 } else if (!MODO_DEV) {
   app.log.warn(`Front não encontrado em ${WEB_DIST} — rode "npm run build". Servindo só a API.`);
 }
