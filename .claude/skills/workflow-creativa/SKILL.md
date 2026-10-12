@@ -35,6 +35,12 @@ os JSON e os `.md`.
   Rascunho do Gerador que já existe é do usuário: não passe por cima.
 - **Download de modelo só com o "ok" do usuário**, e sempre para
   `C:\IA\ComfyUI\ComfyUI\models\<pasta>` (todo modelo de IA fica em `C:\IA`).
+- **Nunca use modelo `int8_convrot`** (nem `w6a8`): nesta máquina o MiniMax H3
+  nesse formato reiniciou o PC várias vezes, e outras pessoas relatam o mesmo
+  em placas Ampere. Muitos templates oficiais vêm com ele; troque pela
+  variante `fp8_scaled` (ou bf16) do mesmo modelo, que costuma ter o mesmo
+  tamanho e mora no mesmo repositório. O `comfy.mjs validar` recusa e o
+  `templates` marca com ⛔.
 - **Custom node novo** (instalar pacote no ComfyUI) é decisão do usuário:
   prefira modelos com nós nativos. Se não houver jeito, explique e pergunte.
 - **Arquivo do ComfyUI que já existe** não se substitui sem pedido: escolha
@@ -68,6 +74,9 @@ node .claude/skills/workflow-creativa/creativa.mjs catalogo
   VRAM mas não acelera. Modelo grande demais roda quantizado (fp8, GGUF) ou com
   offload para a RAM (32 GB), que é lento.
 - **Sem triton:** nada de SageAttention nem `torch.compile` com triton.
+- **Formato do modelo: `fp8_scaled` ou bf16, nunca `int8_convrot`/`w6a8`**
+  (veja as Regras). NVFP4 e mxfp8 são emulados na Ampere: funcionam, mais
+  devagar.
 - ComfyUI 0.36, só nós nativos mais ComfyUI-Manager e Civicomfy.
 - Uma geração por vez. A LLM do assistente divide a placa com o ComfyUI.
 

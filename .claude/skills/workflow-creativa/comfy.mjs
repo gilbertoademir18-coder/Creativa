@@ -89,6 +89,15 @@ function extrasDe(e) {
   return [];
 }
 
+/**
+ * Modelo quantizado em `int8_convrot` (e o irmão `w6a8`) é proibido nesta
+ * máquina: o MiniMax H3 nesse formato reiniciou o PC várias vezes na RTX 3080
+ * Ti (Ampere), e outras pessoas relatam o mesmo (Comfy-Org/ComfyUI #15760 e
+ * #16946). Use a variante `fp8_scaled` (ou bf16) do mesmo modelo.
+ */
+const PROIBIDO = /int8_convrot|_w6a8/i;
+const AVISO_PROIBIDO = "formato int8_convrot é proibido nesta máquina (derruba o PC na RTX 3080 Ti) — use a variante fp8_scaled";
+
 const ehLigacao = (v) => Array.isArray(v) && v.length === 2 && (typeof v[0] === "string" || typeof v[0] === "number") && Number.isInteger(v[1]);
 
 async function modelosBaixados() {
@@ -153,7 +162,10 @@ if (comando === "modelos") {
     const ms = modelosDoTemplate(wf);
     const falta = ms.filter((m) => !mapa[m.directory]?.has(m.name));
     console.log(`${f.replace(/\.json$/, "")}  ${falta.length ? `faltam ${falta.length} de ${ms.length}` : ms.length ? "✓ tudo baixado" : "(sem modelos listados)"}`);
-    for (const m of ms) console.log(`   ${mapa[m.directory]?.has(m.name) ? "✓" : "✗"} ${m.directory}/${m.name}${mapa[m.directory]?.has(m.name) ? "" : `  ← ${m.url}`}`);
+    for (const m of ms)
+      console.log(
+        `   ${mapa[m.directory]?.has(m.name) ? "✓" : "✗"} ${m.directory}/${m.name}${mapa[m.directory]?.has(m.name) ? "" : `  ← ${m.url}`}${PROIBIDO.test(m.name) ? `  ⛔ ${AVISO_PROIBIDO}` : ""}`,
+      );
   }
   if (!arquivos.length) console.log(`Nenhum template com "${busca}".`);
 } else if (comando === "template") {
@@ -250,6 +262,7 @@ if (comando === "modelos") {
         erros.push(`#${id} ${n.class_type}.${e.nome}: é uma ligação (${tipoDe(e.spec)}) e recebeu um valor.`);
         continue;
       }
+      if (typeof v === "string" && PROIBIDO.test(v)) erros.push(`#${id} ${n.class_type}.${e.nome}: "${v}" — ${AVISO_PROIBIDO}.`);
       const ops = opcoesDe(e.spec);
       // A imagem de um LoadImage vem do campo de imagem do Creativa, enviada na hora de gerar.
       if (e.spec[1]?.image_upload && ops && !ops.includes(v)) {

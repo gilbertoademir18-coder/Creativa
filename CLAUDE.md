@@ -211,25 +211,33 @@ O que isso muda nas escolhas:
   (`lib/ollama.ts`).
 - 32 GB de RAM seguram um offload, mas modelos de vídeo grandes + offload
   chegam perto do limite.
-- **Histórico do MiniMax H3 derrubando o PC:** na placa-mãe antiga (X570, XMP
-  3466), o H3 reiniciou o PC duas vezes em 2026-10-04, sempre logo depois de
-  "Model MiniMaxH3 prepared for dynamic VRAM loading", antes do 1º passo —
-  Kernel-Power 41 com `BugcheckCode = 0`, sem minidump e sem WHEA (corte de
-  energia, não tela azul). Ao desligar o XMP, a X570 morreu. Na B550 nova,
-  com a RAM a 3200 sem XMP, o H3 rodou normal (5 s a 864×480, com som, em
-  ~2,3 min), e de novo com a GPU sem limite (370 W) — a fonte saiu da lista
-  de suspeitos. Sobram a X570 defeituosa e o XMP (o SPD de dois pentes está
-  corrompido, e o XMP mora lá); como mudaram juntos, a causa não está
-  provada. **Não ligue o XMP**
-  sem o usuário pedir. Se o PC voltar a cair: `Get-WinEvent` no log System
-  (Id 41, WHEA, nvlddmkm) e o fim de `C:\IA\ComfyUI\ComfyUI\user\comfyui_8188*.log`
-  (o `.prev` é o da sessão que caiu).
+- **O MiniMax H3 `int8_convrot` derruba o PC nesta máquina** (resolvido em
+  2026-10-12). Reinício seco no começo da amostragem — Kernel-Power 41 com
+  `BugcheckCode = 0`, sem minidump e sem WHEA —, intermitente (às vezes passa
+  uma ou duas vezes). Não era placa-mãe (trocada), XMP (desligado), fonte
+  (OCCT "Power" 35 min com GPU ~369 W + CPU ~140 W, 12 V entre 11,79 e
+  12,18 V; e os 12 V ficaram firmes até o instante da queda) nem falta de RAM
+  (commit com 24 GB livres, pagefile sem uso). Outras pessoas relatam o
+  mesmo com o H3 `int8_convrot` em placas Ampere (Comfy-Org/ComfyUI #15760
+  e #16946, sem correção oficial). **Com o DiT `fl2va_pruned_fp8_scaled` e o
+  turbo de 4 passos, gerou 4 vezes seguidas sem cair.** Regra (decisão do
+  usuário): **nunca use modelo `int8_convrot` (nem `w6a8`) nesta máquina** —
+  use a variante `fp8_scaled` ou bf16. A skill `workflow-creativa` recusa no
+  `validar`. O Krea 2 ainda usa `krea2_turbo_int8_convrot` (rodou bem até
+  agora; existe `krea2_turbo_fp8_scaled`, 13,1 GB). Se o PC
+  voltar a cair: `Get-WinEvent` no log System (Id 41, WHEA, nvlddmkm), o fim
+  de `C:\IA\ComfyUI\ComfyUI\user\comfyui_8188*.log` (`.prev`/`.prev2` são
+  as sessões anteriores) e um log do **HWiNFO64** (instalado; CSV a 200 ms
+  só com o "Global" do Período de pesquisa em 200 e "Gravar direto no
+  disco"), em `C:\IA\Diagnostico`. O **OCCT** também está instalado. No
+  teste, a CPU chegou a 90,5 °C (limite do 5800X) e o hot spot da GPU a
+  99,8 °C (alto: pasta/pads velhos?). Não ligue o XMP sem o usuário pedir.
 - **A GPU roda no limite de fábrica** (370 W, lido como `power.default_limit`
   desde a placa-mãe nova; antes lia 350 W). Contra os desligamentos houve uma
   tarefa agendada que baixava para 280 W; com a B550 estável, foi apagada em
   2026-10-09 a pedido do usuário. Mudar o limite exige administrador.
 - **Tempos medidos (5 s de vídeo):** Wan 2.2 a 832×480 em ~2,5 min; MiniMax
-  H3 a 864×480, com som, em ~2,3 min.
+  H3 fp8 com 4 passos a 864×480, com som, em ~1,7 min.
 - **Personagem de anime: Anima Aesthetic v1.1** (2B, ~6 GB de VRAM com o
   codificador), escolhido em 2026-10-03 contra Illustrious XL e Anima Turbo.
   O `CLIPLoader` dele é `type = stable_diffusion`, e com cfg 4 o negativo
@@ -242,12 +250,16 @@ O que isso muda nas escolhas:
 - **Vídeo a partir do primeiro quadro** (tipo "Vídeo do primeiro quadro", só
   shots), dois workflows para comparar, escolhidos em 2026-10-04:
   **Wan 2.2 I2V 14B fp8 + LightX2V 4 passos** (dois modelos de 14,3 GB,
-  high/low noise, 16 fps, mudo) e **MiniMax H3 FL2VA int8 + turbo 8 passos**
-  (21 GB + codificador Qwen3-VL 32B NVFP4 de 15,7 GB, 24 fps, **com som**).
+  high/low noise, 16 fps, mudo) e **MiniMax H3 FL2VA fp8_scaled + turbo 4
+  passos** (21 GB + codificador Qwen3-VL 32B NVFP4 de 15,7 GB, 24 fps, **com som**).
   Os dois passam muito da placa e rodam com offload; o H3 deixa a RAM no
   limite e o NVFP4 não é nativo na Ampere. O nó do H3 **estica** o primeiro
   quadro (o do Wan recorta no centro): o grafo tem um `ImageScale` com
   `crop = center` antes. A seção Som da descrição vai para saídas de vídeo.
+  O H3 que vale é o **"MiniMax H3 fp8, 4 passos"** (2026-10-12): o mesmo
+  grafo com o DiT `fl2va_pruned_fp8_scaled` e o LoRA `turbo_4step_v1.0_768p`,
+  com o mesmo assistente. O workflow H3 `int8_convrot` + 8 passos foi
+  removido do Creativa em 2026-10-12 (os outputs dele ficaram).
   LTX 2.5 ficou de fora: o repositório é *gated* no Hugging Face.
 
 # Banco de dados
