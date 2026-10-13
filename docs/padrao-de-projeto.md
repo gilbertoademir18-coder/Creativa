@@ -53,13 +53,13 @@ código com o app no ar.
 | Projeto | Portas |
 | --- | --- |
 | MediaFlow | 3001 (web), 3002 (API), 8787 (Agent), 443 (tailnet) |
-| NihongoHub | 3100 |
+| NihongoHub | 3100, 8446 (tailnet) |
 | Trimly | 3200, 3201, 3210, 8443 (tailnet) |
 | Creativa | 3400, 3401, 3410, 8444 e 8445 (tailnet, a 8445 é do ComfyUI) |
 | Compartilhadas | 5432 (PostgreSQL), 8188 (ComfyUI) |
 
 A próxima centena livre é a **3500**, e a próxima porta de tailnet é a
-**8446**. A 3300 não aparece em nenhum projeto, mas também não foi usada por
+**8447**. A 3300 não aparece em nenhum projeto, mas também não foi usada por
 ninguém de propósito; se quiser usá-la, confira antes:
 
 ```powershell
@@ -391,7 +391,7 @@ superusuário, e os usuários dos projetos levam "permissão negada".
 
 | Script | Problema |
 | --- | --- |
-| `NihongoHub\scripts\abrir-banco-no-tailnet.ps1` | Cria **outra** regra de firewall (`NihongoHub PostgreSQL (tailnet)`), pode mudar o `listen_addresses` e faz **`Restart-Service`** no Postgres, derrubando todos os projetos. Não use; o NihongoHub já está liberado pelo do Creativa |
+| `NihongoHub\scripts\abrir-banco-no-tailnet.ps1` | Removido em 2026-10-13. Criava **outra** regra de firewall (`NihongoHub PostgreSQL (tailnet)`), podia mudar o `listen_addresses` e fazia **`Restart-Service`** no Postgres, derrubando todos os projetos. O NihongoHub é liberado pelo do Creativa |
 | `MediaFlow\scripts\abrir-banco-no-tailnet.ps1` | Já alinhado em 2026-10-03: usa a regra `PostgreSQL - tailnet` e confere banco e faixa. Serve só para o `mediaflow` |
 
 ### O que nunca fazer
