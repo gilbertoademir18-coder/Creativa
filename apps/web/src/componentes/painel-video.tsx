@@ -32,7 +32,7 @@ export function ModalPainelVideo({
 }) {
   if (!video) return null;
   return (
-    <Modal aberto={aberto} titulo={video.nome} largura="enorme" aoFechar={aoFechar}>
+    <Modal aberto={aberto} titulo={`Vídeo: ${video.nome}`} largura="enorme" aoFechar={aoFechar}>
       <PainelVideo video={video} aoMudar={aoMudar} aoFechar={aoFechar} />
     </Modal>
   );

@@ -2,7 +2,7 @@ import { Plus, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { cenasApi } from "../api.ts";
-import { paraCampo, titulo } from "../rotulos.ts";
+import { comNumero, paraCampo, titulo } from "../rotulos.ts";
 import type { Cena, ShotResumo } from "../tipos.ts";
 import { ModalDocumento } from "./documento-markdown.tsx";
 import { ConfirmarExclusao, Modal } from "./modal.tsx";
@@ -37,8 +37,9 @@ export function ModalPainelCena({
   numero: number;
 }) {
   if (!cena) return null;
+  // comNumero e não titulo(): este já devolve "Cena 2", e daria "Cena: Cena 2".
   return (
-    <Modal aberto={aberto} titulo={titulo("Cena", cena.nome, numero)} largura="enorme" aoFechar={aoFechar}>
+    <Modal aberto={aberto} titulo={`Cena: ${comNumero(cena.nome, numero)}`} largura="enorme" aoFechar={aoFechar}>
       <PainelCena cena={cena} aoSalvar={aoSalvar} aoMudarShots={aoMudarShots} aoFechar={aoFechar} unica={unica} numero={numero} />
     </Modal>
   );
