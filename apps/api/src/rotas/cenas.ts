@@ -55,6 +55,22 @@ const daCena = {
  * lista dele, e a cena vai para o fim do vídeo (só quando muda de vídeo —
  * editar o nome não mexe na posição).
  */
+/**
+ * Todo vídeo precisa de pelo menos uma cena — o mesmo que "toda cena precisa
+ * de pelo menos um shot". Vale para apagar a cena **e** para tirá-la do vídeo:
+ * sem as duas pontas a regra não se sustenta, porque bastaria mover a última
+ * cena para outro vídeo para esvaziar este.
+ *
+ * Cena fora de vídeo (solta ou só do projeto) não tem essa amarra.
+ */
+async function exigirOutraCenaNoVideo(tx: Prisma.TransactionClient, videoId: string | null, cenaId: string) {
+  if (!videoId) return;
+  const irmas = await tx.cena.count({ where: { videoId, id: { not: cenaId } } });
+  if (irmas === 0) {
+    throw new ErroHttp(409, "Todo vídeo precisa de pelo menos uma cena. Crie outra cena no vídeo antes de tirar esta.");
+  }
+}
+
 async function encaixarNoVideo(
   tx: Prisma.TransactionClient,
   dados: z.infer<typeof CorpoCena>,
@@ -111,6 +127,8 @@ export async function rotasCenas(app: FastifyInstance) {
     return prisma.$transaction(async (tx) => {
       const atual = await tx.cena.findUnique({ where: { id }, select: { videoId: true, ordem: true } });
       if (!atual) throw naoEncontrado("Cena não encontrada.");
+      // Saindo do vídeo (para outro ou para nenhum): o de origem não pode ficar vazio.
+      if (atual.videoId && corpo.videoId !== atual.videoId) await exigirOutraCenaNoVideo(tx, atual.videoId, id);
       return tx.cena.update({ where: { id }, data: await encaixarNoVideo(tx, corpo, atual), include: daCena });
     });
   });
@@ -121,7 +139,12 @@ export async function rotasCenas(app: FastifyInstance) {
    */
   app.delete("/:id", async (req, reply) => {
     const { id } = validar(z.object({ id: Uuid }), req.params);
-    await prisma.cena.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      const cena = await tx.cena.findUnique({ where: { id }, select: { videoId: true } });
+      if (!cena) throw naoEncontrado("Cena não encontrada.");
+      await exigirOutraCenaNoVideo(tx, cena.videoId, id);
+      await tx.cena.delete({ where: { id } });
+    });
     return reply.code(204).send();
   });
 

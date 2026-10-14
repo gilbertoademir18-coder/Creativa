@@ -21,6 +21,7 @@ export function BotaoPainelCena({
   aoFechar,
   aoSalvar,
   aoMudarShots,
+  unica,
 }: {
   cena: Cena | null;
   aberto: boolean;
@@ -28,6 +29,8 @@ export function BotaoPainelCena({
   aoFechar: () => void;
   aoSalvar: (c: Cena) => void;
   aoMudarShots: () => void;
+  /** É a única cena do vídeo? Então não dá para excluir. */
+  unica: boolean;
 }) {
   return (
     <>
@@ -36,7 +39,7 @@ export function BotaoPainelCena({
       </Botao>
       {cena && (
         <Modal aberto={aberto} titulo={cena.nome} largura="enorme" aoFechar={aoFechar}>
-          <PainelCena cena={cena} aoSalvar={aoSalvar} aoMudarShots={aoMudarShots} aoFechar={aoFechar} />
+          <PainelCena cena={cena} aoSalvar={aoSalvar} aoMudarShots={aoMudarShots} aoFechar={aoFechar} unica={unica} />
         </Modal>
       )}
     </>
@@ -48,11 +51,13 @@ function PainelCena({
   aoSalvar,
   aoMudarShots,
   aoFechar,
+  unica,
 }: {
   cena: Cena;
   aoSalvar: (c: Cena) => void;
   aoMudarShots: () => void;
   aoFechar: () => void;
+  unica: boolean;
 }) {
   const navegar = useNavigate();
   const [excluindo, setExcluindo] = useState(false);
@@ -68,9 +73,17 @@ function PainelCena({
       </div>
       <div className="flex items-center justify-between border-t border-zinc-800 pt-5">
         <p className="text-sm text-zinc-500">
-          Excluir a cena leva os shots dela. Shot com referência ou geração barra a exclusão.
+          {unica
+            ? "Esta é a única cena do vídeo, e todo vídeo precisa de pelo menos uma. Crie outra antes de excluir esta."
+            : "Excluir a cena leva os shots dela. Shot com referência ou geração barra a exclusão."}
         </p>
-        <Botao variante="perigo" icone={<Trash className="size-4" />} onClick={() => setExcluindo(true)}>
+        <Botao
+          variante="perigo"
+          icone={<Trash className="size-4" />}
+          disabled={unica}
+          title={unica ? "Todo vídeo precisa de pelo menos uma cena" : undefined}
+          onClick={() => setExcluindo(true)}
+        >
           Excluir cena
         </Botao>
       </div>

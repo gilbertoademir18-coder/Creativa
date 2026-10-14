@@ -95,13 +95,28 @@ export async function rotasListas(app: FastifyInstance) {
   });
 
   /** Vídeo novo no fim da lista. */
+  /**
+   * Vídeo novo já nasce com uma cena, que por sua vez nasce com um shot — como
+   * a cena sempre nasceu. Vídeo vazio não tem para onde levar quem clica nele,
+   * e a dupla "criar o vídeo, agora criar a cena" era só um passo a mais.
+   */
   app.post("/:id/videos", async (req, reply) => {
     const { id } = validar(z.object({ id: Uuid }), req.params);
     const dados = validar(CorpoVideo, req.body);
     const video = await prisma.$transaction(async (tx) => {
-      if (!(await tx.listaVideos.findUnique({ where: { id }, select: { id: true } }))) throw naoEncontrado("Lista não encontrada.");
+      const lista = await tx.listaVideos.findUnique({ where: { id }, select: { projetoId: true } });
+      if (!lista) throw naoEncontrado("Lista não encontrada.");
       const ultimo = await tx.video.aggregate({ where: { listaId: id }, _max: { ordem: true } });
-      return tx.video.create({ data: { ...dados, listaId: id, ordem: (ultimo._max.ordem ?? -1) + 1 }, include: { _count: { select: { cenas: true } } } });
+      return tx.video.create({
+        data: {
+          ...dados,
+          listaId: id,
+          ordem: (ultimo._max.ordem ?? -1) + 1,
+          // A cena é do mesmo projeto da lista, como o encaixarNoVideo garante.
+          cenas: { create: { nome: "Cena 1", ordem: 0, projetoId: lista.projetoId, shots: { create: { nome: "Shot 1", ordem: 0 } } } },
+        },
+        include: { _count: { select: { cenas: true } } },
+      });
     });
     return reply.code(201).send(video);
   });

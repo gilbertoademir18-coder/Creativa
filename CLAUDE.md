@@ -92,6 +92,12 @@ as cenas (`SetNull`), nunca as apaga.
   `FiltroProjeto`), que já fazem isso; nunca monte um filtro com
   `Entrada`/`Seletor` direto. Filtro de pílulas (`Pilulas`) não precisa: a
   opção "Todos" já está à vista.
+- **Todo vídeo tem pelo menos uma cena**, como toda cena tem pelo menos um
+  shot. Vídeo novo já nasce com "Cena 1" (que nasce com "Shot 1"), e
+  `exigirOutraCenaNoVideo` (`rotas/cenas.ts`) barra as **duas** saídas com 409:
+  apagar a última cena e tirá-la do vídeo pelo `PUT`. Só as duas pontas juntas
+  seguram a regra — com uma só, bastava mover a cena para esvaziar o vídeo.
+  Cena fora de vídeo não tem essa amarra.
 - **O caminho até o shot é um bloco só.** A `BarraCena`
   (`componentes/barra-cena.tsx`) desenha duas linhas no mesmo bloco, sem borda
   entre elas: a de cima é o **vídeo** com as cenas dele (só quando a cena está

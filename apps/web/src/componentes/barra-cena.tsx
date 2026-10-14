@@ -215,6 +215,8 @@ export function BarraCena() {
         aoFechar={() => setPainel(false)}
         aoSalvar={setCena}
         aoMudarShots={recarregar}
+        // Sem vídeo, a cena não tem essa amarra; o vídeo já está carregado aqui.
+        unica={!!video && video.cenas.length <= 1}
       />
       </div>
     </div>
