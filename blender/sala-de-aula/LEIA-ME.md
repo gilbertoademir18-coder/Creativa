@@ -16,7 +16,7 @@ Feito em 2026-10-14, Blender 5.2.
 | `sala_de_aula.blend` | O resultado do `sala.py`, para abrir e ajustar à mão. |
 | `sala_layout.png` | O render de aparência, 1344 × 768 — a mesma resolução do workflow. |
 | `sala_depth.png` | O mapa de profundidade, para o ControlNet depth. |
-| `workflow-controlnet-depth.json` | Grafo da API pronto para o `POST /prompt`, com o ControlNet ligado. Ver `docs/pendencias-em-casa.md`. |
+| `workflow-controlnet-depth.json` | Grafo da API pronto para o `POST /prompt`, com o ControlNet ligado (strength 2,5). |
 
 ## Como rodar
 
@@ -62,6 +62,17 @@ no `Primeiro quadro de shot (Qwen Image Edit 2511)`:
 - A varredura teve **uma amostra por ponto**. O 0,75 saiu pior que o 0,90 em
   geometria, o que pode ser ruído de semente — não trate como tendência.
 
-O ControlNet depth existe para resolver justamente esse impasse (ele preserva
-estrutura, não pixels, então não gasta denoise). Falta baixar os pesos e testar
-na máquina de casa.
+### Com o ControlNet depth (`workflow-controlnet-depth.json`)
+
+O mesmo dia, denoise 1 e latente vazio, só o `sala_depth.png` como controle:
+
+- **strength ≤ 1,0** — quase não faz efeito: a sala e a professora mudam de
+  lugar como se não houvesse controle. O 1,0 do template oficial não basta,
+  provavelmente porque o patch é do Qwen-Image base e o modelo é o Edit 2511.
+- **2,0** — a lousa e a grade de carteiras batem nas 3 seeds; a professora,
+  em 2 das 3.
+- **2,5** — **tudo bate nas 3 seeds**, inclusive a posição da professora, com o
+  estilo de anime inteiro. É o valor do grafo.
+- **3,5** — passou do ponto: a imagem sai lavada, borrada e com blocos.
+
+Cerca de 10 s por imagem, sem estourar os 12 GB.

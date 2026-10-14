@@ -41,57 +41,21 @@ Feito em 2026-10-14: os 7 arquivos batiam com a lista (criados entre 10:21 e
 
 ---
 
-## 3. ControlNet depth: baixar os pesos e testar
+## 3. ControlNet depth — feito, funciona com strength 2,5
 
-O objetivo: **travar a geometria sem gastar denoise**. No teste de 2026-10-14
-(ver `blender/sala-de-aula/`), partir do render do Blender como latente
-funcionou, mas com um porém — em denoise 0,60 o blocking fica exato e a imagem
-sai lavada; em 0,90 o estilo fica ótimo mas o personagem sai do lugar. O
-ControlNet promete os dois ao mesmo tempo, porque preserva **estrutura**, não
-pixels.
+- [x] Pesos baixados (`models/model_patches/qwen_image_depth_diffsynth_controlnet.safetensors`, 2,27 GB).
+- [x] Testado em 2026-10-14 pelo `/prompt`, sem banco: uma base sem ControlNet
+      e os strengths 0,4 / 0,6 / 0,8 / 1,0 / 1,5 / 2,0 / 2,5 / 3,5. Em 2,0 e
+      2,5, rodei com as 3 seeds.
+- [x] Resultado anotado no `CLAUDE.md` (seção da máquina) e no LEIA-ME do
+      blockout. O patch do Qwen-Image base **serve** no Edit 2511, mas pede
+      **~2,5**. O grafo do repositório já vem com 2,5.
+- [ ] Apagar `ComfyUI/output/creativa-teste/` e `input/creativa-teste/`
+      depois de o usuário ver as imagens.
 
-O nó `QwenImageDiffsynthControlnet` **já existe** no ComfyUI 0.36.0 (é nativo,
-categoria `model/patch/qwen`). Falta só o arquivo de pesos: a pasta
-`models\model_patches` está vazia.
-
-- [ ] Baixar `qwen_image_depth_diffsynth_controlnet.safetensors` (**2,11 GB**)
-      de [Comfy-Org/Qwen-Image-DiffSynth-ControlNets](https://huggingface.co/Comfy-Org/Qwen-Image-DiffSynth-ControlNets/tree/main/split_files/model_patches)
-      para `C:\IA\ComfyUI\ComfyUI\models\model_patches\`.
-- [ ] Copiar `blender\sala-de-aula\sala_depth.png` deste repositório para
-      `C:\IA\ComfyUI\ComfyUI\input\creativa-teste\sala_depth.png`.
-- [ ] Mandar `blender\sala-de-aula\workflow-controlnet-depth.json` ao
-      `POST /prompt` **sem gravar no banco**, variando só o `strength` do nó
-      `19` — sugiro **0,4 / 0,6 / 0,8 / 1,0**, com a seed fixa em 123456789.
-
-**Confira:** o grafo já vem com `denoise: 1.0` e latente vazio (nó 13) de
-propósito — é essa a aposta. Compare com
-`blender\sala-de-aula\sala_layout.png`: a lousa, a grade de carteiras, as
-janelas e **a posição da professora** têm de bater, com estilo de anime cheio.
-
-**Dois riscos reais, que o teste existe para medir:**
-
-1. **Compatibilidade.** Esses pesos são do **Qwen-Image base**; o workflow usa
-   **Qwen-Image-Edit 2511**. A documentação oficial do ComfyUI não afirma que
-   servem para o Edit. Pode simplesmente não pegar — e aí o resultado sai igual
-   ao de sem ControlNet. É a primeira coisa a verificar.
-2. **VRAM.** São 12 GB, já ocupados pelo Qwen fp8. O patch pode empurrar para o
-   offload. Se der OOM, feche tudo que estiver na GPU e tente de novo antes de
-   concluir que não cabe.
-
-**Alternativa mais leve, se der errado ou faltar VRAM:**
-`qwen_image_union_diffsynth_lora.safetensors` (**0,88 GB**, em
-`split_files/loras/` do mesmo repositório) cobre canny+depth+pose num arquivo e
-carrega com `LoraLoaderModelOnly` — igual à Lightning que já está no grafo.
-**Mas:** a documentação não deixa claro em que entrada a imagem de controle
-entra nesse caminho. Se for testar o LoRA, descubra isso primeiro (o template
-oficial do ComfyUI em
-`python_embeded\Lib\site-packages\comfyui_workflow_templates_json\templates`
-deve mostrar — eu não alcanço esse arquivo do notebook).
-
-- [ ] Apagar `creativa-teste\` de novo quando terminar.
-- [ ] Anotar no `CLAUDE.md` o que funcionou: o `strength` bom, e se o patch do
-      Qwen-Image base serve ou não no Edit 2511. Isso custa 2 GB de download e
-      uma rodada de GPU para descobrir — não deixe o resultado se perder.
+Próximo passo possível: levar o ControlNet para o workflow "Primeiro quadro de
+shot" do Creativa (pela skill `/workflow-creativa`), com o depth como um campo
+de imagem opcional.
 
 ---
 

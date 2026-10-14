@@ -534,6 +534,17 @@ O que isso muda nas escolhas:
   `TextEncodeQwenImageEditPlus` numera pela entrada, então o cenário segue
   "Picture 3" mesmo sem a Personagem 2. As três são opcionais. A imagem nasce
   de um `EmptySD3LatentImage` 16:9 (não da imagem 1, como no template de edição).
+- **Geometria travada por blockout 3D: ControlNet depth no Qwen Edit 2511**
+  (testado em 2026-10-14, `blender/sala-de-aula/`). O patch
+  `qwen_image_depth_diffsynth_controlnet` (do Qwen-Image **base**, 2,1 GB em
+  `models\model_patches`) **serve no Edit 2511**, mas pede **strength ~2,5**
+  no `QwenImageDiffsynthControlnet` — bem acima do 1,0 do template. Com 2,5,
+  sala **e** posição do personagem batem com o depth nas 3 seeds, com denoise
+  1 e latente vazio; 2,0 segura a sala, mas o personagem escapa em 1 de 3;
+  ≤1,0 quase não faz efeito; 3,5 lava e pixela. Cabe nos 12 GB sem offload
+  extra (~10 s por imagem). No LoRA union (`qwen_image_union_diffsynth_lora`,
+  não testado), a imagem de controle entra por `VAEEncode` → `ReferenceLatent`
+  no condicionamento (template `image_qwen_image_union_control_lora`).
 
 # Rodar de outra máquina, com a IA em casa
 
