@@ -104,7 +104,8 @@ export type AssistenteNovo = {
 type Filtro = Record<string, string | undefined>;
 
 export const projetosApi = {
-  listar: (f: Filtro = {}) => api<Projeto[]>(`/projetos${consulta(f)}`),
+  /** `favoritos: "1"`: só os marcados — é o que o menu lateral lista. */
+  listar: (f: Filtro & { favoritos?: "1" } = {}) => api<Projeto[]>(`/projetos${consulta(f)}`),
   ler: (id: string) => api<Projeto>(`/projetos/${id}`),
   criar: (p: ProjetoNovo) => api<Projeto>("/projetos", { method: "POST", corpo: p }),
   salvar: (id: string, p: ProjetoNovo) => api<Projeto>(`/projetos/${id}`, { method: "PUT", corpo: p }),

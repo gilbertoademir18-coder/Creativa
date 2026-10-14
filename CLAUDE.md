@@ -173,6 +173,12 @@ as cenas (`SetNull`), nunca as apaga.
   uma `alca` ao cartão, que a põe onde quiser; o quadro só aceita o arrasto se
   ele começou nela (um `ref` marcado no `mousedown`, conferido no `dragstart`).
   Sem isso, o cartão inteiro arrastava e um clique na estrela virava arrasto.
+- **Os favoritos abrem o menu lateral**, numa seção "Projetos" antes de tudo:
+  um clique e você está dentro. A lista vem de `GET /projetos?favoritos=1` e
+  mora num contexto (`componentes/projetos-favoritos.tsx`) — quem marca a
+  estrela é a página de projetos e quem mostra é o menu, então sem o contexto
+  favoritar só apareceria lá depois de um F5. Sem favorito nenhum, a seção
+  some: seção vazia só ocuparia a lateral.
 - **Projeto favorito é só destaque** (a estrela do cartão): não mexe na ordem,
   que é só do arrastar. A rota usa **SQL cru** de propósito — o `update` do
   Prisma toca o `editadoEm` (`@updatedAt`), e como a listagem desempata por

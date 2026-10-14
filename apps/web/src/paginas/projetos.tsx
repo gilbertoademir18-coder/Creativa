@@ -22,6 +22,7 @@ import {
   Vazio,
 } from "../componentes/ui.tsx";
 import { GradeArrastavel } from "../componentes/ordenavel.tsx";
+import { useAvisarFavoritos } from "../componentes/projetos-favoritos.tsx";
 import { useCarregar, useFiltros } from "../hooks.ts";
 import type { Projeto } from "../tipos.ts";
 import { CartaoAsset, FILEIRA_ASSETS, ModalAsset } from "./assets.tsx";
@@ -35,6 +36,8 @@ export function PaginaProjetos() {
   );
   const [novo, setNovo] = useState(false);
   const [erroOrdem, setErroOrdem] = useState<string | null>(null);
+  // O menu lateral lista os favoritos: a estrela daqui tem de chegar lá.
+  const avisarFavoritos = useAvisarFavoritos();
 
   /**
    * Arrastar grava a ordem de todos. A lista mexe na hora e volta atrás se a
@@ -60,6 +63,7 @@ export function PaginaProjetos() {
     setDados(antes.map((x) => (x.id === p.id ? { ...x, favorito: alvo } : x)));
     try {
       await projetosApi.favoritar(p.id, alvo);
+      avisarFavoritos();
     } catch (e) {
       setErroOrdem((e as Error).message);
       setDados(antes);

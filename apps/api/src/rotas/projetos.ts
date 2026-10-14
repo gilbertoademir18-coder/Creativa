@@ -34,9 +34,13 @@ const contagens = { _count: { select: { assets: true, cenas: true } } } as const
 
 export async function rotasProjetos(app: FastifyInstance) {
   app.get("/", async (req) => {
-    const { busca } = validar(z.object({ busca: Busca }), req.query);
+    // `favoritos=1`: só os marcados — é o que o menu lateral lista.
+    const { busca, favoritos } = validar(
+      z.object({ busca: Busca, favoritos: z.enum(["1"]).optional().or(z.literal("").transform(() => undefined)) }),
+      req.query,
+    );
     return prisma.projeto.findMany({
-      where: { nome: contem(busca) },
+      where: { nome: contem(busca), ...(favoritos && { favorito: true }) },
       include: contagens,
       // A posição manda; empate (ninguém arrastou ainda) desempata pela edição.
       orderBy: [{ ordem: "asc" }, { editadoEm: "desc" }],

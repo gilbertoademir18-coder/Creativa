@@ -4,6 +4,7 @@ import { NavLink, Outlet } from "react-router";
 import { BarraComfy } from "./barra-comfy.tsx";
 import { BarraCena, ProvedorCenaAtual } from "./barra-cena.tsx";
 import { BarraProjeto, ProvedorProjetoAtual } from "./barra-projeto.tsx";
+import { MenuProjetosFavoritos, ProvedorFavoritos } from "./projetos-favoritos.tsx";
 import { BarraFila } from "./barra-fila.tsx";
 
 /*
@@ -40,13 +41,15 @@ export function Layout() {
   return (
     <ProvedorProjetoAtual>
     <ProvedorCenaAtual>
+    <ProvedorFavoritos>
     <div className="grid h-screen grid-cols-[15rem_1fr] overflow-hidden">
       <aside className="flex flex-col border-r border-zinc-800 bg-zinc-950">
         <div className="flex items-center gap-2.5 px-5 py-5">
           <img src="/favicon.svg" alt="" className="size-8 rounded-lg" />
           <span className="text-lg font-semibold tracking-tight">Creativa</span>
         </div>
-        <nav className="flex flex-col gap-0.5 px-3">
+        <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-4">
+          <MenuProjetosFavoritos />
           {MENU.map(({ titulo, itens }) => (
             <div key={titulo ?? "trabalho"} className="flex flex-col gap-0.5">
               {titulo && <div className="mt-6 mb-1 px-3 text-xs font-medium tracking-wide text-zinc-600 uppercase">{titulo}</div>}
@@ -81,6 +84,7 @@ export function Layout() {
         <BarraFila />
       </div>
     </div>
+    </ProvedorFavoritos>
     </ProvedorCenaAtual>
     </ProvedorProjetoAtual>
   );
