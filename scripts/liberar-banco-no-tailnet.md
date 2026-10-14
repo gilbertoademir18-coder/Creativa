@@ -1,6 +1,6 @@
 # Para o Claude da máquina de casa: liberar os bancos no tailnet
 
-Cole isto no Claude Code rodando **na máquina de casa** (`x570-aorus`), que é
+Cole isto no Claude Code rodando **na máquina de casa** (`overdrive`), que é
 onde o PostgreSQL mora. O trabalho é de servidor, não de código: mexe num
 arquivo de configuração do Postgres e recarrega. Leva um minuto.
 

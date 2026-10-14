@@ -3,7 +3,7 @@
     Libera um banco deste PostgreSQL para as outras máquinas do tailnet.
 
 .DESCRIPTION
-    Roda **na máquina onde o banco mora** (x570-aorus), como Administrador.
+    Roda **na máquina onde o banco mora** (overdrive), como Administrador.
 
     O `criar-banco.ps1` deixa o Postgres atendendo só em 127.0.0.1 no
     `pg_hba.conf`: é o certo quando a API roda na mesma máquina. Para

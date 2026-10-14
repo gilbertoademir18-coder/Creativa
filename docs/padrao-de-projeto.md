@@ -1,6 +1,6 @@
 # Padrão para um projeto novo
 
-Como montar um projeto novo nesta máquina (`x570-aorus`) para que ele se
+Como montar um projeto novo nesta máquina (`overdrive`) para que ele se
 comporte como os outros: um ícone na bandeja que segura o servidor, os mesmos
 atalhos, um banco no Postgres compartilhado e acesso pelo tailnet, inclusive
 ao banco.
@@ -307,7 +307,7 @@ autorizada, `npm run backup`.
 ## 7. Acessar o banco de outra máquina (tailnet)
 
 Para desenvolver no notebook (`dev`, `100.111.145.14`) com o banco aqui
-(`x570-aorus`, **`100.65.76.22`**). A conexão passa por três portões, e os três
+(`overdrive`, **`100.65.76.22`**). A conexão passa por três portões, e os três
 precisam estar abertos:
 
 | Portão | Quem cuida | Como está |
