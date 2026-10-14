@@ -87,6 +87,14 @@ as cenas (`SetNull`), nunca as apaga.
   `FiltroProjeto`), que já fazem isso; nunca monte um filtro com
   `Entrada`/`Seletor` direto. Filtro de pílulas (`Pilulas`) não precisa: a
   opção "Todos" já está à vista.
+- **A cena é uma barra, não uma página.** Em todo shot, embaixo da barra do
+  projeto, a `BarraCena` (`componentes/barra-cena.tsx`) mostra o nome da cena e
+  os shots dela. É **neutra** de propósito: a violeta é o projeto, a cinza é a
+  cena dentro dele — duas violetas coladas competiriam. `/cenas/<id>` não é mais
+  tela: manda para o shot de `editadoEm` mais recente (o rascunho do Gerador
+  mantém isso em dia sozinho). Storyboard, ordem dos shots, renomear e excluir a
+  cena moram no painel que a barra abre (`componentes/painel-cena.tsx`) — que é o
+  único lugar onde a ordem dos shots se muda; a barra só navega.
 - Filtros moram na URL (`useFiltros`), para dar para voltar, recarregar e
   mandar o link de um filtro pronto.
 - **Texto longo em markdown** usa o editor visual `EditorMarkdown`

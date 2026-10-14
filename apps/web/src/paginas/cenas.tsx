@@ -1,11 +1,10 @@
 import { useProjetoAtual } from "../componentes/barra-projeto.tsx";
-import { Clapperboard, Film, Pencil, Plus, Trash } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Clapperboard, Film, Plus } from "lucide-react";
+import { useState } from "react";
+import { Link, Navigate, useNavigate, useParams } from "react-router";
 import { cenasApi, listasApi } from "../api.ts";
 import { EscolhaProjeto, FiltroBusca, FiltroProjeto } from "../componentes/filtros.tsx";
-import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
-import { ListaOrdenavel, movido } from "../componentes/ordenavel.tsx";
+import { Modal } from "../componentes/modal.tsx";
 import {
   AreaTexto,
   Aviso,
@@ -16,13 +15,32 @@ import {
   Carregando,
   Entrada,
   GRADE,
-  LinkVoltar,
-  Secao,
   Seletor,
   Vazio,
 } from "../componentes/ui.tsx";
-import { useCarregar, useFiltros, useVolta, type Volta } from "../hooks.ts";
-import type { Cena, ShotResumo } from "../tipos.ts";
+import { useCarregar, useFiltros, type Volta } from "../hooks.ts";
+import type { Cena } from "../tipos.ts";
+
+/**
+ * `/cenas/<id>` não é mais uma página: a cena virou a barra fixa dos shots.
+ * Entrar numa cena é abrir o shot em que se estava trabalhando — o de
+ * `editadoEm` mais recente, que o rascunho do Gerador mantém em dia sozinho.
+ * Empata (cena recém-criada, nenhum tocado)? Vale o primeiro da ordem.
+ */
+export function IrParaCena() {
+  const { id = "" } = useParams();
+  const { dados: cena, erro } = useCarregar(() => cenasApi.ler(id), [id]);
+
+  if (erro) return <div className="p-8"><Aviso>{erro}</Aviso></div>;
+  if (!cena) return <Carregando />;
+
+  const ultimo = [...cena.shots].sort(
+    (a, b) => Date.parse(b.editadoEm) - Date.parse(a.editadoEm) || a.ordem - b.ordem,
+  )[0];
+
+  // Toda cena nasce com um shot; sem nenhum, só resta a lista.
+  return <Navigate to={ultimo ? `/shots/${ultimo.id}` : "/cenas"} replace />;
+}
 
 export function PaginaCenas() {
   const [f, mudar] = useFiltros(["projeto", "busca"] as const);
@@ -109,185 +127,6 @@ export function CartaoCena({ c, mostrarProjeto, volta }: { c: Cena; mostrarProje
         </span>
       </div>
     </Link>
-  );
-}
-
-export function PaginaCena() {
-  const { id = "" } = useParams();
-  const navegar = useNavigate();
-  const { dados: c, erro, setDados } = useCarregar(() => cenasApi.ler(id), [id]);
-  useProjetoAtual(c?.projeto?.id);
-  const volta = useVolta();
-  const [editando, setEditando] = useState(false);
-  const [excluindo, setExcluindo] = useState(false);
-
-  if (erro) return <div className="p-8"><Aviso>{erro}</Aviso></div>;
-  if (!c) return <Carregando />;
-
-  return (
-    <>
-      <Cabecalho
-        // Com projeto, quem navega é a barra do projeto; aqui fica só o contexto.
-        voltar={c.projeto ? undefined : <LinkVoltar {...(volta ?? { para: "/cenas", rotulo: "Cenas" })} />}
-        titulo={c.nome}
-        subtitulo={
-          <>
-            {!c.projeto && "Sem projeto"}
-            {c.video && `${c.video.lista.nome} › ${c.video.nome}`}
-            {c.descricao && <p className="mt-2 max-w-3xl whitespace-pre-wrap text-zinc-400">{c.descricao}</p>}
-          </>
-        }
-        acoes={
-          <>
-            <Botao icone={<Pencil className="size-4" />} onClick={() => setEditando(true)}>
-              Editar
-            </Botao>
-            <Botao variante="perigo" icone={<Trash className="size-4" />} onClick={() => setExcluindo(true)}>
-              Excluir
-            </Botao>
-          </>
-        }
-      />
-      <div className="grid grid-cols-[1fr_30rem] gap-8 p-8">
-        <Storyboard cena={c} aoSalvar={setDados} />
-        <Shots cena={c} aoMudar={(shots) => setDados({ ...c, shots })} />
-      </div>
-      <ModalCena
-        aberto={editando}
-        cena={c}
-        aoFechar={() => setEditando(false)}
-        aoSalvar={(nova) => {
-          setEditando(false);
-          setDados(nova);
-        }}
-      />
-      <ConfirmarExclusao
-        aberto={excluindo}
-        titulo="Excluir cena"
-        texto={
-          <>
-            A cena <b>{c.nome}</b> e os shots dela serão excluídos. Se algum shot tiver referências ou gerações, exclua-as
-            antes.
-          </>
-        }
-        aoFechar={() => setExcluindo(false)}
-        aoConfirmar={async () => {
-          await cenasApi.apagar(c.id);
-          navegar(c.video ? `/videos/${c.video.id}` : "/cenas");
-        }}
-      />
-    </>
-  );
-}
-
-/** Storyboard em texto livre, com "Salvar" que só acende quando há mudança. */
-function Storyboard({ cena, aoSalvar }: { cena: Cena; aoSalvar: (c: Cena) => void }) {
-  const [texto, setTexto] = useState(cena.storyboard);
-  const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-  useEffect(() => setTexto(cena.storyboard), [cena.storyboard]);
-  const mudou = texto !== cena.storyboard;
-
-  return (
-    <Secao
-      titulo="Storyboard"
-      acoes={
-        <Botao
-          variante="primario"
-          disabled={!mudou}
-          carregando={salvando}
-          onClick={async () => {
-            setSalvando(true);
-            setErro(null);
-            try {
-              aoSalvar(
-                await cenasApi.salvar(cena.id, {
-                  nome: cena.nome,
-                  projetoId: cena.projetoId,
-                  videoId: cena.videoId,
-                  descricao: cena.descricao,
-                  storyboard: texto,
-                }),
-              );
-            } catch (e) {
-              setErro((e as Error).message);
-            } finally {
-              setSalvando(false);
-            }
-          }}
-        >
-          {mudou ? "Salvar storyboard" : "Salvo"}
-        </Botao>
-      }
-    >
-      {erro && <Aviso>{erro}</Aviso>}
-      <AreaTexto
-        value={texto}
-        onChange={(e) => setTexto(e.target.value)}
-        placeholder={"Roteiro, planos, intenção da cena...\n\nShot 1 — plano aberto da ponte ao entardecer\nShot 2 — close na mão de Camila"}
-        className="min-h-[60vh] font-mono text-[13px]"
-      />
-    </Secao>
-  );
-}
-
-/** A sequência de shots: abrir, reordenar e criar. */
-function Shots({ cena, aoMudar }: { cena: Cena; aoMudar: (s: ShotResumo[]) => void }) {
-  const [erro, setErro] = useState<string | null>(null);
-  const [criando, setCriando] = useState(false);
-  const shots = cena.shots;
-
-  async function mover(i: number, delta: -1 | 1) {
-    const nova = movido(shots, i, delta);
-    aoMudar(nova); // otimista: a lista mexe na hora
-    try {
-      aoMudar(await cenasApi.reordenar(cena.id, nova.map((x) => x.id)));
-    } catch (e) {
-      setErro((e as Error).message);
-      aoMudar(shots);
-    }
-  }
-
-  return (
-    <Secao
-      titulo={`Shots (${shots.length})`}
-      acoes={
-        <Botao
-          variante="primario"
-          icone={<Plus className="size-4" />}
-          carregando={criando}
-          onClick={async () => {
-            setCriando(true);
-            setErro(null);
-            try {
-              const novo = await cenasApi.novoShot(cena.id);
-              aoMudar([...shots, { ...novo, _count: { referencias: 0, outputs: 0 } }]);
-            } catch (e) {
-              setErro((e as Error).message);
-            } finally {
-              setCriando(false);
-            }
-          }}
-        >
-          Novo shot
-        </Botao>
-      }
-    >
-      {erro && <Aviso>{erro}</Aviso>}
-      <ListaOrdenavel
-        itens={shots}
-        aoMover={mover}
-        linha={(s) => (
-          <Link to={`/shots/${s.id}`} className="flex min-w-0 flex-col gap-0.5 px-4 py-3">
-            <span className="truncate font-medium">{s.nome}</span>
-            {s.descricao && <span className="line-clamp-2 text-sm text-zinc-400">{s.descricao}</span>}
-            <span className="text-xs text-zinc-500">
-              {s._count.referencias} referências · {s._count.outputs} outputs
-            </span>
-          </Link>
-        )}
-      />
-    </Secao>
   );
 }
 

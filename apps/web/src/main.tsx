@@ -5,7 +5,7 @@ import "./app.css";
 import { Layout } from "./componentes/layout.tsx";
 import { PaginaAsset, PaginaAssets } from "./paginas/assets.tsx";
 import { PaginaAssistentes } from "./paginas/assistentes.tsx";
-import { PaginaCena, PaginaCenas } from "./paginas/cenas.tsx";
+import { IrParaCena, PaginaCenas } from "./paginas/cenas.tsx";
 import { PaginaConversas } from "./paginas/conversas.tsx";
 import { PaginaOutputs } from "./paginas/outputs.tsx";
 import { PaginaProjeto, PaginaProjetos } from "./paginas/projetos.tsx";
@@ -30,7 +30,7 @@ const roteador = createBrowserRouter([
       { path: "assets/:id", element: <PaginaAsset /> },
       { path: "referencias", element: <PaginaReferencias /> },
       { path: "cenas", element: <PaginaCenas /> },
-      { path: "cenas/:id", element: <PaginaCena /> },
+      { path: "cenas/:id", element: <IrParaCena /> },
       { path: "shots/:id", element: <PaginaShot /> },
       { path: "videos/:id", element: <PaginaVideo /> },
       { path: "outputs", element: <PaginaOutputs /> },

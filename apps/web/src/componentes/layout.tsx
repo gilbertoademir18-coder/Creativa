@@ -2,6 +2,7 @@ import { Clapperboard, FolderKanban, Images, Layers, MessagesSquare, Shapes, Spa
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router";
 import { BarraComfy } from "./barra-comfy.tsx";
+import { BarraCena, ProvedorCenaAtual } from "./barra-cena.tsx";
 import { BarraProjeto, ProvedorProjetoAtual } from "./barra-projeto.tsx";
 import { BarraFila } from "./barra-fila.tsx";
 
@@ -37,6 +38,7 @@ const MENU = [
 export function Layout() {
   return (
     <ProvedorProjetoAtual>
+    <ProvedorCenaAtual>
     <div className="grid h-screen grid-cols-[15rem_1fr] overflow-hidden">
       <aside className="flex flex-col border-r border-zinc-800 bg-zinc-950">
         <div className="flex items-center gap-2.5 px-5 py-5">
@@ -68,15 +70,17 @@ export function Layout() {
           <SeloBanco />
         </div>
       </aside>
-      <div className="grid min-w-0 grid-rows-[auto_auto_1fr_auto] overflow-hidden">
+      <div className="grid min-w-0 grid-rows-[auto_auto_auto_1fr_auto] overflow-hidden">
         <BarraComfy />
         <BarraProjeto />
+        <BarraCena />
         <main className="min-w-0 overflow-y-auto bg-zinc-925">
           <Outlet />
         </main>
         <BarraFila />
       </div>
     </div>
+    </ProvedorCenaAtual>
     </ProvedorProjetoAtual>
   );
 }

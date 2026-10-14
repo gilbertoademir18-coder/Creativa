@@ -54,6 +54,9 @@ export type ShotResumo = {
   nome: string;
   descricao: string | null;
   ordem: number;
+  criadoEm: string;
+  /** Muda sozinho quando o rascunho do Gerador salva: é o "último trabalhado". */
+  editadoEm: string;
   _count: { referencias: number; outputs: number };
 };
 
