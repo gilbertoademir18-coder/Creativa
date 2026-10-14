@@ -1,13 +1,13 @@
 import { useAvisarCena, useCenaAtual } from "../componentes/barra-cena.tsx";
 import { useProjetoAtual } from "../componentes/barra-projeto.tsx";
-import { Pencil, Trash } from "lucide-react";
+import { Film, Pencil, Trash } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { shotsApi } from "../api.ts";
 import { PainelGerador } from "../componentes/gerador.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
 import { PainelReferencias } from "../componentes/referencias.tsx";
-import { AreaTexto, Aviso, Botao, Cabecalho, Campo, Carregando, Entrada } from "../componentes/ui.tsx";
+import { AreaTexto, Aviso, Botao, Campo, Carregando, Entrada } from "../componentes/ui.tsx";
 import { useCarregar } from "../hooks.ts";
 import type { ShotDetalhe } from "../tipos.ts";
 
@@ -27,32 +27,36 @@ export function PaginaShot() {
 
   return (
     <>
-      <Cabecalho
-        // Quem navega e dá o contexto da cena é a barra da cena, logo acima.
-        titulo={s.nome}
-        subtitulo={
-          <>
-            {s.cena.video && `${s.cena.video.nome} › ${s.cena.nome}`}
-            {s.descricao && <p className={`${s.cena.video ? "mt-2 " : ""}max-w-3xl whitespace-pre-wrap`}>{s.descricao}</p>}
-          </>
-        }
-        acoes={
-          <>
-            <Botao icone={<Pencil className="size-4" />} onClick={() => setEditando(true)}>
-              Editar
-            </Botao>
-            <Botao
-              variante="perigo"
-              icone={<Trash className="size-4" />}
-              disabled={unico}
-              title={unico ? "Toda cena precisa de pelo menos um shot" : undefined}
-              onClick={() => setExcluindo(true)}
-            >
-              Excluir
-            </Botao>
-          </>
-        }
-      />
+      {/*
+        Sem título: o nome do shot já está aceso na barra da cena, logo acima,
+        e repeti-lo só empurrava o Gerador para baixo. Fica a faixa com o que a
+        barra não diz — o vídeo e a descrição — e as ações do shot.
+      */}
+      <header className="flex items-center justify-between gap-6 border-b border-zinc-800 px-8 py-3">
+        <div className="min-w-0 text-sm text-zinc-400">
+          {s.cena.video && (
+            <span className="flex items-center gap-1.5 truncate">
+              <Film className="size-3.5 shrink-0" />
+              {s.cena.video.nome}
+            </span>
+          )}
+          {s.descricao && <p className={`${s.cena.video ? "mt-1 " : ""}max-w-3xl whitespace-pre-wrap`}>{s.descricao}</p>}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Botao icone={<Pencil className="size-4" />} onClick={() => setEditando(true)}>
+            Editar
+          </Botao>
+          <Botao
+            variante="perigo"
+            icone={<Trash className="size-4" />}
+            disabled={unico}
+            title={unico ? "Toda cena precisa de pelo menos um shot" : undefined}
+            onClick={() => setExcluindo(true)}
+          >
+            Excluir
+          </Botao>
+        </div>
+      </header>
       {/* key: trocar de shot pela barra recria os painéis (o Gerador começa do rascunho do shot novo). */}
       <div key={s.id} className="flex flex-col gap-10 p-8">
         <PainelGerador dono={{ assetId: null, shotId: s.id }} />

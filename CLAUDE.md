@@ -95,6 +95,8 @@ as cenas (`SetNull`), nunca as apaga.
   mantém isso em dia sozinho). Storyboard, ordem dos shots, renomear e excluir a
   cena moram no painel que a barra abre (`componentes/painel-cena.tsx`) — que é o
   único lugar onde a ordem dos shots se muda; a barra só navega.
+  A página do shot **não tem título**: o nome já está aceso na barra, e repetir
+  só empurrava o Gerador para baixo.
 - Filtros moram na URL (`useFiltros`), para dar para voltar, recarregar e
   mandar o link de um filtro pronto.
 - **Texto longo em markdown** usa o editor visual `EditorMarkdown`
