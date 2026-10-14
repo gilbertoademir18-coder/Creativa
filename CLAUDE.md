@@ -118,6 +118,11 @@ as cenas (`SetNull`), nunca as apaga.
   (a barra, o painel do vídeo) linka **direto para o shot** com
   `caminhoDaCena` (`caminhos.ts`), em vez de passar por `/cenas/<id>`: o desvio
   carregava a cena só para redirecionar, e a tela piscava duas vezes.
+- **Painel de vídeo e de cena têm a mesma planta**: a lista do que vem dentro
+  à esquerda, em destaque (cenas / shots), e na coluna estreita a identidade
+  (nome e mais um campo) e o documento longo — sinopse ou storyboard — como
+  resumo com um botão que abre o `ModalDocumento`. Rodapé com o aviso à
+  esquerda e o excluir à direita. Mexeu num, mexa no outro.
 - **Modal que mora na barra tem de fechar quando o dono muda.** A barra fica no
   Layout e **nunca desmonta**: sair da página tira o `<dialog>` do DOM, mas o
   `aberto` continua guardado no estado, e ao voltar pela SPA o modal ressurge

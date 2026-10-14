@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router";
 import { cenasApi } from "../api.ts";
 import { paraCampo, titulo } from "../rotulos.ts";
 import type { Cena, ShotResumo } from "../tipos.ts";
+import { ModalDocumento } from "./documento-markdown.tsx";
 import { ConfirmarExclusao, Modal } from "./modal.tsx";
 import { ListaOrdenavel, movido } from "./ordenavel.tsx";
 import { AreaTexto, Aviso, Botao, Campo, Entrada, Secao } from "./ui.tsx";
@@ -63,14 +64,16 @@ function PainelCena({
 
   return (
     <div className="flex flex-col gap-8">
+      {/* Mesma planta do painel do vídeo: a lista do que vem dentro à esquerda,
+          em destaque; identidade e documento longo na coluna estreita. */}
       <div className="grid grid-cols-[1fr_24rem] gap-8">
-        <Storyboard cena={cena} aoSalvar={aoSalvar} />
+        <Shots cena={cena} aoSalvar={aoSalvar} aoMudarShots={aoMudarShots} aoFechar={aoFechar} />
         <div className="flex flex-col gap-8">
           <Identidade cena={cena} aoSalvar={aoSalvar} numero={numero} />
-          <Shots cena={cena} aoSalvar={aoSalvar} aoMudarShots={aoMudarShots} aoFechar={aoFechar} />
+          <Storyboard cena={cena} aoSalvar={aoSalvar} numero={numero} />
         </div>
       </div>
-      <div className="flex items-center justify-between border-t border-zinc-800 pt-5">
+      <div className="flex items-center justify-between gap-4 border-t border-zinc-800 pt-5">
         <p className="text-sm text-zinc-500">
           {unica
             ? "Esta é a única cena do vídeo, e todo vídeo precisa de pelo menos uma. Crie outra antes de excluir esta."
@@ -162,52 +165,38 @@ function Identidade({ cena, aoSalvar, numero }: { cena: Cena; aoSalvar: (c: Cena
   );
 }
 
-/** Storyboard em texto livre, com "Salvar" que só acende quando há mudança. */
-function Storyboard({ cena, aoSalvar }: { cena: Cena; aoSalvar: (c: Cena) => void }) {
-  const [texto, setTexto] = useState(cena.storyboard);
-  const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-  useEffect(() => setTexto(cena.storyboard), [cena.storyboard]);
-  const mudou = texto !== cena.storyboard;
-
+/**
+ * O storyboard abre no editor de documento, como a sinopse do vídeo: texto
+ * longo merece a tela inteira, e aqui fica só o começo dele.
+ */
+function Storyboard({ cena, aoSalvar, numero }: { cena: Cena; aoSalvar: (c: Cena) => void; numero: number }) {
+  const [aberto, setAberto] = useState(false);
   return (
     <Secao
       titulo="Storyboard"
-      acoes={
-        <Botao
-          variante="primario"
-          disabled={!mudou}
-          carregando={salvando}
-          onClick={async () => {
-            setSalvando(true);
-            setErro(null);
-            try {
-              aoSalvar(
-                await cenasApi.salvar(cena.id, {
-                  nome: cena.nome,
-                  projetoId: cena.projetoId,
-                  videoId: cena.videoId,
-                  descricao: cena.descricao,
-                  storyboard: texto,
-                }),
-              );
-            } catch (e) {
-              setErro((e as Error).message);
-            } finally {
-              setSalvando(false);
-            }
-          }}
-        >
-          {mudou ? "Salvar storyboard" : "Salvo"}
-        </Botao>
-      }
+      acoes={<Botao onClick={() => setAberto(true)}>{cena.storyboard ? "Abrir" : "Escrever"}</Botao>}
     >
-      {erro && <Aviso>{erro}</Aviso>}
-      <AreaTexto
-        value={texto}
-        onChange={(e) => setTexto(e.target.value)}
+      <p className="line-clamp-6 text-sm whitespace-pre-wrap text-zinc-400">
+        {cena.storyboard || "Sem storyboard. Roteiro, planos, intenção da cena..."}
+      </p>
+      <ModalDocumento
+        titulo={`Storyboard — ${titulo("Cena", cena.nome, numero)}`}
+        valor={cena.storyboard || null}
         placeholder={"Roteiro, planos, intenção da cena...\n\nShot 1 — plano aberto da ponte ao entardecer\nShot 2 — close na mão de Camila"}
-        className="min-h-[48vh] font-mono text-[13px]"
+        aberto={aberto}
+        aoFechar={() => setAberto(false)}
+        aoSalvar={async (texto) => {
+          aoSalvar(
+            await cenasApi.salvar(cena.id, {
+              nome: cena.nome,
+              projetoId: cena.projetoId,
+              videoId: cena.videoId,
+              descricao: cena.descricao,
+              storyboard: texto ?? "",
+            }),
+          );
+          setAberto(false);
+        }}
       />
     </Secao>
   );
