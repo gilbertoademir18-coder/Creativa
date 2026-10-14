@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { Prisma } from "../generated/prisma/client.ts";
 import { prisma } from "../lib/prisma.ts";
+import { daCena } from "./cenas.ts";
 import { Busca, contem, ErroHttp, naoEncontrado, Nome, TextoOpcional, Uuid, validar } from "../lib/validacao.ts";
 
 /**
@@ -94,9 +95,8 @@ export async function rotasListas(app: FastifyInstance) {
     });
   });
 
-  /** Vídeo novo no fim da lista. */
   /**
-   * Vídeo novo já nasce com uma cena, que por sua vez nasce com um shot — como
+   * Vídeo novo no fim da lista, e já nasce com uma cena, que por sua vez nasce com um shot — como
    * a cena sempre nasceu. Vídeo vazio não tem para onde levar quem clica nele,
    * e a dupla "criar o vídeo, agora criar a cena" era só um passo a mais.
    */
@@ -152,6 +152,33 @@ export async function rotasVideos(app: FastifyInstance) {
     const v = await prisma.video.findUnique({ where: { id }, include: daPaginaDoVideo });
     if (!v) throw naoEncontrado("Vídeo não encontrado.");
     return v;
+  });
+
+  /**
+   * Cena nova no fim do vídeo, com o nome automático — o "+ Nova cena" da
+   * barra, irmão do "+ Novo shot". Nasce com um shot, como toda cena, e no
+   * projeto da lista do vídeo.
+   */
+  app.post("/:id/cenas", async (req, reply) => {
+    const { id } = validar(z.object({ id: Uuid }), req.params);
+    const cena = await prisma.$transaction(async (tx) => {
+      const video = await tx.video.findUnique({
+        where: { id },
+        select: { lista: { select: { projetoId: true } }, cenas: { select: { ordem: true } } },
+      });
+      if (!video) throw naoEncontrado("Vídeo não encontrado.");
+      return tx.cena.create({
+        data: {
+          videoId: id,
+          projetoId: video.lista.projetoId,
+          nome: `Cena ${video.cenas.length + 1}`,
+          ordem: Math.max(-1, ...video.cenas.map((c) => c.ordem)) + 1,
+          shots: { create: { nome: "Shot 1", ordem: 0 } },
+        },
+        include: daCena,
+      });
+    });
+    return reply.code(201).send(cena);
   });
 
   app.put("/:id", { bodyLimit: 5 * 1024 * 1024 }, async (req) => {

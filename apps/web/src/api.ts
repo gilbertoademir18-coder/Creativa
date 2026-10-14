@@ -152,6 +152,8 @@ export const listasApi = {
 export const videosApi = {
   listar: (f: { projeto?: string; busca?: string } = {}) => api<VideoNaLista[]>(`/videos${consulta(f)}`),
   ler: (id: string) => api<VideoDetalhe>(`/videos/${id}`),
+  /** Cena nova no fim do vídeo, com o nome automático ("Cena N"). */
+  novaCena: (videoId: string) => api<Cena>(`/videos/${videoId}/cenas`, { method: "POST", corpo: {} }),
   salvar: (id: string, v: VideoNovo) => api<VideoDetalhe>(`/videos/${id}`, { method: "PUT", corpo: v }),
   apagar: (id: string) => api<void>(`/videos/${id}`, { method: "DELETE" }),
   reordenarCenas: (id: string, cenas: string[]) => api<Cena[]>(`/videos/${id}/cenas/ordem`, { method: "PUT", corpo: { cenas } }),

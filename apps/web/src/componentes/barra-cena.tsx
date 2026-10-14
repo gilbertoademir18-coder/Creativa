@@ -116,6 +116,8 @@ export function BarraCena() {
   const [erro, setErro] = useState<string | null>(null);
   const [painel, setPainel] = useState(false);
   const [painelVideo, setPainelVideo] = useState(false);
+  const [criandoCena, setCriandoCena] = useState(false);
+  const [erroCena, setErroCena] = useState<string | null>(null);
 
   if (!id) return null;
 
@@ -130,6 +132,22 @@ export function BarraCena() {
       setErro((e as Error).message);
     } finally {
       setCriando(false);
+    }
+  }
+
+  async function novaCena() {
+    if (!video) return;
+    setCriandoCena(true);
+    setErroCena(null);
+    try {
+      const nova = await videosApi.novaCena(video.id);
+      recarregar();
+      // A cena nasce com um shot; /cenas/<id> leva direto a ele.
+      navegar(`/cenas/${nova.id}`);
+    } catch (e) {
+      setErroCena((e as Error).message);
+    } finally {
+      setCriandoCena(false);
     }
   }
 
@@ -161,6 +179,18 @@ export function BarraCena() {
                 {c.nome}
               </Link>
             ))}
+            {/* Cria no fim do vídeo, com o nome automático ("Cena 3"), e já abre
+                — a cena nasce com um shot, então cai direto nele. */}
+            <button
+              type="button"
+              disabled={criandoCena}
+              onClick={novaCena}
+              title="Criar uma cena no fim deste vídeo"
+              className="flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-0.5 text-sm text-zinc-500 hover:bg-zinc-800 hover:text-violet-200 disabled:opacity-50"
+            >
+              <Plus className="size-4" /> Nova cena
+            </button>
+            {erroCena && <span className="shrink-0 self-center text-sm text-red-400">{erroCena}</span>}
           </nav>
           <BotaoPainelVideo
             video={video}

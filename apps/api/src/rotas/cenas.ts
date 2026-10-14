@@ -39,22 +39,19 @@ const CorpoShot = z.object({
   descricao: TextoOpcional(),
 });
 
-const shotsResumidos = {
+/** Os shots de uma cena, em ordem, com as contagens. */
+export const shotsResumidos = {
   orderBy: { ordem: "asc" as const },
   include: { _count: { select: { referencias: true, outputs: true } } },
 };
 
-const daCena = {
+/** A cena como a tela a recebe: projeto, vídeo e shots. */
+export const daCena = {
   projeto: { select: { id: true, nome: true } },
   video: { select: { id: true, nome: true, lista: { select: { id: true, nome: true } } } },
   shots: shotsResumidos,
 };
 
-/**
- * Projeto e ordem da cena a partir do vídeo: com vídeo, o projeto é o da
- * lista dele, e a cena vai para o fim do vídeo (só quando muda de vídeo —
- * editar o nome não mexe na posição).
- */
 /**
  * Todo vídeo precisa de pelo menos uma cena — o mesmo que "toda cena precisa
  * de pelo menos um shot". Vale para apagar a cena **e** para tirá-la do vídeo:
@@ -71,6 +68,11 @@ async function exigirOutraCenaNoVideo(tx: Prisma.TransactionClient, videoId: str
   }
 }
 
+/**
+ * Projeto e ordem da cena a partir do vídeo: com vídeo, o projeto é o da
+ * lista dele, e a cena vai para o fim do vídeo (só quando muda de vídeo —
+ * editar o nome não mexe na posição).
+ */
 async function encaixarNoVideo(
   tx: Prisma.TransactionClient,
   dados: z.infer<typeof CorpoCena>,
