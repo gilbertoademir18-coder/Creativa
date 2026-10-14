@@ -1,0 +1,231 @@
+import { Clapperboard, Film, Plus, Trash } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router";
+import { videosApi } from "../api.ts";
+import { ModalCena } from "../paginas/cenas.tsx";
+import type { Cena, VideoDetalhe } from "../tipos.ts";
+import { ModalDocumento } from "./documento-markdown.tsx";
+import { ConfirmarExclusao, Modal } from "./modal.tsx";
+import { ListaOrdenavel, movido } from "./ordenavel.tsx";
+import { Aviso, Botao, Campo, Entrada, Secao, Vazio } from "./ui.tsx";
+
+/*
+ * O painel do vídeo, aberto pela barra — o que sobrou no lugar da página do
+ * vídeo, que saiu pelo mesmo motivo da página da cena: entrar nela só para
+ * depois clicar numa cena era um pulo a mais. Aqui mora o que não é "abrir uma
+ * cena": sinopse, ordem das cenas, nome e excluir.
+ */
+
+export function BotaoPainelVideo({
+  video,
+  aberto,
+  aoAbrir,
+  aoFechar,
+  aoMudar,
+}: {
+  video: VideoDetalhe | null;
+  aberto: boolean;
+  aoAbrir: () => void;
+  aoFechar: () => void;
+  aoMudar: () => void;
+}) {
+  return (
+    <>
+      <Botao icone={<Film className="size-4" />} disabled={!video} onClick={aoAbrir}>
+        Vídeo
+      </Botao>
+      {video && (
+        <Modal aberto={aberto} titulo={video.nome} largura="enorme" aoFechar={aoFechar}>
+          <PainelVideo video={video} aoMudar={aoMudar} aoFechar={aoFechar} />
+        </Modal>
+      )}
+    </>
+  );
+}
+
+function PainelVideo({ video, aoMudar, aoFechar }: { video: VideoDetalhe; aoMudar: () => void; aoFechar: () => void }) {
+  const navegar = useNavigate();
+  const [excluindo, setExcluindo] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="grid grid-cols-[1fr_24rem] gap-8">
+        <Cenas video={video} aoMudar={aoMudar} aoFechar={aoFechar} />
+        <div className="flex flex-col gap-8">
+          <Identidade video={video} aoMudar={aoMudar} />
+          <Sinopse video={video} aoMudar={aoMudar} />
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-4 border-t border-zinc-800 pt-5">
+        <p className="text-sm text-zinc-500">
+          Excluir o vídeo <b>não</b> apaga as cenas: elas voltam para “Cenas sem vídeo” do projeto.
+        </p>
+        <Botao variante="perigo" icone={<Trash className="size-4" />} onClick={() => setExcluindo(true)}>
+          Excluir vídeo
+        </Botao>
+      </div>
+      <ConfirmarExclusao
+        aberto={excluindo}
+        titulo="Excluir vídeo"
+        texto={
+          <>
+            O vídeo <b>{video.nome}</b> será excluído.
+            {video.cenas.length > 0 && (
+              <>
+                {" "}
+                As <b>{video.cenas.length} cena(s)</b> dele <b>não</b> são apagadas: voltam para “Cenas sem vídeo” do
+                projeto, com os shots e outputs.
+              </>
+            )}
+          </>
+        }
+        aoFechar={() => setExcluindo(false)}
+        aoConfirmar={async () => {
+          await videosApi.apagar(video.id);
+          navegar(`/projetos/${video.lista.projeto.id}`);
+        }}
+      />
+    </div>
+  );
+}
+
+/** O nome do vídeo. A lista em que ele está fica como contexto, só de leitura. */
+function Identidade({ video, aoMudar }: { video: VideoDetalhe; aoMudar: () => void }) {
+  const [nome, setNome] = useState(video.nome);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  useEffect(() => setNome(video.nome), [video.nome]);
+  const mudou = nome !== video.nome;
+
+  return (
+    <Secao
+      titulo="O vídeo"
+      acoes={
+        <Botao
+          variante="primario"
+          disabled={!mudou || !nome.trim()}
+          carregando={salvando}
+          onClick={async () => {
+            setSalvando(true);
+            setErro(null);
+            try {
+              await videosApi.salvar(video.id, { nome, descricao: video.descricao });
+              aoMudar();
+            } catch (e) {
+              setErro((e as Error).message);
+            } finally {
+              setSalvando(false);
+            }
+          }}
+        >
+          {mudou ? "Salvar" : "Salvo"}
+        </Botao>
+      }
+    >
+      {erro && <Aviso>{erro}</Aviso>}
+      <div className="flex flex-col gap-4">
+        <Campo rotulo="Nome">
+          <Entrada value={nome} onChange={(e) => setNome(e.target.value)} />
+        </Campo>
+        <Campo rotulo="Lista" dica="Para mover o vídeo de lista, use a página do projeto.">
+          <Entrada value={video.lista.nome} disabled readOnly />
+        </Campo>
+      </div>
+    </Secao>
+  );
+}
+
+/** A sinopse é markdown longo: abre no editor de documento, como antes. */
+function Sinopse({ video, aoMudar }: { video: VideoDetalhe; aoMudar: () => void }) {
+  const [aberta, setAberta] = useState(false);
+  return (
+    <Secao
+      titulo="Sinopse"
+      acoes={<Botao onClick={() => setAberta(true)}>{video.descricao ? "Abrir" : "Escrever"}</Botao>}
+    >
+      <p className="line-clamp-6 text-sm whitespace-pre-wrap text-zinc-400">
+        {video.descricao || "Sem sinopse. Roteiro, o que acontece neste vídeo..."}
+      </p>
+      <ModalDocumento
+        titulo={`Sinopse — ${video.nome}`}
+        valor={video.descricao}
+        placeholder="Sinopse, roteiro, o que acontece neste vídeo... Use # para títulos e - para listas."
+        aberto={aberta}
+        aoFechar={() => setAberta(false)}
+        aoSalvar={async (texto) => {
+          await videosApi.salvar(video.id, { nome: video.nome, descricao: texto });
+          aoMudar();
+          setAberta(false);
+        }}
+      />
+    </Secao>
+  );
+}
+
+/** A ordem das cenas: o único lugar em que ela se muda. A barra só navega. */
+function Cenas({ video, aoMudar, aoFechar }: { video: VideoDetalhe; aoMudar: () => void; aoFechar: () => void }) {
+  const navegar = useNavigate();
+  const [erro, setErro] = useState<string | null>(null);
+  const [nova, setNova] = useState(false);
+  const [cenas, setCenas] = useState<Cena[]>(video.cenas);
+  useEffect(() => setCenas(video.cenas), [video.cenas]);
+
+  async function mover(i: number, delta: -1 | 1) {
+    const ordem = movido(cenas, i, delta);
+    setCenas(ordem); // otimista: a lista mexe na hora
+    try {
+      setCenas(await videosApi.reordenarCenas(video.id, ordem.map((c) => c.id)));
+      aoMudar();
+    } catch (e) {
+      setErro((e as Error).message);
+      setCenas(video.cenas);
+    }
+  }
+
+  return (
+    <Secao
+      titulo={`Cenas (${cenas.length})`}
+      acoes={
+        <Botao variante="primario" icone={<Plus className="size-4" />} onClick={() => setNova(true)}>
+          Nova cena
+        </Botao>
+      }
+    >
+      {erro && <Aviso>{erro}</Aviso>}
+      {cenas.length === 0 ? (
+        <Vazio
+          icone={<Clapperboard />}
+          titulo="Nenhuma cena neste vídeo"
+          texto="Crie aqui, ou mova uma cena que já existe: no painel dela, escolha este vídeo."
+        />
+      ) : (
+        <ListaOrdenavel
+          itens={cenas}
+          aoMover={mover}
+          linha={(c) => (
+            <Link to={`/cenas/${c.id}`} onClick={aoFechar} className="flex min-w-0 flex-col gap-0.5 px-4 py-3">
+              <span className="truncate font-medium">{c.nome}</span>
+              {(c.descricao || c.storyboard) && (
+                <span className="line-clamp-2 text-sm text-zinc-400">{c.descricao || c.storyboard}</span>
+              )}
+              <span className="text-xs text-zinc-500">
+                {c.shots.length} {c.shots.length === 1 ? "shot" : "shots"}
+              </span>
+            </Link>
+          )}
+        />
+      )}
+      <ModalCena
+        aberto={nova}
+        projetoInicial={video.lista.projeto.id}
+        videoInicial={video.id}
+        aoFechar={() => setNova(false)}
+        aoSalvar={(c) => {
+          aoMudar();
+          aoFechar();
+          navegar(`/cenas/${c.id}`);
+        }}
+      />
+    </Secao>
+  );
+}

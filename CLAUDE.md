@@ -92,6 +92,18 @@ as cenas (`SetNull`), nunca as apaga.
   `FiltroProjeto`), que já fazem isso; nunca monte um filtro com
   `Entrada`/`Seletor` direto. Filtro de pílulas (`Pilulas`) não precisa: a
   opção "Todos" já está à vista.
+- **O caminho até o shot é um bloco só.** A `BarraCena`
+  (`componentes/barra-cena.tsx`) desenha duas linhas no mesmo bloco, sem borda
+  entre elas: a de cima é o **vídeo** com as cenas dele (só quando a cena está
+  num vídeo), a de baixo é a **cena** com os shots. Faixa sobre faixa comeria a
+  tela — em Full HD já são quatro barras antes do Gerador.
+- **Nem vídeo nem cena têm página.** `/videos/<id>` manda para o shot de
+  `editadoEm` mais recente **de todas as cenas do vídeo** (e não para a cena de
+  `editadoEm` mais novo: trabalhar num shot não mexe no `editadoEm` da cena);
+  vídeo sem cena nenhuma mostra um vazio com "Nova cena", porque devolver à
+  lista pareceria que o clique falhou. Sinopse, ordem das cenas, renomear e
+  excluir o vídeo moram no painel que a barra abre
+  (`componentes/painel-video.tsx`).
 - **A cena é uma barra, não uma página.** Em todo shot, embaixo da barra do
   projeto, a `BarraCena` (`componentes/barra-cena.tsx`) mostra o nome da cena e
   os shots dela. É **neutra** de propósito: a violeta é o projeto, a cinza é a

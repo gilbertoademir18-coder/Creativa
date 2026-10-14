@@ -1,4 +1,3 @@
-import { Film } from "lucide-react";
 import { useParams } from "react-router";
 import { shotsApi } from "../api.ts";
 import { useCenaAtual, useRecargaCena } from "../componentes/barra-cena.tsx";
@@ -25,16 +24,10 @@ export function PaginaShot() {
 
   return (
     <>
-      {/* Só o que a barra não diz. Sem vídeo nem descrição, não há faixa nenhuma. */}
-      {(s.cena.video || s.descricao) && (
-        <header className="flex flex-col gap-1 border-b border-zinc-800 px-8 py-3 text-sm text-zinc-400">
-          {s.cena.video && (
-            <span className="flex items-center gap-1.5 truncate">
-              <Film className="size-3.5 shrink-0" />
-              {s.cena.video.nome}
-            </span>
-          )}
-          {s.descricao && <p className="max-w-3xl whitespace-pre-wrap">{s.descricao}</p>}
+      {/* Só a descrição: o vídeo e a cena já estão na barra, logo acima. */}
+      {s.descricao && (
+        <header className="border-b border-zinc-800 px-8 py-3 text-sm text-zinc-400">
+          <p className="max-w-3xl whitespace-pre-wrap">{s.descricao}</p>
         </header>
       )}
       {/* key: trocar de shot pela barra recria os painéis (o Gerador começa do rascunho do shot novo). */}

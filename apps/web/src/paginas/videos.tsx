@@ -1,6 +1,6 @@
-import { Film, FolderKanban, Plus } from "lucide-react";
+import { Clapperboard, Film, FolderKanban, Plus } from "lucide-react";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, Navigate, useNavigate, useParams } from "react-router";
 import { listasApi, videosApi } from "../api.ts";
 import { useProjetoAtual } from "../componentes/barra-projeto.tsx";
 import { EscolhaProjeto, FiltroBusca, FiltroProjeto } from "../componentes/filtros.tsx";
@@ -19,13 +19,71 @@ import {
   Vazio,
 } from "../componentes/ui.tsx";
 import { useCarregar, useFiltros, type Volta } from "../hooks.ts";
+import { ModalCena } from "./cenas.tsx";
 import type { VideoNaLista } from "../tipos.ts";
 
 /*
  * A lista de vídeos de todos os projetos — o paralelo de Cenas e Assets no
- * menu e na barra do projeto. Vídeo é agrupador: quem tem storyboard é a
- * cena. Aqui se acha e se abre um vídeo; o que ele tem dentro é a página dele.
+ * menu e na barra do projeto. Vídeo é agrupador: quem tem storyboard é a cena.
+ * Aqui se acha e se abre um vídeo; o que ele tem dentro mora na barra fixa.
  */
+
+/**
+ * `/videos/<id>` não é mais uma página: o vídeo virou a linha de cima da barra
+ * fixa. Entrar num vídeo é voltar ao shot em que se estava trabalhando — o de
+ * `editadoEm` mais recente entre todos os shots de todas as cenas dele.
+ *
+ * Por que o shot e não a cena: trabalhar num shot não mexe no `editadoEm` da
+ * cena (só renomear ou salvar o storyboard dela mexem), então ordenar por cena
+ * não acharia onde se estava.
+ */
+export function IrParaVideo() {
+  const { id = "" } = useParams();
+  const { dados: v, erro, recarregar } = useCarregar(() => videosApi.ler(id), [id]);
+  useProjetoAtual(v?.lista.projeto.id);
+  const [novaCena, setNovaCena] = useState(false);
+  const navegar = useNavigate();
+
+  if (erro) return <div className="p-8"><Aviso>{erro}</Aviso></div>;
+  if (!v) return <Carregando />;
+
+  const shots = v.cenas.flatMap((c) => c.shots.map((s) => ({ s, c })));
+  const ultimo = [...shots].sort(
+    (a, b) => Date.parse(b.s.editadoEm) - Date.parse(a.s.editadoEm) || a.c.ordem - b.c.ordem || a.s.ordem - b.s.ordem,
+  )[0];
+  if (ultimo) return <Navigate to={`/shots/${ultimo.s.id}`} replace />;
+
+  const primeira = [...v.cenas].sort((a, b) => a.ordem - b.ordem)[0];
+  if (primeira) return <Navigate to={`/cenas/${primeira.id}`} replace />;
+
+  // Vídeo recém-criado: não há shot nem cena para onde mandar. Devolver à lista
+  // sem explicação pareceria que o clique falhou — então fica o convite.
+  return (
+    <div className="p-8">
+      <Vazio
+        icone={<Clapperboard />}
+        titulo={`${v.nome} ainda não tem cenas`}
+        texto="O vídeo é uma sequência de cenas. Crie a primeira, ou mova uma que já existe: no painel dela, escolha este vídeo."
+        acao={
+          <Botao variante="primario" icone={<Plus className="size-4" />} onClick={() => setNovaCena(true)}>
+            Nova cena
+          </Botao>
+        }
+      />
+      <ModalCena
+        aberto={novaCena}
+        projetoInicial={v.lista.projeto.id}
+        videoInicial={v.id}
+        aoFechar={() => setNovaCena(false)}
+        aoSalvar={(c) => {
+          recarregar();
+          navegar(`/cenas/${c.id}`);
+        }}
+      />
+    </div>
+  );
+}
+
 export function PaginaVideos() {
   const [f, mudar] = useFiltros(["projeto", "busca"] as const);
   useProjetoAtual(f.projeto);

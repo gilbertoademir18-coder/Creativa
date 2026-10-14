@@ -1,25 +1,31 @@
-import { Clapperboard, Plus } from "lucide-react";
+import { Clapperboard, Film, Plus } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
-import { cenasApi } from "../api.ts";
-import type { Cena } from "../tipos.ts";
+import { cenasApi, videosApi } from "../api.ts";
+import type { Cena, VideoDetalhe } from "../tipos.ts";
 import { BotaoEditarShot } from "./editar-shot.tsx";
 import { BotaoPainelCena } from "./painel-cena.tsx";
+import { BotaoPainelVideo } from "./painel-video.tsx";
 
 /*
- * A barra da cena: aparece embaixo da barra do projeto em todo shot, com o
- * nome da cena e os shots dela. Neutra de propósito — a violeta é o projeto,
- * esta é a cena dentro dele; duas violetas coladas competiriam.
+ * A barra do caminho até o shot: aparece embaixo da barra do projeto, em todo
+ * shot. Uma linha para a cena (com os shots dela) e, quando a cena está num
+ * vídeo, outra linha acima para o vídeo (com as cenas dele) — no mesmo bloco,
+ * sem borda entre as duas, para não virar faixa sobre faixa. Neutra de
+ * propósito: a violeta é o projeto, esta é o que está dentro dele.
  *
- * Não existe mais página de cena: tudo o que era dela (storyboard, ordem dos
- * shots, renomear, excluir) mora no painel que esta barra abre, e `/cenas/:id`
- * manda para o último shot trabalhado.
+ * Não existe mais página de cena nem de vídeo: o que era delas (storyboard,
+ * sinopse, ordem, renomear, excluir) mora nos painéis que esta barra abre.
+ * `/cenas/:id` manda para o último shot trabalhado, e `/videos/:id` para o
+ * shot mais recente do vídeo inteiro.
  */
 
 type Contexto = {
   id: string | null;
   setId: (id: string | null) => void;
   cena: Cena | null;
+  /** O vídeo da cena, carregado à parte: a cena só traz o nome dele, não as irmãs. */
+  video: VideoDetalhe | null;
   /** Para o painel trocar a cena em memória, sem ida extra ao servidor. */
   setCena: (c: Cena) => void;
   /** Para a página do shot avisar que mexeu nos shots (renomeou, excluiu). */
@@ -32,6 +38,7 @@ const CenaAtual = createContext<Contexto>({
   id: null,
   setId: () => {},
   cena: null,
+  video: null,
   setCena: () => {},
   recarregar: () => {},
   recarga: 0,
@@ -40,6 +47,7 @@ const CenaAtual = createContext<Contexto>({
 export function ProvedorCenaAtual({ children }: { children: ReactNode }) {
   const [id, setId] = useState<string | null>(null);
   const [cena, setCena] = useState<Cena | null>(null);
+  const [video, setVideo] = useState<VideoDetalhe | null>(null);
   const [recarga, setRecarga] = useState(0);
   const recarregar = useCallback(() => setRecarga((n) => n + 1), []);
 
@@ -58,7 +66,26 @@ export function ProvedorCenaAtual({ children }: { children: ReactNode }) {
     };
   }, [id, recarga]);
 
-  return <CenaAtual.Provider value={{ id, setId, cena, setCena, recarregar, recarga }}>{children}</CenaAtual.Provider>;
+  // O vídeo vem depois da cena, porque é ela que diz qual é.
+  const videoId = cena?.video?.id ?? null;
+  useEffect(() => {
+    if (!videoId) {
+      setVideo(null);
+      return;
+    }
+    let vivo = true;
+    videosApi
+      .ler(videoId)
+      .then((v) => vivo && setVideo(v))
+      .catch(() => vivo && setVideo(null));
+    return () => {
+      vivo = false;
+    };
+  }, [videoId, recarga]);
+
+  return (
+    <CenaAtual.Provider value={{ id, setId, cena, video, setCena, recarregar, recarga }}>{children}</CenaAtual.Provider>
+  );
 }
 
 /** Diz ao Layout de que cena é a página aberta (null/undefined: de nenhuma). */
@@ -81,13 +108,14 @@ export function useRecargaCena() {
 
 /** A barra em si, desenhada pelo Layout quando a página é de um shot. */
 export function BarraCena() {
-  const { id, cena, setCena, recarregar } = useContext(CenaAtual);
+  const { id, cena, video, setCena, recarregar } = useContext(CenaAtual);
   const navegar = useNavigate();
   // Qual shot acender vem da URL: o Layout desenha a barra e não sabe da página.
   const shotAtivo = useLocation().pathname.match(/^\/shots\/([^/]+)/)?.[1];
   const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [painel, setPainel] = useState(false);
+  const [painelVideo, setPainelVideo] = useState(false);
 
   if (!id) return null;
 
@@ -106,7 +134,44 @@ export function BarraCena() {
   }
 
   return (
-    <div className="flex items-center gap-4 border-b border-zinc-800 bg-zinc-900/60 px-8 py-2">
+    <div className="flex flex-col border-b border-zinc-800 bg-zinc-900/60">
+      {/* A linha do vídeo, quando a cena está num: as cenas irmãs, sem borda
+          abaixo — vídeo e cena são um bloco só, não duas faixas. */}
+      {video && (
+        <div className="flex items-center gap-4 px-8 pt-2 pb-1">
+          <button
+            type="button"
+            onClick={() => setPainelVideo(true)}
+            title="Abrir o painel do vídeo: sinopse, ordem das cenas, renomear e excluir"
+            className="flex min-w-0 shrink-0 items-center gap-2 text-sm font-semibold text-zinc-300 hover:text-white"
+          >
+            <Film className="size-4 text-zinc-500" />
+            <span className="max-w-64 truncate">{video.nome}</span>
+          </button>
+          <span className="h-4 w-px bg-zinc-800" />
+          <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+            {video.cenas.map((c) => (
+              <Link
+                key={c.id}
+                to={`/cenas/${c.id}`}
+                className={`shrink-0 rounded-md px-2.5 py-0.5 text-sm transition-colors ${
+                  c.id === id ? "bg-zinc-700/60 font-medium text-zinc-100" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+                }`}
+              >
+                {c.nome}
+              </Link>
+            ))}
+          </nav>
+          <BotaoPainelVideo
+            video={video}
+            aberto={painelVideo}
+            aoAbrir={() => setPainelVideo(true)}
+            aoFechar={() => setPainelVideo(false)}
+            aoMudar={recarregar}
+          />
+        </div>
+      )}
+      <div className={`flex items-center gap-4 px-8 ${video ? "pt-1 pb-2" : "py-2"}`}>
       <button
         type="button"
         onClick={() => setPainel(true)}
@@ -151,6 +216,7 @@ export function BarraCena() {
         aoSalvar={setCena}
         aoMudarShots={recarregar}
       />
+      </div>
     </div>
   );
 }
