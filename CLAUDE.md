@@ -111,6 +111,13 @@ as cenas (`SetNull`), nunca as apaga.
   em cascata, mas referência e output são Restrict — cena com geração barra
   tudo, e aí nem o vídeo é apagado. A opção nasce desabilitada nesse caso, com
   os nomes das cenas presas.
+- **Modal que mora na barra tem de fechar quando o dono muda.** A barra fica no
+  Layout e **nunca desmonta**: sair da página tira o `<dialog>` do DOM, mas o
+  `aberto` continua guardado no estado, e ao voltar pela SPA o modal ressurge
+  sozinho (foi o que acontecia logo depois de criar um vídeo, que leva direto
+  ao shot dele). Cada modal da barra tem um `useEffect` que o fecha quando a
+  cena, o vídeo ou o shot muda. Modal de página não tem esse problema — a
+  página desmonta e leva o estado junto.
 - **O caminho até o shot é um bloco só.** A `BarraCena`
   (`componentes/barra-cena.tsx`) desenha duas linhas no mesmo bloco, sem borda
   entre elas: a de cima é o **vídeo** com as cenas dele (só quando a cena está

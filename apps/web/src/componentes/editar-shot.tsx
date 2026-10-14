@@ -25,6 +25,9 @@ export function BotaoEditarShot({
   aoMudar: () => void;
 }) {
   const [aberto, setAberto] = useState(false);
+  // Pelo mesmo motivo da barra: o botão nunca desmonta, então trocar de shot
+  // tem de fechar o modal — senão ele ressurge sozinho ao voltar à página.
+  useEffect(() => setAberto(false), [shotId]);
   // O número é a POSIÇÃO na cena, não o campo ordem: apagar um shot do meio
   // deixa buraco na ordem guardada, e a barra conta pela posição.
   const indice = cena?.shots.findIndex((s) => s.id === shotId) ?? -1;

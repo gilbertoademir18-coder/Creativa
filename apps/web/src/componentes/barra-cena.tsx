@@ -119,6 +119,15 @@ export function BarraCena() {
   const [painelVideo, setPainelVideo] = useState(false);
   const [criandoCena, setCriandoCena] = useState(false);
   const [erroCena, setErroCena] = useState<string | null>(null);
+
+  /*
+   * A barra mora no Layout e nunca desmonta: sair da página tira o <dialog> do
+   * DOM, mas o "aberto" continuaria guardado aqui, e ao voltar o painel
+   * ressurgia sozinho (era o que acontecia logo depois de criar um vídeo, que
+   * leva direto ao shot dele). Trocou de cena ou de vídeo, painel fechado.
+   */
+  useEffect(() => setPainel(false), [id]);
+  useEffect(() => setPainelVideo(false), [video?.id]);
   // A posição da cena no vídeo; fora de vídeo não há irmãs, então vale a ordem.
   const numeroDaCena = video ? video.cenas.findIndex((c) => c.id === id) + 1 : (cena?.ordem ?? 0) + 1;
 
