@@ -191,7 +191,6 @@ export function PaginaProjeto() {
   const cenas = useCarregar(() => cenasApi.listar({ projeto: id, video: "sem" }), [id]);
   const [editando, setEditando] = useState(false);
   const [descrevendo, setDescrevendo] = useState(false);
-  const [excluindo, setExcluindo] = useState(false);
   const [novoAsset, setNovoAsset] = useState(false);
   const [novaCena, setNovaCena] = useState(false);
 
@@ -225,9 +224,6 @@ export function PaginaProjeto() {
             </Botao>
             <Botao icone={<Pencil className="size-4" />} onClick={() => setEditando(true)}>
               Editar
-            </Botao>
-            <Botao variante="perigo" icone={<Trash className="size-4" />} onClick={() => setExcluindo(true)}>
-              Excluir
             </Botao>
           </>
         }
@@ -295,22 +291,6 @@ export function PaginaProjeto() {
           setDescrevendo(false);
         }}
       />
-      <ConfirmarExclusao
-        aberto={excluindo}
-        titulo="Excluir projeto"
-        exigirDigitar="EXCLUIR"
-        texto={
-          <>
-            O projeto <b>{p.nome}</b> será excluído. Os assets e as cenas dele <b>não</b> são apagados: ficam soltos,
-            sem projeto.
-          </>
-        }
-        aoFechar={() => setExcluindo(false)}
-        aoConfirmar={async () => {
-          await projetosApi.apagar(p.id);
-          navegar("/projetos");
-        }}
-      />
       <ModalAsset
         aberto={novoAsset}
         projetoInicial={p.id}
@@ -346,9 +326,13 @@ export function ModalProjeto({
 }
 
 function FormProjeto({ projeto, aoSalvar }: { projeto?: Projeto; aoSalvar: (p: Projeto) => void }) {
+  const navegar = useNavigate();
+  const avisarFavoritos = useAvisarFavoritos();
   const [nome, setNome] = useState(projeto?.nome ?? "");
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
+
   return (
     <form
       className="flex flex-col gap-4"
@@ -369,11 +353,37 @@ function FormProjeto({ projeto, aoSalvar }: { projeto?: Projeto; aoSalvar: (p: P
         <Entrada value={nome} onChange={(e) => setNome(e.target.value)} autoFocus required placeholder="Poker de Camila" />
       </Campo>
       {erro && <Aviso>{erro}</Aviso>}
-      <div className="flex justify-end">
+      {/* Excluir mora aqui, e não ao lado do "Editar" na página: lá ficava um
+          botão vermelho à espreita no cabeçalho de todo projeto. */}
+      <div className={`flex items-center gap-4 ${projeto ? "justify-between border-t border-zinc-800 pt-4" : "justify-end"}`}>
+        {projeto && (
+          <Botao variante="perigo" icone={<Trash className="size-4" />} onClick={() => setExcluindo(true)}>
+            Excluir projeto
+          </Botao>
+        )}
         <Botao type="submit" variante="primario" carregando={salvando}>
           {projeto ? "Salvar" : "Criar projeto"}
         </Botao>
       </div>
+      {projeto && (
+        <ConfirmarExclusao
+          aberto={excluindo}
+          titulo="Excluir projeto"
+          exigirDigitar="EXCLUIR"
+          texto={
+            <>
+              O projeto <b>{projeto.nome}</b> será excluído. Os assets e as cenas dele <b>não</b> são apagados: ficam
+              soltos, sem projeto.
+            </>
+          }
+          aoFechar={() => setExcluindo(false)}
+          aoConfirmar={async () => {
+            await projetosApi.apagar(projeto.id);
+            avisarFavoritos(); // se era favorito, sai do menu lateral
+            navegar("/projetos");
+          }}
+        />
+      )}
     </form>
   );
 }
