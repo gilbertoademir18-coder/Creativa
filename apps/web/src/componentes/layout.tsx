@@ -1,5 +1,4 @@
 import { Clapperboard, Film, FolderKanban, GitBranch, Images, Layers, MessagesSquare, Shapes, Sparkles, WandSparkles, Workflow } from "lucide-react";
-import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router";
 import { BarraComfy } from "./barra-comfy.tsx";
 import { BarraCena, ProvedorCenaAtual } from "./barra-cena.tsx";
@@ -71,9 +70,6 @@ export function Layout() {
             </div>
           ))}
         </nav>
-        <div className="mt-auto border-t border-zinc-800 px-5 py-4">
-          <SeloBanco />
-        </div>
       </aside>
       <div className="grid min-w-0 grid-rows-[auto_auto_auto_1fr_auto] overflow-hidden">
         <BarraComfy />
@@ -88,45 +84,5 @@ export function Layout() {
     </ProvedorFavoritos>
     </ProvedorCenaAtual>
     </ProvedorProjetoAtual>
-  );
-}
-
-type Estado = { noAr: boolean };
-
-/**
- * Pergunta à API, de tempos em tempos, se uma dependência está no ar.
- * `null` enquanto a primeira resposta não chega.
- */
-function useEstado(rota: string, intervaloMs: number): Estado | null {
-  const [estado, setEstado] = useState<Estado | null>(null);
-  useEffect(() => {
-    let vivo = true;
-    const consultar = async () => {
-      try {
-        const r = await fetch(rota);
-        const j = (await r.json()) as Estado;
-        if (vivo) setEstado(j);
-      } catch {
-        // Sem resposta da nossa API: daqui não dá para saber do ComfyUI.
-        if (vivo) setEstado({ noAr: false });
-      }
-    };
-    consultar();
-    const id = setInterval(consultar, intervaloMs);
-    return () => {
-      vivo = false;
-      clearInterval(id);
-    };
-  }, [rota, intervaloMs]);
-  return estado;
-}
-
-function SeloBanco() {
-  const banco = useEstado("/api/banco/estado", 10_000);
-  return (
-    <div className="flex items-center gap-2 text-xs text-zinc-500">
-      <span className={`size-2 rounded-full ${banco === null ? "bg-zinc-600" : banco.noAr ? "bg-emerald-500" : "bg-red-500"}`} />
-      Banco {banco === null ? "..." : banco.noAr ? "no ar" : "fora do ar"}
-    </div>
   );
 }

@@ -74,7 +74,10 @@ as cenas (`SetNull`), nunca as apaga.
 - Tela cheia, só desktop: monitores Full HD e QHD. Sem versão de celular.
 - **O estado do ComfyUI fica sempre à vista**, na barra do topo (`BarraComfy`
   em `componentes/layout.tsx`), em todas as páginas. Nenhuma tela esconde ou
-  cobre essa barra.
+  cobre essa barra. **O do banco, não**: ele é o chão de tudo, e se cair a
+  tela inteira já diz (toda página erra ao carregar). O selo "Banco no ar" que
+  havia no pé do menu saiu em 2026-10-14 — não o traga de volta. A rota
+  `/api/banco/estado` fica: serve para conferir o banco sem escrever nele.
 - **Ações de uma janela ou painel que rola ficam sempre à vista:** barra de
   ferramentas grudada em cima, botões (Salvar, Fechar, Excluir, abrir em aba
   nova) grudados embaixo — `sticky` com fundo opaco e uma linha separando,
