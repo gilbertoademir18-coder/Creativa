@@ -124,7 +124,9 @@ function CartaoProjeto({ p }: { p: Projeto }) {
       to={`/projetos/${p.id}`}
       // O link não se arrasta sozinho: quem arrasta é o quadro da GradeArrastavel.
       draggable={false}
-      className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-5 transition-colors hover:border-violet-500/60"
+      // h-full: o cartão já não é o item da grade (o quadro do arrasto é), e
+      // sem isto ele encolhe para o conteúdo em vez de acompanhar a linha.
+      className="flex h-full flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-5 transition-colors hover:border-violet-500/60"
     >
       <div className="flex items-center gap-2.5">
         <FolderKanban className="size-5 text-violet-400" />

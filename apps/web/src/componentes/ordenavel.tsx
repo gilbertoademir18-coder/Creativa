@@ -128,7 +128,7 @@ export function GradeArrastavel<T extends { id: string }>({
             e.preventDefault();
             soltarEm(item.id);
           }}
-          className={`cursor-grab rounded-xl transition-opacity active:cursor-grabbing ${pegando === item.id ? "opacity-40" : ""} ${
+          className={`h-full cursor-grab rounded-xl transition-opacity active:cursor-grabbing ${pegando === item.id ? "opacity-40" : ""} ${
             alvo === item.id ? "outline-2 outline-offset-2 outline-violet-500" : ""
           }`}
         >
