@@ -2,6 +2,7 @@ import { Clapperboard, Film, Plus } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { cenasApi, videosApi } from "../api.ts";
+import { caminhoDaCena } from "../caminhos.ts";
 import { comNumero, titulo } from "../rotulos.ts";
 import type { Cena, VideoDetalhe } from "../tipos.ts";
 import { BotaoEditarShot } from "./editar-shot.tsx";
@@ -154,8 +155,8 @@ export function BarraCena() {
     try {
       const nova = await videosApi.novaCena(video.id);
       recarregar();
-      // A cena nasce com um shot; /cenas/<id> leva direto a ele.
-      navegar(`/cenas/${nova.id}`);
+      // A cena nasce com um shot: vai direto nele, sem o salto por /cenas.
+      navegar(caminhoDaCena(nova));
     } catch (e) {
       setErroCena((e as Error).message);
     } finally {
@@ -185,7 +186,7 @@ export function BarraCena() {
             {video.cenas.map((c, i) => (
               <Link
                 key={c.id}
-                to={`/cenas/${c.id}`}
+                to={caminhoDaCena(c)}
                 className={`shrink-0 rounded-md px-2.5 py-0.5 text-sm transition-colors ${
                   c.id === id ? "bg-zinc-700/60 font-medium text-zinc-100" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
                 }`}

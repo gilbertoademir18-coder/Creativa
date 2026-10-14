@@ -160,6 +160,30 @@ export function Carregando() {
   );
 }
 
+/**
+ * O véu de carregamento: fica POR CIMA do que já estava na tela, em vez de
+ * apagar tudo e pôr um "Carregando...". Trocar de shot ou de cena deixa de
+ * piscar — o conteúdo antigo esmaece, o novo entra no lugar.
+ *
+ * Para a primeira carga, quando não há o que velar, vale o .
+ */
+export function VeuCarregando({ children, carregando }: { children: ReactNode; carregando: boolean }) {
+  return (
+    <div className="relative">
+      <div className={carregando ? "pointer-events-none opacity-40 transition-opacity duration-150" : "transition-opacity duration-150"} aria-busy={carregando}>
+        {children}
+      </div>
+      {carregando && (
+        <div className="absolute inset-x-0 top-0 flex justify-center pt-24">
+          <span className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/95 px-4 py-2 text-sm text-zinc-300 shadow-lg">
+            <LoaderCircle className="size-4 animate-spin" /> Carregando...
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Aviso({ children }: { children: ReactNode }) {
   return <div className="rounded-lg border border-red-900/60 bg-red-950/40 px-4 py-3 text-sm text-red-300">{children}</div>;
 }

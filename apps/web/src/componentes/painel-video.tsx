@@ -2,6 +2,7 @@ import { Clapperboard, Plus, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { videosApi } from "../api.ts";
+import { caminhoDaCena } from "../caminhos.ts";
 import { titulo } from "../rotulos.ts";
 import { ModalCena } from "../paginas/cenas.tsx";
 import type { Cena, VideoDetalhe } from "../tipos.ts";
@@ -239,7 +240,7 @@ function Cenas({ video, aoMudar, aoFechar }: { video: VideoDetalhe; aoMudar: () 
           itens={cenas}
           aoMover={mover}
           linha={(c, i) => (
-            <Link to={`/cenas/${c.id}`} onClick={aoFechar} className="flex min-w-0 flex-col gap-0.5 px-4 py-3">
+            <Link to={caminhoDaCena(c)} onClick={aoFechar} className="flex min-w-0 flex-col gap-0.5 px-4 py-3">
               <span className={`truncate ${c.nome ? "font-medium" : "text-zinc-500 italic"}`}>{c.nome ?? "sem nome"}</span>
               {(c.descricao || c.storyboard) && (
                 <span className="line-clamp-2 text-sm text-zinc-400">{c.descricao || c.storyboard}</span>
@@ -259,7 +260,7 @@ function Cenas({ video, aoMudar, aoFechar }: { video: VideoDetalhe; aoMudar: () 
         aoSalvar={(c) => {
           aoMudar();
           aoFechar();
-          navegar(`/cenas/${c.id}`);
+          navegar(caminhoDaCena(c));
         }}
       />
     </Secao>

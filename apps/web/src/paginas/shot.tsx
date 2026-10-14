@@ -4,26 +4,30 @@ import { useCenaAtual, useRecargaCena } from "../componentes/barra-cena.tsx";
 import { useProjetoAtual } from "../componentes/barra-projeto.tsx";
 import { PainelGerador } from "../componentes/gerador.tsx";
 import { PainelReferencias } from "../componentes/referencias.tsx";
-import { Aviso, Carregando } from "../componentes/ui.tsx";
+import { Aviso, Carregando, VeuCarregando } from "../componentes/ui.tsx";
 import { useCarregar } from "../hooks.ts";
 
 /*
  * A página do shot é o Gerador e as referências, e mais nada: o nome do shot,
  * os irmãos dele e "Editar shot" moram na barra da cena, logo acima.
+ *
+ * Trocar de shot mantém o anterior na tela sob o véu, em vez de apagar tudo e
+ * mostrar "Carregando...": a página não pisca mais entre um shot e outro.
  */
 export function PaginaShot() {
   const { id = "" } = useParams();
   // Editar o shot pela barra tem de aparecer aqui também.
   const recarga = useRecargaCena();
-  const { dados: s, erro } = useCarregar(() => shotsApi.ler(id), [id, recarga]);
+  const { dados: s, erro, carregando } = useCarregar(() => shotsApi.ler(id), [id, recarga]);
   useProjetoAtual(s?.cena.projeto?.id);
   useCenaAtual(s?.cena.id);
 
   if (erro) return <div className="p-8"><Aviso>{erro}</Aviso></div>;
+  // Primeira carga da sessão: não há o que velar.
   if (!s) return <Carregando />;
 
   return (
-    <>
+    <VeuCarregando carregando={carregando}>
       {/* Só a descrição: o vídeo e a cena já estão na barra, logo acima. */}
       {s.descricao && (
         <header className="border-b border-zinc-800 px-8 py-3 text-sm text-zinc-400">
@@ -35,6 +39,6 @@ export function PaginaShot() {
         <PainelGerador dono={{ assetId: null, shotId: s.id }} />
         <PainelReferencias dono={{ assetId: null, shotId: s.id }} />
       </div>
-    </>
+    </VeuCarregando>
   );
 }

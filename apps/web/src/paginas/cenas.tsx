@@ -19,6 +19,7 @@ import {
   Vazio,
 } from "../componentes/ui.tsx";
 import { useCarregar, useFiltros, type Volta } from "../hooks.ts";
+import { ultimoShot } from "../caminhos.ts";
 import { titulo } from "../rotulos.ts";
 import type { Cena } from "../tipos.ts";
 
@@ -35,12 +36,9 @@ export function IrParaCena() {
   if (erro) return <div className="p-8"><Aviso>{erro}</Aviso></div>;
   if (!cena) return <Carregando />;
 
-  const ultimo = [...cena.shots].sort(
-    (a, b) => Date.parse(b.editadoEm) - Date.parse(a.editadoEm) || a.ordem - b.ordem,
-  )[0];
-
   // Toda cena nasce com um shot; sem nenhum, só resta a lista.
-  return <Navigate to={ultimo ? `/shots/${ultimo.id}` : "/cenas"} replace />;
+  const shot = ultimoShot(cena);
+  return <Navigate to={shot ? `/shots/${shot.id}` : "/cenas"} replace />;
 }
 
 export function PaginaCenas() {

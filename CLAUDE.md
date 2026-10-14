@@ -111,6 +111,13 @@ as cenas (`SetNull`), nunca as apaga.
   em cascata, mas referência e output são Restrict — cena com geração barra
   tudo, e aí nem o vídeo é apagado. A opção nasce desabilitada nesse caso, com
   os nomes das cenas presas.
+- **Trocar de shot ou de cena não apaga a tela.** O `VeuCarregando`
+  (`componentes/ui.tsx`) deixa o conteúdo anterior no lugar, esmaecido, com uma
+  pílula "Carregando..." por cima — o `Carregando` cheio fica só para a
+  primeira carga, quando não há o que velar. E quem já tem a cena com os shots
+  (a barra, o painel do vídeo) linka **direto para o shot** com
+  `caminhoDaCena` (`caminhos.ts`), em vez de passar por `/cenas/<id>`: o desvio
+  carregava a cena só para redirecionar, e a tela piscava duas vezes.
 - **Modal que mora na barra tem de fechar quando o dono muda.** A barra fica no
   Layout e **nunca desmonta**: sair da página tira o `<dialog>` do DOM, mas o
   `aberto` continua guardado no estado, e ao voltar pela SPA o modal ressurge
