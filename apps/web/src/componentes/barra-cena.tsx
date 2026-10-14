@@ -167,9 +167,14 @@ export function BarraCena() {
   return (
     <div className="flex flex-col border-b border-zinc-800 bg-zinc-900/60">
       {/* A linha do vídeo, quando a cena está num: as cenas irmãs, sem borda
-          abaixo — vídeo e cena são um bloco só, não duas faixas. */}
+          abaixo — vídeo e cena são um bloco só, não duas faixas.
+
+          `pt-4` contra o `pb-2` de baixo porque as duas linhas não têm a
+          mesma altura: a de baixo carrega o botão "Editar shot" (36px), que
+          sobra 6px acima e abaixo do texto dela. Sem isso a folga de cima
+          ficava em 10px contra 17px da de baixo, e o bloco parecia torto. */}
       {video && (
-        <div className="flex items-center gap-4 px-8 pt-2 pb-1">
+        <div className="flex items-center gap-4 px-8 pt-4 pb-1">
           <button
             type="button"
             onClick={() => setPainelVideo(true)}
