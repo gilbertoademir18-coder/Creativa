@@ -129,12 +129,14 @@ export function CartaoAsset({ a, mostrarProjeto, volta }: { a: Asset; mostrarPro
         <span className="truncate font-medium" title={a.nome}>
           {a.nome}
         </span>
-        <div className="flex items-center justify-between gap-2 text-xs text-zinc-500">
+        {/* Em linhas separadas: o cartão tem a largura da capa, e lado a lado a
+            contagem era cortada nas capas estreitas. */}
+        <div className="flex">
           <Etiqueta>{rotuloTipoAsset(a.tipo)}</Etiqueta>
-          <span className="shrink-0">
-            {a._count.referencias} ref · {a._count.outputs} out
-          </span>
         </div>
+        <span className="text-xs text-zinc-500">
+          {a._count.referencias} ref · {a._count.outputs} out
+        </span>
         {mostrarProjeto && <span className="truncate text-xs text-zinc-500">{a.projeto?.nome ?? "Sem projeto"}</span>}
       </div>
     </Link>
