@@ -50,8 +50,9 @@ Feito em 2026-10-14: os 7 arquivos batiam com a lista (criados entre 10:21 e
 - [x] Resultado anotado no `CLAUDE.md` (seção da máquina) e no LEIA-ME do
       blockout. O patch do Qwen-Image base **serve** no Edit 2511, mas pede
       **~2,5**. O grafo do repositório já vem com 2,5.
-- [ ] Apagar `ComfyUI/output/creativa-teste/` e `input/creativa-teste/`
-      depois de o usuário ver as imagens.
+- [x] Apagadas as pastas `creativa-teste` do ComfyUI (output e input). As imagens
+      ficaram, em JPEG, na página de resultados:
+      https://claude.ai/artifact/VFTaaESHwLFiAaD2hrUByY
 
 Próximo passo possível: levar o ControlNet para o workflow "Primeiro quadro de
 shot" do Creativa (pela skill `/workflow-creativa`), com o depth como um campo
