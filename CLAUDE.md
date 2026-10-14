@@ -72,6 +72,13 @@ as cenas (`SetNull`), nunca as apaga.
 # Interface
 
 - Tela cheia, só desktop: monitores Full HD e QHD. Sem versão de celular.
+- **O fundo é preto** (desde 2026-10-14). Quem manda é um tom da paleta, no
+  `@theme` do `app.css`: `--color-zinc-950: #000000`. Então `bg-zinc-950`
+  quer dizer "o fundo" em qualquer tela — menu, barra do topo, páginas,
+  janelas e o lugar de uma imagem —, e um fundo novo se escreve assim, e não
+  com `bg-black` solto. Quem sobe um degrau é o `zinc-900` (cartões e
+  painéis); as bordas `zinc-800` separam uma área da outra. O `zinc-925` que
+  existia para o fundo das páginas foi apagado: virou preto como o resto.
 - **O estado do ComfyUI fica sempre à vista**, na barra do topo (`BarraComfy`
   em `componentes/layout.tsx`), em todas as páginas. Nenhuma tela esconde ou
   cobre essa barra. **O do banco, não**: ele é o chão de tudo, e se cair a

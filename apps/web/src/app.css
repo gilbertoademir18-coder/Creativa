@@ -1,9 +1,17 @@
 @import "tailwindcss";
 
 @theme {
-  /* Entre o zinc-900 e o zinc-950: o fundo das páginas, um degrau abaixo
-     do menu e um acima dos cartões. */
-  --color-zinc-925: #121215;
+  /*
+   * O fundo do Creativa é preto. O degrau mais escuro da paleta vira #000, e
+   * com ele todo o chão do app: o menu, a barra do topo, as páginas, as
+   * janelas e o lugar de uma imagem. Quem sobe um degrau continua no
+   * zinc-900 — são os cartões e os painéis que se destacam do preto, e as
+   * bordas (zinc-800) que separam uma área da outra.
+   *
+   * Mexer no tom da paleta, e não em cada tela, é o que mantém isso num
+   * lugar só: `bg-zinc-950` é "o fundo", onde quer que esteja escrito.
+   */
+  --color-zinc-950: #000000;
 }
 
 :root {

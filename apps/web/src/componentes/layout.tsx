@@ -75,7 +75,7 @@ export function Layout() {
         <BarraComfy />
         <BarraProjeto />
         <BarraCena />
-        <main className="min-w-0 overflow-y-auto bg-zinc-925">
+        <main className="min-w-0 overflow-y-auto bg-zinc-950">
           <Outlet />
         </main>
         <BarraFila />
