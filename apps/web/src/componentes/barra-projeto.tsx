@@ -34,6 +34,15 @@ export function useProjetoAtual(id: string | null | undefined) {
   }, [valido, setId]);
 }
 
+/**
+ * Em que projeto a página aberta está (null: em nenhum). É o mesmo que a
+ * barra mostra — e é por ele que o menu lateral mantém o projeto aceso
+ * enquanto se navega pelas seções dele.
+ */
+export function useIdDoProjetoAtual() {
+  return useContext(ProjetoAtual).id;
+}
+
 /** Os links fixos da barra, e as rotas em que cada um fica aceso. */
 function links(id: string) {
   return [

@@ -219,6 +219,11 @@ as cenas (`SetNull`), nunca as apaga.
   estrela é a página de projetos e quem mostra é o menu, então sem o contexto
   favoritar só apareceria lá depois de um F5. Sem favorito nenhum, a seção
   some: seção vazia só ocuparia a lateral.
+  **O projeto fica aceso em toda seção de dentro dele**, não só na visão
+  geral: quem sabe em que projeto a página está é o mesmo contexto que acende
+  a barra (`useIdDoProjetoAtual`), e não o endereço — `/assets?projeto=X` não
+  casa com `/projetos/X`. Aí o menu mostra dois acesos, o projeto e a seção
+  (Assets, Cenas...), que é como já era na visão geral.
 - **Projeto favorito é só destaque** (a estrela do cartão): não mexe na ordem,
   que é só do arrastar. A rota usa **SQL cru** de propósito — o `update` do
   Prisma toca o `editadoEm` (`@updatedAt`), e como a listagem desempata por

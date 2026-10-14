@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { NavLink } from "react-router";
 import { projetosApi } from "../api.ts";
+import { useIdDoProjetoAtual } from "./barra-projeto.tsx";
 import { iconeDoProjeto } from "./icones-projeto.tsx";
 import type { Projeto } from "../tipos.ts";
 
@@ -52,6 +53,13 @@ export function useAvisarFavoritos() {
  */
 export function MenuProjetosFavoritos() {
   const favoritos = useFavoritos();
+  /*
+   * Aceso enquanto a página for de dentro do projeto, e não só na visão
+   * geral dele: entrar em Assets ou Cenas pela barra é continuar no mesmo
+   * projeto, e o menu apagar ali dava a impressão de ter saído. Quem sabe
+   * disso é o mesmo contexto que acende a barra.
+   */
+  const atual = useIdDoProjetoAtual();
   if (!favoritos.length) return null;
   return (
     <div className="mb-5 flex flex-col gap-0.5">
@@ -65,7 +73,9 @@ export function MenuProjetosFavoritos() {
           title={p.nome}
           className={({ isActive }) =>
             `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
-              isActive ? "bg-violet-600/15 font-medium text-violet-200" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
+              isActive || p.id === atual
+                ? "bg-violet-600/15 font-medium text-violet-200"
+                : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
             }`
           }
         >
