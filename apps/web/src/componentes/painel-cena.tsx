@@ -1,4 +1,4 @@
-import { BookOpen, Plus, Trash } from "lucide-react";
+import { Plus, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { cenasApi } from "../api.ts";
@@ -14,10 +14,10 @@ import { AreaTexto, Aviso, Botao, Campo, Entrada, Secao } from "./ui.tsx";
  * excluir a cena.
  */
 
-export function BotaoPainelCena({
+/** Quem abre é o nome da cena na barra — não há botão próprio. */
+export function ModalPainelCena({
   cena,
   aberto,
-  aoAbrir,
   aoFechar,
   aoSalvar,
   aoMudarShots,
@@ -25,24 +25,17 @@ export function BotaoPainelCena({
 }: {
   cena: Cena | null;
   aberto: boolean;
-  aoAbrir: () => void;
   aoFechar: () => void;
   aoSalvar: (c: Cena) => void;
   aoMudarShots: () => void;
   /** É a única cena do vídeo? Então não dá para excluir. */
   unica: boolean;
 }) {
+  if (!cena) return null;
   return (
-    <>
-      <Botao icone={<BookOpen className="size-4" />} disabled={!cena} onClick={aoAbrir}>
-        Cena
-      </Botao>
-      {cena && (
-        <Modal aberto={aberto} titulo={cena.nome} largura="enorme" aoFechar={aoFechar}>
-          <PainelCena cena={cena} aoSalvar={aoSalvar} aoMudarShots={aoMudarShots} aoFechar={aoFechar} unica={unica} />
-        </Modal>
-      )}
-    </>
+    <Modal aberto={aberto} titulo={cena.nome} largura="enorme" aoFechar={aoFechar}>
+      <PainelCena cena={cena} aoSalvar={aoSalvar} aoMudarShots={aoMudarShots} aoFechar={aoFechar} unica={unica} />
+    </Modal>
   );
 }
 

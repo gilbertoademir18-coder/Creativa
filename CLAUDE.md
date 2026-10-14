@@ -109,7 +109,10 @@ as cenas (`SetNull`), nunca as apaga.
   vídeo sem cena nenhuma mostra um vazio com "Nova cena", porque devolver à
   lista pareceria que o clique falhou. Sinopse, ordem das cenas, renomear e
   excluir o vídeo moram no painel que a barra abre
-  (`componentes/painel-video.tsx`).
+  (`componentes/painel-video.tsx`). **Os painéis não têm botão próprio: quem abre é o
+  nome**, na barra — o botão ao lado do nome que já abria o mesmo painel era
+  repetição. O nome ganha sublinhado pontilhado no hover para se anunciar
+  clicável.
 - **A cena é uma barra, não uma página.** Em todo shot, embaixo da barra do
   projeto, a `BarraCena` (`componentes/barra-cena.tsx`) mostra o nome da cena e
   os shots dela. É **neutra** de propósito: a violeta é o projeto, a cinza é a

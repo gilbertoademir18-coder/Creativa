@@ -1,4 +1,4 @@
-import { Clapperboard, Film, Plus, Trash } from "lucide-react";
+import { Clapperboard, Plus, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { videosApi } from "../api.ts";
@@ -16,30 +16,23 @@ import { Aviso, Botao, Campo, Entrada, Secao, Vazio } from "./ui.tsx";
  * cena": sinopse, ordem das cenas, nome e excluir.
  */
 
-export function BotaoPainelVideo({
+/** Quem abre é o nome do vídeo na barra — não há botão próprio. */
+export function ModalPainelVideo({
   video,
   aberto,
-  aoAbrir,
   aoFechar,
   aoMudar,
 }: {
   video: VideoDetalhe | null;
   aberto: boolean;
-  aoAbrir: () => void;
   aoFechar: () => void;
   aoMudar: () => void;
 }) {
+  if (!video) return null;
   return (
-    <>
-      <Botao icone={<Film className="size-4" />} disabled={!video} onClick={aoAbrir}>
-        Vídeo
-      </Botao>
-      {video && (
-        <Modal aberto={aberto} titulo={video.nome} largura="enorme" aoFechar={aoFechar}>
-          <PainelVideo video={video} aoMudar={aoMudar} aoFechar={aoFechar} />
-        </Modal>
-      )}
-    </>
+    <Modal aberto={aberto} titulo={video.nome} largura="enorme" aoFechar={aoFechar}>
+      <PainelVideo video={video} aoMudar={aoMudar} aoFechar={aoFechar} />
+    </Modal>
   );
 }
 

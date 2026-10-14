@@ -4,8 +4,8 @@ import { Link, useLocation, useNavigate } from "react-router";
 import { cenasApi, videosApi } from "../api.ts";
 import type { Cena, VideoDetalhe } from "../tipos.ts";
 import { BotaoEditarShot } from "./editar-shot.tsx";
-import { BotaoPainelCena } from "./painel-cena.tsx";
-import { BotaoPainelVideo } from "./painel-video.tsx";
+import { ModalPainelCena } from "./painel-cena.tsx";
+import { ModalPainelVideo } from "./painel-video.tsx";
 
 /*
  * A barra do caminho até o shot: aparece embaixo da barra do projeto, em todo
@@ -161,7 +161,7 @@ export function BarraCena() {
             type="button"
             onClick={() => setPainelVideo(true)}
             title="Abrir o painel do vídeo: sinopse, ordem das cenas, renomear e excluir"
-            className="flex min-w-0 shrink-0 items-center gap-2 text-sm font-semibold text-zinc-300 hover:text-white"
+            className="flex min-w-0 shrink-0 items-center gap-2 text-sm font-semibold text-zinc-300 underline-offset-4 hover:text-white hover:underline hover:decoration-dotted"
           >
             <Film className="size-4 text-zinc-500" />
             <span className="max-w-64 truncate">{video.nome}</span>
@@ -192,13 +192,6 @@ export function BarraCena() {
             </button>
             {erroCena && <span className="shrink-0 self-center text-sm text-red-400">{erroCena}</span>}
           </nav>
-          <BotaoPainelVideo
-            video={video}
-            aberto={painelVideo}
-            aoAbrir={() => setPainelVideo(true)}
-            aoFechar={() => setPainelVideo(false)}
-            aoMudar={recarregar}
-          />
         </div>
       )}
       <div className={`flex items-center gap-4 px-8 ${video ? "pt-1 pb-2" : "py-2"}`}>
@@ -206,7 +199,7 @@ export function BarraCena() {
         type="button"
         onClick={() => setPainel(true)}
         title="Abrir o painel da cena: storyboard, ordem dos shots, renomear e excluir"
-        className="flex min-w-0 shrink-0 items-center gap-2 text-sm font-semibold text-zinc-200 hover:text-white"
+        className="flex min-w-0 shrink-0 items-center gap-2 text-sm font-semibold text-zinc-200 underline-offset-4 hover:text-white hover:underline hover:decoration-dotted"
       >
         <Clapperboard className="size-4 text-zinc-500" />
         <span className="max-w-72 truncate">{cena?.nome ?? "…"}</span>
@@ -238,17 +231,18 @@ export function BarraCena() {
         {erro && <span className="shrink-0 self-center text-sm text-red-400">{erro}</span>}
       </nav>
       <BotaoEditarShot cena={cena} shotId={shotAtivo} aoMudar={recarregar} />
-      <BotaoPainelCena
+      </div>
+      {/* Os painéis não têm botão: quem abre é o nome, na linha de cima. */}
+      <ModalPainelVideo video={video} aberto={painelVideo} aoFechar={() => setPainelVideo(false)} aoMudar={recarregar} />
+      <ModalPainelCena
         cena={cena}
         aberto={painel}
-        aoAbrir={() => setPainel(true)}
         aoFechar={() => setPainel(false)}
         aoSalvar={setCena}
         aoMudarShots={recarregar}
         // Sem vídeo, a cena não tem essa amarra; o vídeo já está carregado aqui.
         unica={!!video && video.cenas.length <= 1}
       />
-      </div>
     </div>
   );
 }
