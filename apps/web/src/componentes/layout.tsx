@@ -71,11 +71,15 @@ export function Layout() {
           ))}
         </nav>
       </aside>
-      <div className="grid min-w-0 grid-rows-[auto_auto_auto_1fr_auto] overflow-hidden">
+      {/* Coluna, e não linhas de grade: as barras aparecem e somem (a do
+          projeto fora de um projeto, a da fila sem nada rodando), e linha de
+          grade é posicional — faltando uma, a página caía numa linha `auto`
+          e a fila ia parar no meio da tela. */}
+      <div className="flex min-w-0 flex-col overflow-hidden">
         <BarraComfy />
         <BarraProjeto />
         <BarraCena />
-        <main className="min-w-0 overflow-y-auto bg-zinc-950">
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-zinc-950">
           <Outlet />
         </main>
         <BarraFila />

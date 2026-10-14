@@ -93,6 +93,20 @@ export function BarraFila() {
   const esperando = itens.length - rodando.length;
   const atual = rodando[0];
 
+  /*
+   * Sem nada rodando, nada esperando, nada de fora na placa e nada recém
+   * terminado, a barra some — ela é para acompanhar o que está em andamento,
+   * e parada era uma linha de "vazia" ocupando o pé de toda página.
+   *
+   * O "terminou há pouco" conta: é o que faz o resultado aparecer ali
+   * quando a última geração sai da fila. A barra se despede sozinha quando
+   * o mais novo deles passa dos 10 minutos (a janela que a API devolve).
+   *
+   * Some, mas continua perguntando: é a consulta de 5 em 5 segundos que a
+   * traz de volta ao primeiro "Gerar".
+   */
+  if (!itens.length && !recentes.length && !fila?.externos) return null;
+
   return (
     <div className="border-t border-zinc-800 bg-zinc-950">
       {aberta && (

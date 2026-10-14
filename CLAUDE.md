@@ -79,6 +79,16 @@ as cenas (`SetNull`), nunca as apaga.
   com `bg-black` solto. Quem sobe um degrau é o `zinc-900` (cartões e
   painéis); as bordas `zinc-800` separam uma área da outra. O `zinc-925` que
   existia para o fundo das páginas foi apagado: virou preto como o resto.
+- **A barra da fila só existe quando há o que acompanhar** (`BarraFila`):
+  sem nada rodando, nada esperando, nada de fora na placa e nada terminado
+  nos últimos 10 minutos, ela devolve `null`. O "terminou há pouco" conta de
+  propósito — é o que deixa o resultado da última geração à vista antes de a
+  barra se despedir. Escondida, ela continua perguntando de 5 em 5 segundos:
+  é essa consulta que a traz de volta ao primeiro "Gerar".
+- **A coluna da direita é `flex flex-col`, não linhas de grade.** Barra que
+  some (a do projeto fora de um projeto, a da fila parada) desalinha linha de
+  grade, que é posicional: faltando uma, a página caía numa linha `auto` e a
+  fila ia parar no meio da tela. A página é a que leva `flex-1 min-h-0`.
 - **O estado do ComfyUI fica sempre à vista**, na barra do topo (`BarraComfy`
   em `componentes/layout.tsx`), em todas as páginas. Nenhuma tela esconde ou
   cobre essa barra. **O do banco, não**: ele é o chão de tudo, e se cair a
