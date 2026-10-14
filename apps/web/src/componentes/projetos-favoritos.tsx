@@ -1,7 +1,7 @@
-import { Star } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { NavLink } from "react-router";
 import { projetosApi } from "../api.ts";
+import { iconeDoProjeto } from "./icones-projeto.tsx";
 import type { Projeto } from "../tipos.ts";
 
 /*
@@ -56,7 +56,9 @@ export function MenuProjetosFavoritos() {
   return (
     <div className="mb-5 flex flex-col gap-0.5">
       <div className="mb-1 px-3 text-xs font-medium tracking-wide text-zinc-600 uppercase">Projetos</div>
-      {favoritos.map((p) => (
+      {favoritos.map((p) => {
+        const Icone = iconeDoProjeto(p.icone);
+        return (
         <NavLink
           key={p.id}
           to={`/projetos/${p.id}`}
@@ -67,10 +69,12 @@ export function MenuProjetosFavoritos() {
             }`
           }
         >
-          <Star className="size-4 shrink-0 fill-amber-400 text-amber-400" />
+          {/* Sem cor própria: herda a do item, como todo ícone do menu. */}
+          <Icone className="size-4.5 shrink-0" />
           <span className="truncate">{p.nome}</span>
         </NavLink>
-      ))}
+        );
+      })}
     </div>
   );
 }

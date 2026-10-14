@@ -82,6 +82,9 @@ model Projeto {
   /// O número da versão atual da descrição (0: nunca foi salva). Quem salva
   /// manda o número em que se baseou: se outra versão entrou no meio, a API recusa.
   descricaoVersao Int      @default(0) @map("descricao_versao")
+  /// O ícone do projeto no menu e no cartão: a chave de um ícone do catálogo
+  /// do front (`componentes/icones-projeto.tsx`). Vazio: o padrão.
+  icone           String?
   /// Destaque na página de projetos. Não mexe na ordem — quem ordena é o
   /// arrastar; a estrela só marca.
   favorito        Boolean  @default(false)

@@ -12,7 +12,14 @@ import { Busca, contem, ErroHttp, naoEncontrado, Nome, TextoOpcional, Uuid, vali
  * e as antigas ficam para consultar e restaurar.
  */
 
-const CorpoProjeto = z.object({ nome: Nome });
+/**
+ * O ícone é a chave de um do catálogo do front; a API não conhece a lista —
+ * só guarda o texto. Chave que suma de lá vira o ícone padrão na tela.
+ */
+const CorpoProjeto = z.object({
+  nome: Nome,
+  icone: z.string().trim().max(40).nullish().transform((i) => i || null),
+});
 
 /** Markdown longo, no modelo de docs/descricao-de-projeto.md. */
 const CorpoDescricao = z.object({

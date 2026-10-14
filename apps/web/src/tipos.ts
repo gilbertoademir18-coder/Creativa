@@ -16,6 +16,8 @@ export type ProjetoRef = { id: string; nome: string };
 export type Projeto = {
   id: string;
   nome: string;
+  /** A chave do ícone escolhido (ver componentes/icones-projeto.tsx). */
+  icone: string | null;
   /** Destaque na página de projetos; não mexe na ordem. */
   favorito: boolean;
   /** Posição na página, a partir de 0. */

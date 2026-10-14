@@ -75,7 +75,7 @@ export type Dono = { assetId: string | null; shotId: string | null };
 export type DonoReferencia = Dono & { projetoId?: string | null };
 
 /** A descrição do projeto tem rota própria (`salvarDescricao`): nome e descrição se salvam separados. */
-export type ProjetoNovo = { nome: string };
+export type ProjetoNovo = { nome: string; icone: string | null };
 export type AssetNovo = { nome: string; tipo: TipoAsset; projetoId: string | null; descricao: string | null };
 /** Com vídeo, o projeto da cena é o da lista do vídeo (a API acerta). */
 export type CenaNova = { nome: string | null; projetoId: string | null; videoId: string | null; descricao: string | null; storyboard: string };

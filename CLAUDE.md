@@ -173,6 +173,12 @@ as cenas (`SetNull`), nunca as apaga.
   uma `alca` ao cartão, que a põe onde quiser; o quadro só aceita o arrasto se
   ele começou nela (um `ref` marcado no `mousedown`, conferido no `dragstart`).
   Sem isso, o cartão inteiro arrastava e um clique na estrela virava arrasto.
+- **Cada projeto escolhe o ícone** (`icone`, a chave de um catálogo fixo em
+  `componentes/icones-projeto.tsx`). Catálogo fixo e não "qualquer ícone do
+  lucide": resolver um nome em tempo de execução puxaria a biblioteca inteira
+  por um enfeite; chave que suma de lá cai no padrão, sem quebrar. No menu o
+  ícone vai **sem cor própria**, como todo ícone de lá — quem destaca o
+  favorito é estar no menu, não uma estrela amarela.
 - **Os favoritos abrem o menu lateral**, numa seção "Projetos" antes de tudo:
   um clique e você está dentro. A lista vem de `GET /projetos?favoritos=1` e
   mora num contexto (`componentes/projetos-favoritos.tsx`) — quem marca a
