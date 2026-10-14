@@ -143,6 +143,17 @@ com banco e usuário de mesmo nome: `-Banco trimly`, `-Banco nihongohub`.
 Para começar um projeto novo no mesmo molde (tray, atalhos, portas, banco e
 acesso pelo tailnet), veja [`docs/padrao-de-projeto.md`](docs/padrao-de-projeto.md).
 
+A LLM (Assistentes e Conversas) também fica aqui: o Creativa repassa o
+Ollama desta máquina em `/ollama` (só as rotas que ele usa), e no notebook
+
+```
+OLLAMA_URL="https://overdrive.tail2c882a.ts.net:8444/ollama"
+```
+
+Não dá para publicar a 11434 direto no tailnet: o Ollama recusa (403) pedido
+com Host que não é local. E não use `OLLAMA_HOST=0.0.0.0`, que abre a LLM sem
+senha para a rede de casa inteira.
+
 Duas coisas não funcionam do outro PC:
 
 - **Iniciar e Parar o ComfyUI** pela barra do topo — procuram o

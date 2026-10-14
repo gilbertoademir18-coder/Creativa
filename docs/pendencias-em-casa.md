@@ -11,44 +11,33 @@ próxima sessão não refazer.
 
 ---
 
-## 1. Limpar a sujeira do teste de blockout (rápido, faça primeiro)
+## 1. Limpar a sujeira do teste de blockout — feito
 
-- [ ] Apagar `ComfyUI\output\creativa-teste\` — **6 PNGs** (`layout-d045`,
-      `layout-d06`, `layout-d075`, `layout-d09`, `layout-d09-s987654321`,
-      `layout-d09-s555000111`).
-- [ ] Apagar `ComfyUI\input\creativa-teste\teste-layout-sala.png`.
+- [x] Apagar `ComfyUI\output\creativa-teste\` (6 PNGs).
+- [x] Apagar `ComfyUI\input\creativa-teste\teste-layout-sala.png`.
 
-**Confira:** as duas pastas somem. **Por quê:** foram testes meus de 2026-10-14,
-mandados direto ao `/prompt`. **Nada disso está no banco do Creativa** — nenhum
-`Output` ou `Execucao` referencia esses arquivos, pode apagar sem medo.
+Feito em 2026-10-14: os 7 arquivos batiam com a lista (criados entre 10:21 e
+10:24), e as duas pastas sumiram.
 
 ---
 
-## 2. Publicar o Ollama no tailnet (destrava Assistentes e Conversas)
+## 2. Ollama para o notebook — feito em casa, falta conferir no notebook
 
-Hoje o Ollama só atende em `127.0.0.1:11434` daí. De fora,
-`GET /api/assistentes/estado` responde `noAr: false`, e as páginas
-**Assistentes** e **Conversas** não funcionam em nenhuma outra máquina.
+- [x] Em casa: **não** foi pela 8447. O Ollama devolve **403** para Host que
+      não é local, e o `tailscale serve` repassa o Host do tailnet. Agora o
+      Creativa de casa repassa a LLM em `/ollama` (`rotas/ollama.ts`), e o
+      teste com o `conversar` de verdade passou, em streaming. Os detalhes
+      estão na seção "Rodar de outra máquina" do `CLAUDE.md`.
+- [ ] No notebook, pôr no `.env`:
 
-- [ ] Acrescentar a porta **8447** ao `scripts\publicar-no-tailnet.ps1`
-      (hoje ele publica só a 8444 do Creativa e a 8445 do ComfyUI), apontando
-      para a 11434 local. A 8447 está livre: 8443, 8446 e 8787 são de outros
-      projetos — confira a lista de portas no `CLAUDE.md`.
-- [ ] Rodar o script.
-- [ ] Anotar a porta nova no `CLAUDE.md` (seção de portas) e no `README.md`.
+  ```
+  OLLAMA_URL="https://overdrive.tail2c882a.ts.net:8444/ollama"
+  ASSISTENTE_MODELO="gemma4:12b-it-qat"
+  ```
 
-**Confira, de outra máquina:**
-`curl https://overdrive.tail2c882a.ts.net:8447/api/tags` tem de listar os
-modelos. Depois, no notebook, pôr no `.env`:
-
-```
-OLLAMA_URL="https://overdrive.tail2c882a.ts.net:8447"
-ASSISTENTE_MODELO="gemma4:12b-it-qat"
-```
-
-**Não use `OLLAMA_HOST=0.0.0.0`** como atalho: isso abre o Ollama para a LAN de
-casa inteira, sem autenticação. O `tailscale serve` expõe só para o tailnet, e
-com HTTPS.
+  **Confira:** `GET /api/assistentes/estado` dá `noAr: true`, e uma expansão
+  no Gerador escreve o texto aos poucos. O app de casa tem de estar rodando o
+  código novo (depois de "Reiniciar o servidor" na bandeja).
 
 ---
 

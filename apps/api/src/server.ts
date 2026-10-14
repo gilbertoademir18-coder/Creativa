@@ -28,6 +28,7 @@ const { rotasListas, rotasVideos } = await import("./rotas/videos.ts");
 const { iniciarAcompanhamento } = await import("./geracao/execucao.ts");
 const { rotasComfy } = await import("./rotas/comfyui.ts");
 const { rotasFila } = await import("./rotas/fila.ts");
+const { rotasOllama } = await import("./rotas/ollama.ts");
 const { pastaArquivos } = await import("./lib/arquivos.ts");
 
 // 3400 é a do app de verdade (a que o ícone da bandeja sobe). O `npm run dev`
@@ -106,6 +107,7 @@ await app.register(rotasListas, { prefix: "/api/listas" });
 await app.register(rotasVideos, { prefix: "/api/videos" });
 await app.register(rotasComfy, { prefix: "/api/comfyui" });
 await app.register(rotasFila, { prefix: "/api/fila" });
+await app.register(rotasOllama, { prefix: "/ollama" });
 
 /*
  * Os arquivos (referências e outputs), em /api/arquivos/<caminho relativo>.

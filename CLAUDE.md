@@ -439,7 +439,7 @@ Levantado em 2026-10-01 (placa-mãe e RAM revistas em 2026-10-09). Tudo roda aqu
 | SO | Windows 11 Home |
 | ComfyUI | 0.36.0 portátil, Python 3.13, PyTorch 2.13 + cu130, attention do PyTorch |
 | Nós extras | ComfyUI-Manager, Civicomfy. Sem `triton`: nada de SageAttention ou `torch.compile` com backend triton |
-| LLM local | Ollama 0.35 (bandeja, porta 11434), modelo `gemma4:12b-it-qat` (~7 GB) para o assistente de prompt. Modelos em `C:\IA\Ollama\models` — a variável `OLLAMA_MODELS` **e** o "Model location" do app (o do app vence) |
+| LLM local | Ollama 0.40 (bandeja, porta 11434), modelo `gemma4:12b-it-qat` (~7 GB) para o assistente de prompt. Modelos em `C:\IA\Ollama\models` — a variável `OLLAMA_MODELS` **e** o "Model location" do app (o do app vence) |
 
 O que isso muda nas escolhas:
 
@@ -551,13 +551,16 @@ em 2026-10-14. O `.env` de cada máquina é que muda — o código é o mesmo.
   `tailscale serve`). Gerar vai de ponta a ponta: a API só fala HTTP com o
   ComfyUI (`/prompt`, `/history`, `/view`, `/upload/image`), então a 3080 Ti
   de casa trabalha e o arquivo é **baixado para o `ARQUIVOS_DIR` local**.
+- **A LLM (Assistentes e Conversas) vai pelo Creativa de casa:**
+  `OLLAMA_URL="https://overdrive.tail2c882a.ts.net:8444/ollama"` no notebook.
+  O repasse é `rotas/ollama.ts` e atende só `/api/tags`, `/api/chat` e
+  `/api/generate` (quem usar rota nova do Ollama em `lib/ollama.ts` tem de
+  pôr na lista). Com o app de casa fora do ar, o notebook fica sem LLM.
+  **Não dá para publicar a 11434 com `tailscale serve`:** o Ollama ouvindo em
+  127.0.0.1 devolve 403 para Host que não é local (defesa contra DNS
+  rebinding), o `serve` repassa o Host do tailnet, e o `fetch` do Node não
+  deixa trocar o Host. Nada de `OLLAMA_HOST=0.0.0.0` (abre a LAN de casa).
 - **Não funciona, e o motivo:**
-  - **Assistentes e Conversas**: o Ollama só atende em `127.0.0.1:11434` na
-    máquina de casa — o `publicar-no-tailnet.ps1` publica a 8444 e a 8445, e
-    **não** a 11434. De fora, `/api/assistentes/estado` dá `noAr: false`.
-    Para resolver: um `tailscale serve` da 11434 em casa (a **8447** está
-    livre) e `OLLAMA_URL` apontando para ela. Prefira o `serve` a
-    `OLLAMA_HOST=0.0.0.0`, que abriria a LAN de casa sem autenticação.
   - **Os arquivos antigos** (referências e outputs) moram em `D:\Creativa` em
     casa, e o banco guarda só o caminho relativo. Resolvido pelo
     `ARQUIVOS_REMOTOS` do `.env`: o que não está na pasta local vira um
