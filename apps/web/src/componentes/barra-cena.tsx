@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { Link, useLocation, useNavigate } from "react-router";
 import { cenasApi } from "../api.ts";
 import type { Cena } from "../tipos.ts";
+import { BotaoEditarShot } from "./editar-shot.tsx";
 import { BotaoPainelCena } from "./painel-cena.tsx";
 
 /*
@@ -23,6 +24,8 @@ type Contexto = {
   setCena: (c: Cena) => void;
   /** Para a página do shot avisar que mexeu nos shots (renomeou, excluiu). */
   recarregar: () => void;
+  /** Sobe a cada recarga: a página do shot usa para se recarregar junto. */
+  recarga: number;
 };
 
 const CenaAtual = createContext<Contexto>({
@@ -31,6 +34,7 @@ const CenaAtual = createContext<Contexto>({
   cena: null,
   setCena: () => {},
   recarregar: () => {},
+  recarga: 0,
 });
 
 export function ProvedorCenaAtual({ children }: { children: ReactNode }) {
@@ -54,7 +58,7 @@ export function ProvedorCenaAtual({ children }: { children: ReactNode }) {
     };
   }, [id, recarga]);
 
-  return <CenaAtual.Provider value={{ id, setId, cena, setCena, recarregar }}>{children}</CenaAtual.Provider>;
+  return <CenaAtual.Provider value={{ id, setId, cena, setCena, recarregar, recarga }}>{children}</CenaAtual.Provider>;
 }
 
 /** Diz ao Layout de que cena é a página aberta (null/undefined: de nenhuma). */
@@ -67,10 +71,12 @@ export function useCenaAtual(id: string | null | undefined) {
   }, [valido, setId]);
 }
 
-/** Para a página do shot avisar a barra de que a lista de shots mudou. */
-export function useAvisarCena() {
-  const { recarregar } = useContext(CenaAtual);
-  return recarregar;
+/**
+ * O contador de recargas da cena. A página do shot põe na dependência do
+ * carregamento: editar o shot pela barra tem de refletir na página também.
+ */
+export function useRecargaCena() {
+  return useContext(CenaAtual).recarga;
 }
 
 /** A barra em si, desenhada pelo Layout quando a página é de um shot. */
@@ -136,6 +142,7 @@ export function BarraCena() {
         </button>
         {erro && <span className="shrink-0 self-center text-sm text-red-400">{erro}</span>}
       </nav>
+      <BotaoEditarShot cena={cena} shotId={shotAtivo} aoMudar={recarregar} />
       <BotaoPainelCena
         cena={cena}
         aberto={painel}

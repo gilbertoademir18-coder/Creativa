@@ -96,7 +96,11 @@ as cenas (`SetNull`), nunca as apaga.
   cena moram no painel que a barra abre (`componentes/painel-cena.tsx`) — que é o
   único lugar onde a ordem dos shots se muda; a barra só navega.
   A página do shot **não tem título**: o nome já está aceso na barra, e repetir
-  só empurrava o Gerador para baixo.
+  só empurrava o Gerador para baixo. "Editar shot" também é da barra, e edita o
+  aceso; o excluir do shot mora dentro desse modal, e não na barra, porque ao
+  lado do excluir da cena seria pedir para alguém apagar a coisa errada. Sobra
+  para a página o Gerador, as referências e uma faixa que só aparece se houver
+  vídeo ou descrição.
 - Filtros moram na URL (`useFiltros`), para dar para voltar, recarregar e
   mandar o link de um filtro pronto.
 - **Texto longo em markdown** usa o editor visual `EditorMarkdown`
