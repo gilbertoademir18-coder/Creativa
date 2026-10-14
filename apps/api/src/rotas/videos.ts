@@ -186,10 +186,46 @@ export async function rotasVideos(app: FastifyInstance) {
     return prisma.video.update({ where: { id }, data: validar(CorpoVideo, req.body), include: daPaginaDoVideo });
   });
 
-  /** As cenas ficam: voltam a ser "sem vídeo" do projeto. */
+  /**
+   * Por padrão as cenas ficam: voltam a ser "sem vídeo" do projeto (SetNull).
+   * Com `?cenas=apagar`, vão junto — para não deixar solta uma cena que só
+   * existia por causa deste vídeo.
+   *
+   * Os shots delas caem em cascata, mas referência e output são Restrict: se
+   * alguma cena tiver gerações ou arquivos, nada é apagado e a mensagem diz
+   * quais são. Apagar o trabalho junto com o agrupador seria perda silenciosa.
+   */
   app.delete("/:id", async (req, reply) => {
     const { id } = validar(z.object({ id: Uuid }), req.params);
-    await prisma.video.delete({ where: { id } });
+    const { cenas } = validar(z.object({ cenas: z.literal("apagar").optional() }), req.query);
+
+    await prisma.$transaction(async (tx) => {
+      if (cenas === "apagar") {
+        const doVideo = await tx.cena.findMany({
+          where: { videoId: id },
+          select: {
+            id: true,
+            nome: true,
+            shots: { select: { _count: { select: { referencias: true, outputs: true } } } },
+          },
+        });
+
+        const comConteudo = doVideo.filter((c) =>
+          c.shots.some((s) => s._count.referencias > 0 || s._count.outputs > 0),
+        );
+        if (comConteudo.length > 0) {
+          const nomes = comConteudo.map((c) => `“${c.nome}”`).join(", ");
+          throw new ErroHttp(
+            409,
+            `Estas cenas têm shots com referências ou outputs: ${nomes}. Exclua-os antes, ou apague o vídeo sem as cenas — elas ficam no projeto, sem vídeo.`,
+          );
+        }
+
+        // Em bloco: os shots caem em cascata com as cenas.
+        await tx.cena.deleteMany({ where: { videoId: id } });
+      }
+      await tx.video.delete({ where: { id } });
+    });
     return reply.code(204).send();
   });
 

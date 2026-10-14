@@ -98,6 +98,11 @@ as cenas (`SetNull`), nunca as apaga.
   apagar a última cena e tirá-la do vídeo pelo `PUT`. Só as duas pontas juntas
   seguram a regra — com uma só, bastava mover a cena para esvaziar o vídeo.
   Cena fora de vídeo não tem essa amarra.
+- **Excluir vídeo pode levar as cenas junto** (`DELETE /api/videos/:id?cenas=apagar`,
+  a opção no modal): sem isso elas voltam soltas para o projeto. Os shots caem
+  em cascata, mas referência e output são Restrict — cena com geração barra
+  tudo, e aí nem o vídeo é apagado. A opção nasce desabilitada nesse caso, com
+  os nomes das cenas presas.
 - **O caminho até o shot é um bloco só.** A `BarraCena`
   (`componentes/barra-cena.tsx`) desenha duas linhas no mesmo bloco, sem borda
   entre elas: a de cima é o **vídeo** com as cenas dele (só quando a cena está

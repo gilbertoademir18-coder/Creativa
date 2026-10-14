@@ -155,7 +155,9 @@ export const videosApi = {
   /** Cena nova no fim do vídeo, com o nome automático ("Cena N"). */
   novaCena: (videoId: string) => api<Cena>(`/videos/${videoId}/cenas`, { method: "POST", corpo: {} }),
   salvar: (id: string, v: VideoNovo) => api<VideoDetalhe>(`/videos/${id}`, { method: "PUT", corpo: v }),
-  apagar: (id: string) => api<void>(`/videos/${id}`, { method: "DELETE" }),
+  /** `comCenas`: apaga as cenas junto, em vez de soltá-las no projeto. */
+  apagar: (id: string, comCenas = false) =>
+    api<void>(`/videos/${id}${comCenas ? "?cenas=apagar" : ""}`, { method: "DELETE" }),
   reordenarCenas: (id: string, cenas: string[]) => api<Cena[]>(`/videos/${id}/cenas/ordem`, { method: "PUT", corpo: { cenas } }),
 };
 

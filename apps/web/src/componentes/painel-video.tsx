@@ -39,6 +39,13 @@ export function ModalPainelVideo({
 function PainelVideo({ video, aoMudar, aoFechar }: { video: VideoDetalhe; aoMudar: () => void; aoFechar: () => void }) {
   const navegar = useNavigate();
   const [excluindo, setExcluindo] = useState(false);
+  const [comCenas, setComCenas] = useState(false);
+
+  // O que seria apagado junto. Referência e output barram a exclusão da cena
+  // (Restrict no banco), então a opção fica fora de alcance se houver algum.
+  const shots = video.cenas.flatMap((c) => c.shots);
+  const presos = video.cenas.filter((c) => c.shots.some((s) => s._count.referencias > 0 || s._count.outputs > 0));
+  const travado = presos.length > 0;
 
   return (
     <div className="flex flex-col gap-8">
@@ -60,21 +67,56 @@ function PainelVideo({ video, aoMudar, aoFechar }: { video: VideoDetalhe; aoMuda
       <ConfirmarExclusao
         aberto={excluindo}
         titulo="Excluir vídeo"
+        // Apagar as cenas junto leva trabalho, não só o agrupador: pede a palavra.
+        exigirDigitar={comCenas ? "excluir" : undefined}
+        rotuloConfirmar={comCenas ? "Excluir vídeo e cenas" : "Excluir vídeo"}
         texto={
-          <>
-            O vídeo <b>{video.nome}</b> será excluído.
+          <div className="flex flex-col gap-4">
+            <p>
+              O vídeo <b>{video.nome}</b> será excluído.
+            </p>
             {video.cenas.length > 0 && (
               <>
-                {" "}
-                As <b>{video.cenas.length} cena(s)</b> dele <b>não</b> são apagadas: voltam para “Cenas sem vídeo” do
-                projeto, com os shots e outputs.
+                <label
+                  className={`flex gap-3 rounded-lg border p-3 ${
+                    travado
+                      ? "cursor-not-allowed border-zinc-800 opacity-60"
+                      : "cursor-pointer border-zinc-700 hover:border-zinc-600"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={comCenas}
+                    disabled={travado}
+                    onChange={(e) => setComCenas(e.target.checked)}
+                    className="mt-0.5 size-4 shrink-0 accent-red-500"
+                  />
+                  <span className="flex flex-col gap-1">
+                    <span className="font-medium text-zinc-200">
+                      Excluir também as {video.cenas.length} cena(s) e {shots.length} shot(s)
+                    </span>
+                    <span className="text-sm text-zinc-400">
+                      {travado
+                        ? `Não dá: ${presos.map((c) => `“${c.nome}”`).join(", ")} ${presos.length === 1 ? "tem" : "têm"} shots com referências ou outputs. Exclua-os antes.`
+                        : "Sem isso, as cenas voltam para “Cenas sem vídeo” do projeto."}
+                    </span>
+                  </span>
+                </label>
+                {!comCenas && !travado && (
+                  <p className="text-sm text-zinc-500">
+                    As cenas <b>não</b> serão apagadas: ficam no projeto, sem vídeo.
+                  </p>
+                )}
               </>
             )}
-          </>
+          </div>
         }
-        aoFechar={() => setExcluindo(false)}
+        aoFechar={() => {
+          setExcluindo(false);
+          setComCenas(false); // a escolha não sobrevive a um "cancelar"
+        }}
         aoConfirmar={async () => {
-          await videosApi.apagar(video.id);
+          await videosApi.apagar(video.id, comCenas);
           navegar(`/projetos/${video.lista.projeto.id}`);
         }}
       />
