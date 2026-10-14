@@ -16,6 +16,8 @@ Feito em 2026-10-14, Blender 5.2.
 | `sala_de_aula.blend` | O resultado do `sala.py`, para abrir e ajustar à mão. |
 | `sala_layout.png` | O render de aparência, 1344 × 768 — a mesma resolução do workflow. |
 | `sala_depth.png` | O mapa de profundidade, para o ControlNet depth. |
+| `cena_lia_ami.py` | A sala espelhada (janelas à esquerda, como a placa do asset Sala de Aula) com a Lia e a Ami como manequins perto da janela e duas câmeras (geral e média). Renderiza layout e depth de cada câmera. |
+| `lia_ami_medio_*.png` | O layout e o depth da câmera média, os que funcionaram. |
 | `workflow-controlnet-depth.json` | Grafo da API pronto para o `POST /prompt`, com o ControlNet ligado (strength 2,5). |
 
 ## Como rodar
@@ -76,3 +78,21 @@ O mesmo dia, denoise 1 e latente vazio, só o `sala_depth.png` como controle:
 - **3,5** — passou do ponto: a imagem sai lavada, borrada e com blocos.
 
 Cerca de 10 s por imagem, sem estourar os 12 GB.
+
+### Com personagens de referência (`cena_lia_ami.py`)
+
+O mesmo dia, o workflow do first frame inteiro (Lia = Picture 1, Ami =
+Picture 2, placa da Sala = Picture 3) com o ControlNet por cima. Resultados com
+imagens: https://claude.ai/artifact/NzWZUY5VyRLUwDWJ4eYHCu
+
+- **Plano médio (as duas grandes no quadro): funciona com 2,5** — 3 de 3
+  seeds com as duas no lugar e a Lia fiel. 1,5 inventa uma terceira menina;
+  3,0 tira a identidade.
+- **O manequim tem de ser uma silhueta inteira.** Braço solto do tronco virou
+  aba nos ombros, encosto de cadeira e até uma terceira menina. Braço colado,
+  ombro redondo e tronco afunilado (o `manequim()` atual) resolveram.
+- **Plano geral (as duas pequenas no fundo): não funciona.** A sala obedece,
+  elas vão para o centro em 9 de 9; a força que as levaria à janela desmancha
+  a imagem.
+- **A placa do cenário ajuda:** sem a Picture 3, o plano médio duplicou a Lia.
+- A Ami (Picture 2) desvia mais que a Lia (manga comprida, saia vinho).

@@ -545,6 +545,12 @@ O que isso muda nas escolhas:
   extra (~10 s por imagem). No LoRA union (`qwen_image_union_diffsynth_lora`,
   não testado), a imagem de controle entra por `VAEEncode` → `ReferenceLatent`
   no condicionamento (template `image_qwen_image_union_control_lora`).
+  **Com as referências de personagem** (o first frame inteiro, Lia/Ami/Sala,
+  `blender/sala-de-aula/cena_lia_ami.py`): **2,5 também**, mas só quando as
+  personagens são grandes no quadro (plano médio: 3 de 3). No plano geral a
+  sala obedece e elas vão para o centro (0 de 9). O manequim tem de ser
+  silhueta inteira — braço solto do tronco vira gente a mais. Mantenha a placa
+  do cenário como Picture 3 (sem ela, a Lia duplicou).
 
 # Rodar de outra máquina, com a IA em casa
 
