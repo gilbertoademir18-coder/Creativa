@@ -17,12 +17,19 @@ export function Modal({
   largura = "normal",
   aoFechar,
   children,
+  rodape,
 }: {
   aberto: boolean;
   titulo: string;
   largura?: "normal" | "larga" | "enorme";
   aoFechar: () => void;
   children: React.ReactNode;
+  /**
+   * Barra fixa no pé da janela, fora do que rola — para as ações de uma
+   * janela comprida (Salvar, Fechar) ficarem à vista em qualquer ponto do
+   * conteúdo. Janela curta não precisa: os botões vão no próprio conteúdo.
+   */
+  rodape?: React.ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
 
@@ -47,9 +54,12 @@ export function Modal({
         if (e.target === e.currentTarget) aoFechar();
       }}
       aria-label={titulo}
-      className={`m-auto max-h-[90vh] max-w-[95vw] overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-0 text-zinc-100 backdrop:bg-black/70 ${larguras[largura]}`}
+      // `open:flex`, nunca `flex` solto: o navegador esconde diálogo fechado
+      // com `display: none`, e um `display` nosso ganha dele — todas as
+      // janelas fechadas da página apareceriam de uma vez.
+      className={`m-auto max-h-[90vh] max-w-[95vw] flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-0 text-zinc-100 backdrop:bg-black/70 open:flex ${larguras[largura]}`}
     >
-      <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-5 py-3.5">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-800 px-5 py-3.5">
         <h2 className="font-semibold">{titulo}</h2>
         <button
           type="button"
@@ -61,10 +71,20 @@ export function Modal({
         </button>
       </div>
       {/*
+        O respiro é do conteúdo, não de quem rola: padding no container que
+        rola encolhe a área onde um filho `sticky` pode encostar (20px de
+        cada lado), e o texto passava por essas duas faixas — por cima da
+        barra do editor e por baixo do rodapé.
+
         O conteúdo só existe enquanto a janela está aberta: toda abertura
         começa limpa, sem o estado da edição anterior.
       */}
-      <div className="max-h-[calc(90vh-3.5rem)] overflow-y-auto p-5">{aberto && children}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto">{aberto && <div className="p-5">{children}</div>}</div>
+      {/*
+        O rodapé fica FORA do que rola: assim ele está sempre à vista sem
+        depender de `sticky`, e nada do texto pode aparecer embaixo dele.
+      */}
+      {rodape && <div className="shrink-0 border-t border-zinc-800 px-5 py-3">{aberto && rodape}</div>}
     </dialog>
   );
 }

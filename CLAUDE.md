@@ -97,9 +97,20 @@ as cenas (`SetNull`), nunca as apaga.
   `/api/banco/estado` fica: serve para conferir o banco sem escrever nele.
 - **Ações de uma janela ou painel que rola ficam sempre à vista:** barra de
   ferramentas grudada em cima, botões (Salvar, Fechar, Excluir, abrir em aba
-  nova) grudados embaixo — `sticky` com fundo opaco e uma linha separando,
-  como no rodapé da `ModalDocumento` e no painel do output. Cuidado com
+  nova) embaixo, com fundo opaco e uma linha separando. Na `Modal`, o lugar
+  deles é a prop **`rodape`**, que fica **fora** do que rola — sem `sticky`,
+  sem como vazar. `sticky` só onde não dá para sair do fluxo (a barra do
+  editor, o rodapé do painel do output).
+- **Container que rola não leva padding vertical.** O padding dele encolhe a
+  área onde um filho `sticky` pode encostar: com `p-5`, a barra do editor
+  parava 20px abaixo do topo e o rodapé 20px acima do fim, e o texto passava
+  por essas duas faixas (era o vazamento de 2026-10-14). O respiro é de uma
+  div por dentro; quem rola fica sem padding. Cuidado também com
   `overflow-hidden` entre o `sticky` e quem rola: ele prende o `sticky`.
+- **`display` na `Modal` vai sempre com a variante `open:`** (`open:flex`,
+  nunca `flex` solto). O navegador esconde `<dialog>` fechado com um
+  `display: none` de folha de estilo do usuário-agente, e qualquer `display`
+  nosso ganha dele — todas as janelas fechadas da página aparecem de uma vez.
 - **Outputs favoritos ficam numa seção própria, em cima** ("Favoritos" e
   "Os outros"), no Gerador e na página Outputs: `GruposDeOutputs`
   (`componentes/outputs.tsx`). A API já manda os favoritos primeiro, então o

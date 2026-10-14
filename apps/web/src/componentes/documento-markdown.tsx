@@ -153,12 +153,35 @@ export function ModalDocumento({
         : "Tudo salvo";
 
   return (
-    <Modal aberto={aberto} titulo={titulo} largura="enorme" aoFechar={fechar}>
+    <Modal
+      aberto={aberto}
+      titulo={titulo}
+      largura="enorme"
+      aoFechar={fechar}
+      rodape={
+        <div className="flex flex-col gap-3">
+          {erro && <Aviso>{erro}</Aviso>}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-zinc-500">{situacao}</span>
+            <div className="flex gap-2">
+              <Botao variante="fantasma" onClick={fechar}>
+                Fechar
+              </Botao>
+              <Botao variante="primario" carregando={salvando} disabled={!alterado} onClick={salvar}>
+                Salvar
+              </Botao>
+            </div>
+          </div>
+        </div>
+      }
+    >
       <div className="flex flex-col gap-4">
         <div className={historico ? "grid grid-cols-[20rem_minmax(0,1fr)] gap-4" : ""}>
           {historico && (
             // Sticky e com altura da janela: o editor rola o corpo da modal, a lista rola sozinha.
-            <aside className="sticky top-0 flex max-h-[calc(90vh-10rem)] flex-col self-start overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
+            // `top-5` e não `top-0`: o respiro agora é do conteúdo, e sem isso
+            // ela encostaria no título ao rolar.
+            <aside className="sticky top-5 flex max-h-[calc(90vh-10rem)] flex-col self-start overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
               <h3 className="border-b border-zinc-800 px-4 py-2.5 text-xs font-semibold tracking-wide text-zinc-400 uppercase">
                 Versões
               </h3>
@@ -214,25 +237,6 @@ export function ModalDocumento({
               <Suspense fallback={<Carregando />}>
                 <EditorMarkdown key={chaveEditor} valor={texto} aoMudar={mudou} placeholder={placeholder} />
               </Suspense>
-            </div>
-          </div>
-        </div>
-        {/*
-          O rodapé gruda embaixo de quem rola (o corpo da modal), como a barra
-          do editor gruda em cima: Salvar e Fechar ficam à vista em qualquer
-          ponto do texto. As margens negativas cobrem o padding da modal.
-        */}
-        <div className="sticky bottom-0 z-30 -mx-5 -mb-5 flex flex-col gap-3 border-t border-zinc-800 bg-zinc-950 px-5 py-3">
-          {erro && <Aviso>{erro}</Aviso>}
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs text-zinc-500">{situacao}</span>
-            <div className="flex gap-2">
-              <Botao variante="fantasma" onClick={fechar}>
-                Fechar
-              </Botao>
-              <Botao variante="primario" carregando={salvando} disabled={!alterado} onClick={salvar}>
-                Salvar
-              </Botao>
             </div>
           </div>
         </div>
