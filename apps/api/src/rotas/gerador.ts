@@ -3,6 +3,7 @@ import { z } from "zod";
 import { catalogoPara, conferir, type DonoGeracao, lerCampos, seedDe } from "../geracao/catalogo.ts";
 import { cancelarExecucao, executar, MAX_POR_ENVIO, progressoDe } from "../geracao/execucao.ts";
 import { imagensDisponiveis } from "../geracao/imagens.ts";
+import { CHAVE_UNICA, encaixarNoPipeline, pipelineDe, RascunhoEtapa, type PipelineResolvido } from "../geracao/pipelines.ts";
 import { Prisma } from "../generated/prisma/client.ts";
 import { prisma } from "../lib/prisma.ts";
 import { ErroHttp, Uuid, UuidOpcional, validar } from "../lib/validacao.ts";
@@ -26,6 +27,8 @@ const Pedido = z
     tipo: z.string().min(1, "escolha o tipo de geração"),
     workflow: z.string().min(1, "escolha o workflow"),
     parametros: z.record(z.string(), z.unknown()).default({}),
+    /** Em que etapa do pipeline isto está sendo gerado. Ausente: a etapa única. */
+    etapa: z.string().max(80).default(CHAVE_UNICA),
     quantidade: z.number().int().min(1).max(MAX_POR_ENVIO, `no máximo ${MAX_POR_ENVIO} de uma vez`).default(1),
     /** O assistente que expandiu o prompt, e a ideia de origem — vão para cada output. */
     assistenteId: UuidOpcional,
@@ -34,21 +37,19 @@ const Pedido = z
   .refine((d) => !!d.assetId !== !!d.shotId, "o Gerador é de um asset ou de um shot");
 
 /**
- * Onde o Gerador de um dono parou. O assistente vai pelo nome (como nos
- * outputs): id muda se ele for recriado, o nome é o que a pessoa reconhece.
- * Nada aqui é conferido contra o catálogo — a tela acerta ao abrir (tipo ou
- * workflow que sumiu cai para o primeiro).
+ * O rascunho de uma etapa. O assistente vai pelo nome (como nos outputs): id
+ * muda se ele for recriado, o nome é o que a pessoa reconhece. Nada aqui é
+ * conferido contra o catálogo — a tela acerta ao abrir (tipo ou workflow que
+ * sumiu cai para o primeiro).
  */
-const Rascunho = z.object({
-  tipo: z.string().max(200),
-  workflow: z.string().max(200),
-  valores: z.record(z.string(), z.unknown()).default({}),
-  assistente: z.string().max(200).nullish().transform((t) => t || null),
-  ideia: z.string().max(10_000).nullish().transform((t) => t || null),
-});
-
 const PedidoRascunho = z
-  .object({ assetId: UuidOpcional, shotId: UuidOpcional, rascunho: Rascunho.nullable() })
+  .object({
+    assetId: UuidOpcional,
+    shotId: UuidOpcional,
+    /** Qual etapa do pipeline. Ausente: a etapa única. */
+    etapa: z.string().max(80).default(CHAVE_UNICA),
+    rascunho: RascunhoEtapa.nullable(),
+  })
   .refine((d) => !!d.assetId !== !!d.shotId, "o Gerador é de um asset ou de um shot");
 
 /** O dono como o catálogo enxerga: o tipo do asset importa (só Cenário tem Placa...). */
@@ -60,6 +61,28 @@ async function donoDe(assetId: string | null, shotId: string | null): Promise<Do
   }
   if (!(await prisma.shot.findUnique({ where: { id: shotId! }, select: { id: true } }))) throw new ErroHttp(400, "Shot não encontrado.");
   return { shot: true };
+}
+
+/** O rascunho como está no banco, sem interpretar o formato. */
+async function rascunhoCru(assetId: string | null, shotId: string | null): Promise<unknown> {
+  const d = assetId
+    ? await prisma.asset.findUnique({ where: { id: assetId }, select: { rascunhoGerador: true } })
+    : await prisma.shot.findUnique({ where: { id: shotId! }, select: { rascunhoGerador: true } });
+  if (!d) throw new ErroHttp(404, assetId ? "Asset não encontrado." : "Shot não encontrado.");
+  return d.rascunhoGerador ?? null;
+}
+
+/**
+ * A etapa existe no pipeline do dono, e o tipo pedido é o dela. Sem isso,
+ * uma tela desatualizada gravaria outputs numa etapa que não existe (e eles
+ * desapareceriam da galeria) ou numa etapa que não é daquele tipo.
+ */
+function conferirEtapa(pipeline: PipelineResolvido, chave: string, tipo: string) {
+  const etapa = pipeline.etapas.find((e) => e.chave === chave);
+  if (!etapa) throw new ErroHttp(400, `A etapa “${chave}” não é do pipeline ${pipeline.nome}. Recarregue a página.`);
+  if (etapa.tipoGeracao && etapa.tipoGeracao !== tipo) {
+    throw new ErroHttp(400, `A etapa “${etapa.nome}” gera ${etapa.tipoGeracao}, não ${tipo}. Recarregue a página.`);
+  }
 }
 
 /** Quanto tempo uma execução que falhou continua aparecendo no Gerador. */
@@ -84,29 +107,40 @@ export async function rotasGerador(app: FastifyInstance) {
     return imagensDisponiveis({ assetId: asset, shotId: shot });
   });
 
-  /** Onde o Gerador do dono parou (null: nunca foi salvo). */
-  app.get("/rascunho", async (req) => {
+  /**
+   * As etapas do Gerador do dono e onde cada uma parou. Vêm juntas de
+   * propósito: o rascunho só se encaixa nas etapas do pipeline que vale
+   * agora, e em dois pedidos a tela teria de esperar os dois para decidir.
+   */
+  app.get("/etapas", async (req) => {
     const { asset, shot } = validar(Dono, req.query);
-    const d = asset
-      ? await prisma.asset.findUnique({ where: { id: asset }, select: { rascunhoGerador: true } })
-      : await prisma.shot.findUnique({ where: { id: shot! }, select: { rascunhoGerador: true } });
-    if (!d) throw new ErroHttp(404, asset ? "Asset não encontrado." : "Shot não encontrado.");
-    return { rascunho: d.rascunhoGerador ?? null };
+    const pipeline = await pipelineDe({ assetId: asset, shotId: shot });
+    return { pipeline, rascunhos: encaixarNoPipeline(await rascunhoCru(asset, shot), pipeline) };
   });
 
-  /** Guarda onde o Gerador parou. A tela chama sozinha, enquanto se mexe no formulário. */
+  /**
+   * Guarda onde o Gerador de uma etapa parou. A tela chama sozinha, enquanto
+   * se mexe no formulário. Grava só a etapa pedida: as outras ficam como
+   * estão, sem a tela precisar devolver o conjunto inteiro.
+   */
   app.put("/rascunho", { bodyLimit: 2 * 1024 * 1024 }, async (req) => {
-    const { assetId, shotId, rascunho } = validar(PedidoRascunho, req.body);
-    const data = { rascunhoGerador: rascunho ? (rascunho as Prisma.InputJsonObject) : Prisma.DbNull };
+    const { assetId, shotId, etapa, rascunho } = validar(PedidoRascunho, req.body);
+    const pipeline = await pipelineDe({ assetId, shotId });
+    const etapas = encaixarNoPipeline(await rascunhoCru(assetId, shotId), pipeline);
+    if (rascunho) etapas[etapa] = rascunho;
+    else delete etapas[etapa];
+    const vazio = Object.keys(etapas).length === 0;
+    const data = { rascunhoGerador: vazio ? Prisma.DbNull : ({ etapas } as Prisma.InputJsonObject) };
     if (assetId) await prisma.asset.update({ where: { id: assetId }, data, select: { id: true } });
     else await prisma.shot.update({ where: { id: shotId! }, data, select: { id: true } });
-    return { rascunho };
+    return { rascunhos: etapas };
   });
 
   /** "Gerar": confere o pedido contra o catálogo e manda `quantidade` execuções ao ComfyUI. */
   app.post("/executar", async (req) => {
     const { assistenteId, ...p } = validar(Pedido, req.body);
     const w = await conferir(p.tipo, p.workflow, await donoDe(p.assetId, p.shotId));
+    conferirEtapa(await pipelineDe(p), p.etapa, p.tipo);
     // O nome, copiado: o assistente pode mudar ou sumir depois.
     const assistente = assistenteId
       ? ((await prisma.assistente.findUnique({ where: { id: assistenteId }, select: { nome: true } }))?.nome ?? null)
@@ -135,6 +169,7 @@ export async function rotasGerador(app: FastifyInstance) {
         id: true,
         status: true,
         workflow: true,
+        etapa: true,
         parametros: true,
         promptIdComfy: true,
         erro: true,

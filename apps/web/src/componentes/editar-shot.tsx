@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import { shotsApi } from "../api.ts";
 import { paraCampo, titulo } from "../rotulos.ts";
 import type { Cena, ShotResumo } from "../tipos.ts";
+import { SeletorPipeline } from "./etapas.tsx";
 import { ConfirmarExclusao, Modal } from "./modal.tsx";
 import { AreaTexto, Aviso, Botao, Campo, Entrada } from "./ui.tsx";
 
@@ -43,6 +44,7 @@ export function BotaoEditarShot({
         <Modal aberto={aberto} titulo={`Editar ${titulo("Shot", shot.nome, numero)}`} aoFechar={() => setAberto(false)}>
           <FormShot
             shot={shot}
+            pipelineDoProjeto={cena?.projeto?.pipelinePadrao ?? null}
             unico={(cena?.shots.length ?? 0) <= 1}
             cenaId={cena!.id}
             numero={numero}
@@ -59,12 +61,15 @@ export function BotaoEditarShot({
 
 function FormShot({
   shot,
+  pipelineDoProjeto,
   unico,
   cenaId,
   numero,
   aoPronto,
 }: {
   shot: ShotResumo;
+  /** O padrão do projeto, para o rótulo do "herdar". */
+  pipelineDoProjeto: string | null;
   unico: boolean;
   cenaId: string;
   /** A posição do shot na cena: é o que identifica quando não há nome. */
@@ -74,13 +79,15 @@ function FormShot({
   const navegar = useNavigate();
   const [nome, setNome] = useState(paraCampo(shot.nome));
   const [descricao, setDescricao] = useState(shot.descricao ?? "");
+  const [pipeline, setPipeline] = useState(shot.pipeline);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   useEffect(() => {
     setNome(paraCampo(shot.nome));
     setDescricao(shot.descricao ?? "");
-  }, [shot.id, shot.nome, shot.descricao]);
+    setPipeline(shot.pipeline);
+  }, [shot.id, shot.nome, shot.descricao, shot.pipeline]);
 
   return (
     <form
@@ -90,7 +97,7 @@ function FormShot({
         setSalvando(true);
         setErro(null);
         try {
-          await shotsApi.salvar(shot.id, { nome: nome.trim() || null, descricao: descricao || null });
+          await shotsApi.salvar(shot.id, { nome: nome.trim() || null, descricao: descricao || null, pipeline });
           aoPronto();
         } catch (er) {
           setErro((er as Error).message);
@@ -103,6 +110,9 @@ function FormShot({
       </Campo>
       <Campo rotulo="Descrição">
         <AreaTexto value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={5} placeholder="Enquadramento, ação, câmera..." />
+      </Campo>
+      <Campo rotulo="Pipeline" dica="As etapas do Gerador deste shot — o primeiro quadro e o vídeo, por exemplo.">
+        <SeletorPipeline valor={pipeline} aoMudar={setPipeline} heranca={{ chave: pipelineDoProjeto }} />
       </Campo>
       {erro && <Aviso>{erro}</Aviso>}
       <div className="flex items-center justify-between gap-4 border-t border-zinc-800 pt-4">

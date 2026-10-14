@@ -4,6 +4,8 @@ import type {
   Assistente,
   AssistenteDisponivel,
   EstadoLlm,
+  EtapasDoGerador,
+  Pipeline,
   PreviaAssistente,
   EstadoTeste,
   TipoGeracao,
@@ -75,18 +77,24 @@ export type Dono = { assetId: string | null; shotId: string | null };
 export type DonoReferencia = Dono & { projetoId?: string | null };
 
 /** A descrição do projeto tem rota própria (`salvarDescricao`): nome e descrição se salvam separados. */
-export type ProjetoNovo = { nome: string; icone: string | null };
+export type ProjetoNovo = { nome: string; icone: string | null; pipelinePadrao: string | null };
 export type AssetNovo = { nome: string; tipo: TipoAsset; projetoId: string | null; descricao: string | null };
 /** Com vídeo, o projeto da cena é o da lista do vídeo (a API acerta). */
 export type CenaNova = { nome: string | null; projetoId: string | null; videoId: string | null; descricao: string | null; storyboard: string };
 export type ListaNova = { nome: string; descricao: string | null };
 export type VideoNovo = { nome: string; descricao: string | null };
-export type ShotNovo = { nome: string | null; descricao: string | null };
+/**
+ * Quem salva um shot manda o `pipeline` junto (mesmo só mudando o nome):
+ * sem ele, o shot volta a herdar o padrão do projeto.
+ */
+export type ShotNovo = { nome: string | null; descricao: string | null; pipeline: string | null };
 /** O que o Gerador manda ao clicar em "Gerar". */
 export type Pedido = Dono & {
   tipo: string;
   workflow: string;
   parametros: Record<string, unknown>;
+  /** Em que etapa do pipeline isto está sendo gerado. */
+  etapa: string;
   quantidade: number;
   /** O assistente que expandiu o prompt, e a ideia de origem — ficam gravados em cada output. */
   assistenteId: string | null;
@@ -219,14 +227,26 @@ export const geradorApi = {
   /** As imagens que os campos de imagem podem usar: as do projeto do dono. Sem dono (o "Testar"), todas. */
   imagens: (dono: Dono | null) =>
     api<ImagemDisponivel[]>(`/gerador/imagens${consulta({ asset: dono?.assetId, shot: dono?.shotId })}`),
-  /** Onde o Gerador do dono parou (null: nunca foi salvo). */
-  rascunho: (dono: Dono) =>
-    api<{ rascunho: RascunhoGerador | null }>(`/gerador/rascunho${consulta({ asset: dono.assetId, shot: dono.shotId })}`),
-  salvarRascunho: (dono: Dono, rascunho: RascunhoGerador | null) =>
-    api<{ rascunho: RascunhoGerador | null }>("/gerador/rascunho", { method: "PUT", corpo: { ...dono, rascunho } }),
+  /** As etapas do Gerador do dono e onde cada uma parou. */
+  etapas: (dono: Dono) => api<EtapasDoGerador>(`/gerador/etapas${consulta({ asset: dono.assetId, shot: dono.shotId })}`),
+  /** Guarda onde uma etapa parou; as outras ficam como estão. */
+  salvarRascunho: (dono: Dono, etapa: string, rascunho: RascunhoGerador | null) =>
+    api<{ rascunhos: Record<string, RascunhoGerador> }>("/gerador/rascunho", { method: "PUT", corpo: { ...dono, etapa, rascunho } }),
 };
 
 export type TipoGeracaoNovo = Pick<TipoGeracao, "nome" | "descricao" | "saida" | "tiposAsset" | "shot">;
+
+export type PipelineNovo = Pick<Pipeline, "nome" | "descricao" | "etapas">;
+
+export const pipelinesApi = {
+  listar: () => api<Pipeline[]>("/pipelines"),
+  /** Os campos de imagem de cada tipo de geração, pela chave do tipo. */
+  camposDeImagem: () => api<Record<string, { chave: string; rotulo: string }[]>>("/pipelines/campos-de-imagem"),
+  criar: (p: PipelineNovo) => api<Pipeline>("/pipelines", { method: "POST", corpo: p }),
+  /** Devolve as etapas que saíram do pipeline, para avisar quem salvou. */
+  salvar: (id: string, p: PipelineNovo) => api<Pipeline & { etapasRemovidas: string[] }>(`/pipelines/${id}`, { method: "PUT", corpo: p }),
+  apagar: (id: string) => api<void>(`/pipelines/${id}`, { method: "DELETE" }),
+};
 
 export const tiposGeracaoApi = {
   listar: () => api<TipoGeracao[]>("/tipos-geracao"),

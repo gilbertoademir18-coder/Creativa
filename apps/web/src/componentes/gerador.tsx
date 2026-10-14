@@ -1,11 +1,12 @@
-import { LoaderCircle, Play, Sparkles, Square, X } from "lucide-react";
+import { ArrowDownToLine, LoaderCircle, Play, Sparkles, Square, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { assistentesApi, geradorApi, outputsApi, type Dono } from "../api.ts";
 import { useCarregar } from "../hooks.ts";
-import type { Execucao, OutputDetalhe, RascunhoGerador, TipoCatalogo } from "../tipos.ts";
+import type { Execucao, OutputDetalhe, PipelineResolvido, RascunhoGerador, TipoCatalogo } from "../tipos.ts";
 import { BarraAssistente, limparTextoLlm, SeletorAssistente } from "./assistente-prompt.tsx";
 import { CampoDinamico, SeletorQuantidade, valoresPara } from "./campos-workflow.tsx";
+import { AbasEtapas, alimentaOutra, CHAVE_UNICA, entradasDe, etapaDe, PIPELINE_UNICO, temEtapas } from "./etapas.tsx";
 import { CartaoOutput, GruposDeOutputs, VisorOutputs } from "./outputs.tsx";
 import { Aviso, Botao, Campo, Carregando, Seletor, Vazio } from "./ui.tsx";
 
@@ -13,6 +14,12 @@ import { Aviso, Botao, Campo, Carregando, Seletor, Vazio } from "./ui.tsx";
  * O Gerador de um asset ou shot. Não é um cadastro: é o formulário do
  * catálogo (tipo de geração → workflow → campos) e o botão "Gerar". Cada
  * imagem que sai é um Output do dono, com tudo o que foi usado para gerá-la.
+ *
+ * O shot pode ter ETAPAS (o pipeline dele, ex.: "First frame + vídeo"): aí o
+ * Gerador é um por etapa — formulário, galeria e imagem escolhida de cada
+ * uma —, e a aba de cima troca entre elas. Com uma etapa só (a geração
+ * única, de quem não escolheu pipeline) nada disso aparece: é a tela de
+ * sempre. Ver `componentes/etapas.tsx`.
  *
  * O tipo e o workflow vêm escolhidos pelo dono (o catálogo só oferece o que
  * serve para ele — Cenário tem Placa de cenário...). O formulário não se
@@ -54,7 +61,24 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     [dono.assetId, dono.shotId],
   );
   const execucoes = useCarregar(() => geradorApi.execucoes(dono), [dono.assetId, dono.shotId]);
-  const salvo = useCarregar(() => geradorApi.rascunho(dono), [dono.assetId, dono.shotId]);
+  const salvo = useCarregar(() => geradorApi.etapas(dono), [dono.assetId, dono.shotId]);
+
+  /*
+   * O pipeline e os rascunhos (um por etapa) viram estado: o rascunho da
+   * etapa em que não se está precisa ficar guardado aqui, senão trocar de
+   * aba e voltar perderia o que estava no formulário.
+   */
+  const [pipeline, setPipeline] = useState<PipelineResolvido | null>(null);
+  const [rascunhos, setRascunhos] = useState<Record<string, RascunhoGerador> | null>(null);
+  const [etapaAtual, setEtapaAtual] = useState(CHAVE_UNICA);
+  useEffect(() => {
+    // Falhar ao ler as etapas não tranca o Gerador: cai na geração única.
+    const r = salvo.dados ?? (salvo.erro ? { pipeline: PIPELINE_UNICO, rascunhos: {} } : null);
+    if (!r) return;
+    setPipeline(r.pipeline);
+    setRascunhos(r.rascunhos);
+    setEtapaAtual((a) => (r.pipeline.etapas.some((e) => e.chave === a) ? a : r.pipeline.etapas[0]!.chave));
+  }, [salvo.dados, salvo.erro]);
 
   const [config, setConfig] = useState<Config | null>(null);
   const [quantidade, setQuantidade] = useState(1);
@@ -65,8 +89,42 @@ export function PainelGerador({ dono }: { dono: Dono }) {
   const [params, setParams] = useSearchParams();
 
   const tipos = catalogo.dados ?? [];
+  const etapa = pipeline?.etapas.find((e) => e.chave === etapaAtual) ?? null;
+  /** O que esta etapa gera: o tipo dela, ou qualquer um (na geração única). */
+  const tiposDaEtapa = etapa?.tipoGeracao ? tipos.filter((t) => t.chave === etapa.tipoGeracao) : tipos;
   const tipoAtual = tipos.find((t) => t.chave === config?.tipo);
   const wfAtual = tipoAtual?.workflows.find((w) => w.chave === config?.workflow);
+
+  /** A etapa de um output ou execução deste dono. Sem pipeline ainda, a única. */
+  const etapaDisto = (x: { etapa: string | null; tipoGeracao: string }) => (pipeline ? etapaDe(x, pipeline) : CHAVE_UNICA);
+  /** O tipo de geração de uma execução, que guarda só o workflow. */
+  const tipoDoWorkflow = (w: string) => tipos.find((t) => t.workflows.some((x) => x.chave === w))?.chave ?? "";
+  /** O output aprovado desta etapa, se alguma adiante come a imagem dela. */
+  const escolhido = rascunhos?.[etapaAtual]?.escolhido ?? null;
+  const podeEscolher = !!pipeline && alimentaOutra(pipeline, etapaAtual);
+
+  /*
+   * As imagens que vêm de outra etapa (o `entradas` do pipeline): o campo
+   * abre com o output escolhido lá. Só preenche campo vazio — trocar a
+   * imagem à mão continua valendo, e quem muda a escolha da etapa anterior
+   * limpa este campo para ele pegar a nova (ver `escolher`).
+   */
+  function comEntradas(c: Config): Config {
+    if (!pipeline || !rascunhos) return c;
+    const valores = { ...c.valores };
+    let mudou = false;
+    for (const en of entradasDe(pipeline, etapaAtual)) {
+      const fonte = rascunhos[en.daEtapa]?.escolhido;
+      if (fonte && en.campo in valores && valores[en.campo] == null) {
+        valores[en.campo] = { origem: "output", id: fonte };
+        mudou = true;
+      }
+    }
+    return mudou ? { ...c, valores } : c;
+  }
+
+  /** Põe um formulário na tela, já com as imagens que vêm de outra etapa. */
+  const porNaTela = (c: Config) => setConfig(comEntradas(c));
 
   /*
    * O assistente de prompt: escolhido por workflow (só aparecem os que valem
@@ -164,28 +222,40 @@ export function PainelGerador({ dono }: { dono: Dono }) {
 
   /*
    * O formulário começa do rascunho salvo: é continuar de onde parou. Sem
-   * rascunho, das configurações do output mais recente do dono (seed
+   * rascunho, das configurações do output mais recente da etapa (seed
    * aleatória de novo); sem output, dos padrões do primeiro tipo do catálogo.
    * Com `?usar=<output>` na URL (vindo da galeria geral), as daquele output.
+   *
+   * Vale por etapa: entrar numa etapa é como abrir outro Gerador.
    */
   const iniciado = useRef<string | null>(null);
-  const chaveDono = dono.assetId ?? dono.shotId ?? "";
+  const chaveDono = `${dono.assetId ?? dono.shotId ?? ""}|${etapaAtual}`;
   /** O último rascunho que está no banco, para não salvar o mesmo de novo. */
   const ultimoSalvo = useRef<string | null>(null);
   /** O rascunho esperando os 800 ms: sair do dono antes disso salva na hora (no dono certo). */
   const pendente = useRef<(() => void) | null>(null);
   useEffect(() => () => pendente.current?.(), []);
+  const vazio = () => porNaTela(ajustar({ tipo: "", workflow: "", valores: {} }, tiposDaEtapa));
   useEffect(() => {
-    if (!catalogo.dados || !outputs.dados || (!salvo.dados && !salvo.erro) || iniciado.current === chaveDono) return;
-    iniciado.current = chaveDono;
-    const r = salvo.dados?.rascunho;
-    ultimoSalvo.current = r ? jsonEstavel(r) : null;
+    if (!catalogo.dados || !outputs.dados || !pipeline || !rascunhos || iniciado.current === chaveDono) return;
+    const r = rascunhos[etapaAtual];
     const usar = params.get("usar");
+    /*
+     * Um output de outro tipo vindo da galeria geral pertence a outra etapa:
+     * vai para ela, em vez de trocar o tipo (que a etapa fixa) na marra.
+     */
+    if (usar && !r) {
+      const daOutra = outputs.dados.find((o) => o.id === usar);
+      const outra = daOutra && etapaDisto(daOutra);
+      if (outra && outra !== etapaAtual) return setEtapaAtual(outra);
+    }
+    iniciado.current = chaveDono;
+    ultimoSalvo.current = r ? jsonEstavel(r) : null;
     if (usar) {
       outputsApi
         .ler(usar)
         .then((o) => aplicar(o, false))
-        .catch(() => setConfig(ajustar({ tipo: "", workflow: "", valores: {} }, catalogo.dados!)));
+        .catch(vazio);
       setParams((p) => {
         const novo = new URLSearchParams(p);
         novo.delete("usar");
@@ -194,27 +264,26 @@ export function PainelGerador({ dono }: { dono: Dono }) {
       return;
     }
     if (r) {
-      setConfig(ajustar({ tipo: r.tipo, workflow: r.workflow, valores: r.valores }, catalogo.dados));
+      porNaTela(ajustar({ tipo: r.tipo, workflow: r.workflow, valores: r.valores }, tiposDaEtapa));
       setIdeia(r.ideia ?? "");
       // Com ideia salva, o prompt provavelmente saiu dela (o rascunho não guarda se foi editado à mão depois).
       setIdeiaDoPrompt(r.ideia);
       assistenteDesejado.current = r.assistente;
       return;
     }
-    // O mais recente pela data: a lista vem com os favoritos na frente.
-    const ultimo = outputs.dados.reduce<(typeof outputs.dados)[number] | undefined>(
-      (mais, o) => (!mais || o.criadoEm > mais.criadoEm ? o : mais),
-      undefined,
-    );
+    // O mais recente desta etapa, pela data: a lista vem com os favoritos na frente.
+    const ultimo = outputs.dados
+      .filter((o) => etapaDisto(o) === etapaAtual)
+      .reduce<(typeof outputs.dados)[number] | undefined>((mais, o) => (!mais || o.criadoEm > mais.criadoEm ? o : mais), undefined);
     if (ultimo) {
       outputsApi
         .ler(ultimo.id)
         .then((o) => aplicar(o, false, true))
-        .catch(() => setConfig(ajustar({ tipo: "", workflow: "", valores: {} }, catalogo.dados!)));
+        .catch(vazio);
     } else {
-      setConfig(ajustar({ tipo: "", workflow: "", valores: {} }, catalogo.dados));
+      vazio();
     }
-  }, [catalogo.dados, outputs.dados, salvo.dados, salvo.erro, chaveDono]);
+  }, [catalogo.dados, outputs.dados, pipeline, rascunhos, chaveDono]);
 
   /*
    * Salva o rascunho sozinho, um pouco depois da última mudança. Não salva
@@ -232,13 +301,17 @@ export function PainelGerador({ dono }: { dono: Dono }) {
       valores: config.valores,
       assistente: assistenteNome,
       ideia: ideia.trim() ? ideia : null,
+      // A escolha é de quem clica no cartão, não do formulário: só passa adiante.
+      escolhido,
     };
     const json = jsonEstavel(r);
     if (json === ultimoSalvo.current) return;
     const salvar = () => {
       pendente.current = null;
+      // Guarda aqui também: trocar de aba e voltar mostra o que estava escrito.
+      setRascunhos((m) => ({ ...(m ?? {}), [etapaAtual]: r }));
       geradorApi
-        .salvarRascunho(dono, r)
+        .salvarRascunho(dono, etapaAtual, r)
         .then(() => (ultimoSalvo.current = json))
         .catch(() => {}); // Rascunho é conveniência: falhar não atrapalha gerar.
     };
@@ -248,7 +321,42 @@ export function PainelGerador({ dono }: { dono: Dono }) {
       clearTimeout(t);
       if (pendente.current === salvar) pendente.current = null;
     };
-  }, [config, assistenteNome, ideia, expandindo, disponiveis.carregando, chaveDono]);
+  }, [config, assistenteNome, ideia, expandindo, disponiveis.carregando, chaveDono, escolhido]);
+
+  /**
+   * A imagem aprovada desta etapa — a que as etapas seguintes recebem.
+   *
+   * Quem muda a escolha limpa o campo ligado nas etapas que comem esta: no
+   * próximo acesso elas pegam a imagem nova sozinhas, em vez de ficar com a
+   * antiga grudada no rascunho.
+   */
+  async function escolher(id: string | null) {
+    if (!pipeline || !rascunhos || !config) return;
+    const atual: RascunhoGerador = rascunhos[etapaAtual] ?? {
+      tipo: config.tipo,
+      workflow: config.workflow,
+      valores: config.valores,
+      assistente: assistenteNome,
+      ideia: ideia.trim() ? ideia : null,
+      escolhido: null,
+    };
+    const novos: Record<string, RascunhoGerador> = { [etapaAtual]: { ...atual, escolhido: id } };
+    for (const e of pipeline.etapas) {
+      const dele = rascunhos[e.chave];
+      const ligados = e.entradas.filter((en) => en.daEtapa === etapaAtual);
+      if (!dele || !ligados.length) continue;
+      const valores = { ...dele.valores };
+      for (const en of ligados) if (en.campo in valores) valores[en.campo] = null;
+      novos[e.chave] = { ...dele, valores };
+    }
+    setRascunhos((m) => ({ ...(m ?? {}), ...novos }));
+    // O formulário que está na tela não precisa gravar de novo o que já vai aqui.
+    ultimoSalvo.current = jsonEstavel(novos[etapaAtual]);
+    setErro(null);
+    await Promise.all(Object.entries(novos).map(([chave, r]) => geradorApi.salvarRascunho(dono, chave, r))).catch((e) =>
+      setErro(`Não consegui guardar a escolha: ${(e as Error).message}`),
+    );
+  }
 
   /** Leva as configurações de um output ao formulário. `seedAleatoria`: não repete a seed dele. */
   function aplicar(o: OutputDetalhe, rolar = true, seedAleatoria = false) {
@@ -257,7 +365,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
       const campos = tipos.flatMap((t) => t.workflows).find((w) => w.chave === o.workflow)?.campos ?? [];
       for (const c of campos) if (c.tipo === "seed") valores[c.chave] = null;
     }
-    setConfig(ajustar({ tipo: o.tipoGeracao, workflow: o.workflow, valores }, catalogo.dados ?? tipos));
+    porNaTela(ajustar({ tipo: o.tipoGeracao, workflow: o.workflow, valores }, tiposDaEtapa));
     // O assistente e a ideia daquele output também voltam.
     setIdeia(o.ideia ?? "");
     setIdeiaDoPrompt(o.ideia);
@@ -291,6 +399,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
         tipo: config.tipo,
         workflow: config.workflow,
         parametros: config.valores,
+        etapa: etapaAtual,
         quantidade,
         assistenteId: doAssistente ? assistenteId : null,
         ideia: doAssistente ? ideiaDoPrompt : null,
@@ -308,8 +417,24 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     execucoes.recarregar();
   }
 
-  const falhas = (execucoes.dados ?? []).filter((e) => e.status === "FALHOU").reverse();
-  const lista = outputs.dados ?? [];
+  /** A galeria é da etapa: cada compartimento mostra só o que saiu dele. */
+  const todos = outputs.dados ?? [];
+  const lista = pipeline ? todos.filter((o) => etapaDisto(o) === etapaAtual) : todos;
+  /** Outputs do shot que não são de etapa nenhuma deste pipeline (o tipo saiu dele). */
+  const foraDasEtapas = pipeline && temEtapas(pipeline) ? todos.filter((o) => etapaDisto(o) === null).length : 0;
+  const daEtapa = (e: Execucao) => etapaDisto({ etapa: e.etapa, tipoGeracao: tipoDoWorkflow(e.workflow) }) === etapaAtual;
+  const falhas = (execucoes.dados ?? []).filter((e) => e.status === "FALHOU" && daEtapa(e)).reverse();
+  /*
+   * O que falta escolher antes desta etapa poder gerar: a etapa anterior não
+   * tem imagem escolhida **e** o campo está vazio. Com o campo preenchido (à
+   * mão, ou pelas configurações do último output) não falta nada — avisar ali
+   * seria reclamar de um formulário que já está pronto.
+   */
+  const faltaEscolher = pipeline
+    ? entradasDe(pipeline, etapaAtual).filter((en) => !rascunhos?.[en.daEtapa]?.escolhido && config?.valores[en.campo] == null)
+    : [];
+  /** Na galeria, só a fila desta etapa; o acompanhamento segue olhando todas. */
+  const naFila = ativas.filter(daEtapa);
 
   return (
     <div className="grid grid-cols-[minmax(30rem,5fr)_minmax(0,7fr)] items-start gap-8">
@@ -328,31 +453,58 @@ export function PainelGerador({ dono }: { dono: Dono }) {
             </div>
           )}
         </div>
+        {pipeline && (
+          <AbasEtapas
+            pipeline={pipeline}
+            atual={etapaAtual}
+            aoTrocar={(c) => {
+              // Grava agora o que estava esperando os 800 ms: a aba muda o formulário.
+              pendente.current?.();
+              setEtapaAtual(c);
+            }}
+            estado={(c) => ({
+              outputs: todos.filter((o) => etapaDisto(o) === c).length,
+              escolhida: !!rascunhos?.[c]?.escolhido,
+            })}
+          />
+        )}
         <div className="flex max-h-[calc(100vh-12rem)] flex-col gap-5 overflow-y-auto p-5">
           {erro && <Aviso>{erro}</Aviso>}
           {catalogo.erro && <Aviso>{catalogo.erro}</Aviso>}
           {!catalogo.dados && !catalogo.erro && <Carregando />}
-          {catalogo.dados && tipos.length === 0 && (
+          {catalogo.dados && tiposDaEtapa.length === 0 && (
             <Vazio
               icone={<Sparkles />}
-              titulo="Nada para gerar aqui ainda"
-              texto="Nenhum tipo de geração aparece aqui, ou nenhum tem workflow. Cadastre em Tipos de geração (onde ele aparece) e em Workflows."
+              titulo="Nada para gerar nesta etapa"
+              texto={
+                etapa?.tipoGeracao
+                  ? `A etapa “${etapa.nome}” gera “${etapa.tipoGeracao}”, que não aparece no Gerador dos shots ou não tem workflow. Confira em Tipos de geração e em Workflows.`
+                  : "Nenhum tipo de geração aparece aqui, ou nenhum tem workflow. Cadastre em Tipos de geração (onde ele aparece) e em Workflows."
+              }
             />
           )}
-          {config && tipos.length > 0 && (
+          {faltaEscolher.map((en) => (
+            <Aviso key={en.campo}>
+              Escolha a imagem da etapa <b>{en.nomeDaEtapa}</b> (o “Escolher” no canto do cartão) — é ela que entra aqui.
+            </Aviso>
+          ))}
+          {config && tiposDaEtapa.length > 0 && (
             <>
               <div className="grid grid-cols-2 gap-4">
-                <Campo rotulo="Tipo de geração" dica={tipoAtual?.descricao ?? undefined}>
-                  <Seletor value={config.tipo} onChange={(e) => setConfig(ajustar({ ...config, tipo: e.target.value, workflow: "" }, tipos))}>
-                    {tipos.map((t) => (
-                      <option key={t.chave} value={t.chave}>
-                        {t.nome}
-                      </option>
-                    ))}
-                  </Seletor>
-                </Campo>
+                {/* Com o tipo fixado pela etapa, o seletor dele só teria uma opção. */}
+                {!etapa?.tipoGeracao && (
+                  <Campo rotulo="Tipo de geração" dica={tipoAtual?.descricao ?? undefined}>
+                    <Seletor value={config.tipo} onChange={(e) => porNaTela(ajustar({ ...config, tipo: e.target.value, workflow: "" }, tiposDaEtapa))}>
+                      {tiposDaEtapa.map((t) => (
+                        <option key={t.chave} value={t.chave}>
+                          {t.nome}
+                        </option>
+                      ))}
+                    </Seletor>
+                  </Campo>
+                )}
                 <Campo rotulo="Workflow" dica={wfAtual?.descricao ?? undefined}>
-                  <Seletor value={config.workflow} onChange={(e) => setConfig(ajustar({ ...config, workflow: e.target.value }, tipos))}>
+                  <Seletor value={config.workflow} onChange={(e) => porNaTela(ajustar({ ...config, workflow: e.target.value }, tiposDaEtapa))}>
                     {tipoAtual?.workflows.map((w) => (
                       <option key={w.chave} value={w.chave}>
                         {w.nome}
@@ -394,6 +546,15 @@ export function PainelGerador({ dono }: { dono: Dono }) {
                       aoPrevia={() => assistentesApi.previa(assistenteId, { ...dono, workflow: config!.workflow, ideia: ideia.trim() })}
                     />
                   )}
+                  {/* Campo que o pipeline alimenta: dá para trocar, mas já vem certo. */}
+                  {entradasDe(pipeline ?? PIPELINE_UNICO, etapaAtual)
+                    .filter((en) => en.campo === c.chave)
+                    .map((en) => (
+                      <p key={en.daEtapa} className="flex items-center gap-1.5 text-xs text-violet-300/80">
+                        <ArrowDownToLine className="size-3.5" />
+                        Vem da etapa <b className="font-medium">{en.nomeDaEtapa}</b> — a imagem escolhida lá
+                      </p>
+                    ))}
                   <CampoDinamico
                     campo={c}
                     dono={dono}
@@ -409,7 +570,8 @@ export function PainelGerador({ dono }: { dono: Dono }) {
 
       <section className="flex min-w-0 flex-col gap-4">
         <h2 className="text-sm font-semibold tracking-wide text-zinc-400 uppercase">
-          Outputs{outputs.dados ? ` (${lista.length})` : ""}
+          {pipeline && temEtapas(pipeline) ? etapa?.nome : "Outputs"}
+          {outputs.dados ? ` (${lista.length})` : ""}
         </h2>
         {outputs.erro && <Aviso>{outputs.erro}</Aviso>}
         {falhas.map((f) => (
@@ -419,15 +581,14 @@ export function PainelGerador({ dono }: { dono: Dono }) {
           </Aviso>
         ))}
         {!outputs.dados && !outputs.erro && <Carregando />}
-        {outputs.dados && lista.length === 0 && ativas.length === 0 && (
+        {outputs.dados && lista.length === 0 && naFila.length === 0 && (
           <Vazio icone={<Sparkles />} titulo="Nenhum output ainda" texto="Escreva o prompt no Gerador e clique em Gerar — as imagens aparecem aqui." />
         )}
-        {(lista.length > 0 || ativas.length > 0) && (
+        {(lista.length > 0 || naFila.length > 0) && (
           <GruposDeOutputs
             outputs={lista}
             antesDosOutros={
-              ativas.length > 0 &&
-              ativas.map((e, n) => <CartaoExecucao key={e.id} e={e} posicao={n + 1} aoCancelar={() => cancelar(e.id)} />)
+              naFila.length > 0 && naFila.map((e, n) => <CartaoExecucao key={e.id} e={e} posicao={n + 1} aoCancelar={() => cancelar(e.id)} />)
             }
             cartao={(o) => (
               <CartaoOutput
@@ -438,9 +599,27 @@ export function PainelGerador({ dono }: { dono: Dono }) {
                   await outputsApi.favoritar(o.id, !o.favorito);
                   outputs.recarregar();
                 }}
+                escolha={
+                  podeEscolher
+                    ? {
+                        escolhida: escolhido === o.id,
+                        rotulo: "Escolher — é esta que a próxima etapa recebe",
+                        aoEscolher: () => escolher(escolhido === o.id ? null : o.id),
+                      }
+                    : undefined
+                }
               />
             )}
           />
+        )}
+        {/* Histórico de um tipo que saiu do pipeline: não está em etapa nenhuma, mas existe. */}
+        {foraDasEtapas > 0 && (
+          <p className="text-xs text-zinc-500">
+            {foraDasEtapas} output(s) deste shot não são de nenhuma etapa deste pipeline.{" "}
+            <Link to={`/outputs?shot=${dono.shotId}`} className="text-zinc-400 underline decoration-dotted hover:text-violet-300">
+              Ver todos
+            </Link>
+          </p>
         )}
       </section>
 

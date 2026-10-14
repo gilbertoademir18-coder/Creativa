@@ -277,6 +277,40 @@ as cenas (`SetNull`), nunca as apaga.
   dono, e **o output guarda tudo o que foi usado para gerá-lo** (tipo,
   workflow, modelo, prompt, seed, `parametros`, `grafo_enviado`). A tabela
   `execucao` é só a fila do ComfyUI, não um cadastro.
+- **Um shot gera por etapas** — o primeiro quadro e, dele, o vídeo. O roteiro
+  delas é o **pipeline** (cadastro do usuário, página Pipelines;
+  `geracao/pipelines.ts`), e **etapa não é registro**: as etapas moram no JSON
+  do pipeline, e o que uma etapa acumula num shot (o rascunho e a imagem
+  escolhida) mora no `rascunho_gerador` dele, por chave de etapa. Tabela de
+  etapas obrigaria a criar linha por shot e reconciliar a cada mudança no
+  pipeline — isto é, escrever nos dados do usuário por conta própria.
+  - Quem não escolhe nada fica no embutido **"unica"** (uma etapa, sem tipo
+    fixo): a tela de sempre, sem aba nenhuma e sem custar registro. O shot
+    herda na **leitura** (`pipelineDe`): `shot.pipeline ?? projeto.pipelinePadrao
+    ?? "unica"` — mudar o padrão do projeto vale na hora para todo shot que
+    não escolheu o seu, e nada é copiado. Quem salva um shot manda o
+    `pipeline` junto, como o `videoId` da cena.
+  - A etapa **fixa um tipo de geração, nunca um workflow**: assim a etapa
+    "Vídeo" aceita tanto o Wan quanto o MiniMax, e dá para comparar os dois no
+    mesmo shot. Com o tipo fixo, o seletor de tipo some do Gerador.
+  - **Output e execução guardam a chave da etapa** (como já guardam as de tipo
+    e workflow). Quem é de antes dos pipelines tem a etapa nula e cai na etapa
+    **pelo tipo de geração** (`etapaDe`, em `componentes/etapas.tsx`) — por
+    isso nenhuma migração mexeu nos outputs que já existiam. É também por isso
+    que a API exige tipo em toda etapa de um pipeline com mais de uma: sem
+    ele, o histórico inteiro cairia na mesma.
+  - **A imagem escolhida de uma etapa é o que a seguinte recebe** (o
+    `entradas` do pipeline liga um campo de imagem a uma etapa anterior).
+    Escolhida é **uma** e tem consequência; favorito é quantos se queira e não
+    tem. Quem muda a escolha limpa o campo ligado nas etapas que a comem, para
+    elas pegarem a nova; fora isso, o campo só é preenchido quando está vazio
+    — trocar a imagem à mão continua valendo. O aviso de "escolha a imagem"
+    só aparece com o campo vazio: com ele preenchido não falta nada.
+  - **O rascunho tem dois formatos.** O novo é `{ etapas: { <chave>: {...} } }`;
+    o de antes dos pipelines tem `tipo` na raiz e `lerRascunhos` o trata como
+    o da etapa única, que `encaixarNoPipeline` passa para a primeira etapa do
+    pipeline. Nada foi migrado no banco: a primeira gravação já sai no formato
+    novo.
 - **Assistentes de prompt** (página Assistentes, tabela `assistente`) são do
   usuário: markdown que a LLM local segue para expandir a ideia no campo
   marcado `assistivel` do workflow (a caixa "O assistente de prompt escreve

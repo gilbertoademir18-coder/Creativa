@@ -65,6 +65,8 @@ export type Pedido = {
   tipo: string;
   workflow: string;
   parametros: Record<string, unknown>;
+  /** A etapa do pipeline do shot (a chave). "unica" quando não há pipeline. */
+  etapa: string;
   quantidade: number;
   /** O assistente de prompt usado (o nome) e a ideia que ele expandiu, quando houve. */
   assistente: string | null;
@@ -121,6 +123,7 @@ export async function executar(w: DefWorkflow, pedido: Pedido): Promise<void> {
         shotId: pedido.shotId,
         tipo: pedido.tipo,
         workflow: w.chave,
+        etapa: pedido.etapa,
         modelo: w.modelo,
         status: "NA_FILA",
         parametros: valores,
@@ -232,6 +235,7 @@ async function coletar(e: Execucao, h: Historico, w: DefWorkflow | null): Promis
             execucaoId: e.id,
             tipoGeracao: e.tipo,
             workflow: e.workflow,
+            etapa: e.etapa,
             modelo: e.modelo,
             prompt: typeof p.prompt === "string" ? p.prompt : "",
             seed: seed === null ? null : BigInt(seed),

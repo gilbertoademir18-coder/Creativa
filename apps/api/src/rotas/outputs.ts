@@ -55,6 +55,8 @@ const daGaleria = {
   favorito: true,
   tipoGeracao: true,
   workflow: true,
+  /** Em que etapa do pipeline saiu: é por ela que o Gerador separa a galeria. */
+  etapa: true,
   modelo: true,
   prompt: true,
   seed: true,

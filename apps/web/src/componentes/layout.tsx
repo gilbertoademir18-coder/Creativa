@@ -1,4 +1,4 @@
-import { Clapperboard, Film, FolderKanban, Images, Layers, MessagesSquare, Shapes, Sparkles, WandSparkles, Workflow } from "lucide-react";
+import { Clapperboard, Film, FolderKanban, GitBranch, Images, Layers, MessagesSquare, Shapes, Sparkles, WandSparkles, Workflow } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router";
 import { BarraComfy } from "./barra-comfy.tsx";
@@ -31,6 +31,7 @@ const MENU = [
     titulo: "Configuração",
     itens: [
       { para: "/tipos-geracao", rotulo: "Tipos de geração", icone: Layers },
+      { para: "/pipelines", rotulo: "Pipelines", icone: GitBranch },
       { para: "/workflows", rotulo: "Workflows", icone: Workflow },
       { para: "/assistentes", rotulo: "Assistentes", icone: WandSparkles },
     ],

@@ -91,6 +91,9 @@ model Projeto {
   /// Posição na página de projetos, a partir de 0. Enquanto ninguém arrasta,
   /// todos ficam em 0 e vale o desempate por editadoEm — a ordem de antes.
   ordem           Int      @default(0)
+  /// O pipeline que os shots deste projeto seguem por padrão (a chave de um
+  /// `pipeline`, ou a do embutido "unica"). Vazio: geração única.
+  pipelinePadrao  String?  @map("pipeline_padrao")
   criadoEm        DateTime @default(now()) @map("criado_em") @db.Timestamptz
   editadoEm       DateTime @updatedAt @map("editado_em") @db.Timestamptz
 
@@ -237,7 +240,12 @@ model Shot {
   descricao       String?
   /// Posição na cena, a partir de 0.
   ordem           Int
-  /// Onde o Gerador deste shot parou (o mesmo formato do asset).
+  /// O pipeline que este shot segue (a chave de um `pipeline`, ou a do
+  /// embutido "unica"). Vazio: herda o padrão do projeto — assim, mudar o
+  /// padrão vale para todos os shots que não escolheram o seu.
+  pipeline        String?
+  /// Onde o Gerador deste shot parou, uma por etapa do pipeline (o mesmo
+  /// formato do asset, que tem sempre a etapa única).
   rascunhoGerador Json?    @map("rascunho_gerador")
   criadoEm        DateTime @default(now()) @map("criado_em") @db.Timestamptz
   editadoEm       DateTime @updatedAt @map("editado_em") @db.Timestamptz
@@ -304,6 +312,9 @@ model Execucao {
   tipo          String
   /// Chave do workflow no código (ex.: "placa-cenario-zimage").
   workflow      String
+  /// A etapa do pipeline do shot em que isto foi gerado (a chave da etapa,
+  /// copiada no envio). Vazia: antes dos pipelines, ou um asset.
+  etapa         String?
   modelo        String?
   status        StatusExecucao @default(NA_FILA)
   /// Os valores exatos deste envio, com a seed já sorteada.
@@ -361,6 +372,10 @@ model Output {
   tipoGeracao  String   @map("tipo_geracao")
   /// Chave do workflow no código (ex.: "placa-cenario-zimage").
   workflow     String
+  /// A etapa do pipeline do shot que produziu isto (a chave da etapa). Vazia
+  /// nos outputs de antes dos pipelines e nos de asset: aí a etapa é
+  /// deduzida pelo tipo de geração, sem precisar mexer no que já existe.
+  etapa        String?
   /// O modelo principal que o workflow usou.
   modelo       String?
   /// Cópia do campo "prompt" dos parâmetros: é o que a busca usa.
@@ -468,6 +483,31 @@ model Workflow {
 
   @@index([tipoGeracaoId])
   @@map("workflow")
+}
+
+/// O roteiro de etapas para gerar um shot: "First frame + vídeo" tem duas, e
+/// a segunda come a imagem que a primeira escolheu. Cadastro do usuário
+/// (página Pipelines).
+///
+/// As etapas moram num JSON, e não numa tabela: etapa não é registro, é
+/// posição num pipeline — o shot guarda só a chave do pipeline, e o que a
+/// etapa acumula (o rascunho e a imagem escolhida) mora no rascunho do
+/// Gerador dele. Uma tabela obrigaria a criar linhas para cada shot e a
+/// reconciliá-las a cada mudança no pipeline.
+model Pipeline {
+  id        String   @id @default(uuid()) @db.Uuid
+  /// Identificador estável, gerado do nome na criação e nunca mais mudado:
+  /// shots e projetos guardam esta chave. "unica" é reservada (o embutido).
+  chave     String   @unique
+  nome      String
+  descricao String?
+  /// As etapas em ordem (`geracao/pipelines.ts`): chave, nome, o tipo de
+  /// geração de cada uma e de que etapa anterior vêm as imagens dela.
+  etapas    Json     @default("[]")
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz
+  editadoEm DateTime @updatedAt @map("editado_em") @db.Timestamptz
+
+  @@map("pipeline")
 }
 
 enum PapelMensagem {

@@ -69,14 +69,25 @@ export function CartaoOutput({
   mostrarDono,
   aoAbrir,
   aoFavoritar,
+  escolha,
 }: {
   o: Output;
   mostrarDono?: boolean;
   aoAbrir: () => void;
   aoFavoritar: () => void;
+  /**
+   * Só no Gerador de uma etapa que alimenta outra: marcar qual imagem a
+   * etapa seguinte recebe. Diferente do favorito — favoritas são quantas se
+   * quiser, escolhida é uma e tem consequência.
+   */
+  escolha?: { escolhida: boolean; rotulo: string; aoEscolher: () => void };
 }) {
   return (
-    <div className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition-colors hover:border-violet-500/60">
+    <div
+      className={`group overflow-hidden rounded-xl border bg-zinc-900 transition-colors ${
+        escolha?.escolhida ? "border-violet-500" : "border-zinc-800 hover:border-violet-500/60"
+      }`}
+    >
       <div className="relative">
         <button type="button" onClick={aoAbrir} className="block aspect-video w-full overflow-hidden bg-black">
           <Miniatura tipo={o.tipo} arquivo={o.arquivo} ajuste="contain" />
@@ -86,6 +97,21 @@ export function CartaoOutput({
           aoMudar={aoFavoritar}
           className={`absolute top-2 right-2 ${o.favorito ? "" : "opacity-0 group-hover:opacity-100"}`}
         />
+        {escolha && (
+          <button
+            type="button"
+            onClick={escolha.aoEscolher}
+            title={escolha.escolhida ? `Desmarcar — ${escolha.rotulo} fica sem imagem` : escolha.rotulo}
+            className={`absolute top-2 left-2 flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium backdrop-blur transition-opacity ${
+              escolha.escolhida
+                ? "bg-violet-600 text-white hover:bg-violet-500"
+                : "bg-black/60 text-zinc-200 opacity-0 group-hover:opacity-100 hover:bg-black/85"
+            }`}
+          >
+            <Check className="size-4" />
+            {escolha.escolhida ? "Escolhida" : "Escolher"}
+          </button>
+        )}
       </div>
       <button type="button" onClick={aoAbrir} className="flex w-full flex-col gap-0.5 px-3 py-2 text-left">
         {mostrarDono && <span className="truncate text-sm text-zinc-200">{o.asset?.nome ?? (o.shot && caminhoDoShot(o.shot))}</span>}

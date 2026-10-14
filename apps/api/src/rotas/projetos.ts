@@ -19,6 +19,12 @@ import { Busca, contem, ErroHttp, naoEncontrado, Nome, TextoOpcional, Uuid, vali
 const CorpoProjeto = z.object({
   nome: Nome,
   icone: z.string().trim().max(40).nullish().transform((i) => i || null),
+  /**
+   * O pipeline que os shots deste projeto seguem por padrão (a chave). Vale
+   * na hora para todo shot que não escolheu o seu — a herança é na leitura
+   * (`pipelineDe`), não uma cópia no shot.
+   */
+  pipelinePadrao: z.string().trim().max(60).nullish().transform((p) => p || null),
 });
 
 /** Markdown longo, no modelo de docs/descricao-de-projeto.md. */

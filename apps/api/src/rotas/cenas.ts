@@ -39,6 +39,12 @@ const CorpoCena = z.object({
 const CorpoShot = z.object({
   nome: NomeOpcional,
   descricao: TextoOpcional(),
+  /**
+   * O pipeline deste shot (a chave). Nulo: herda o padrão do projeto. A API
+   * não confere se existe — pipeline apagado cai na geração única, como a
+   * chave de um ícone que sumiu.
+   */
+  pipeline: z.string().trim().max(60).nullish().transform((p) => p || null),
 });
 
 /** Os shots de uma cena, em ordem, com as contagens. */
@@ -49,7 +55,7 @@ export const shotsResumidos = {
 
 /** A cena como a tela a recebe: projeto, vídeo e shots. */
 export const daCena = {
-  projeto: { select: { id: true, nome: true } },
+  projeto: { select: { id: true, nome: true, pipelinePadrao: true } },
   video: { select: { id: true, nome: true, lista: { select: { id: true, nome: true } } } },
   shots: shotsResumidos,
 };

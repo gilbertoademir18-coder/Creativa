@@ -11,6 +11,7 @@ import { PaginaOutputs } from "./paginas/outputs.tsx";
 import { PaginaProjeto, PaginaProjetos } from "./paginas/projetos.tsx";
 import { PaginaReferencias } from "./paginas/referencias.tsx";
 import { PaginaShot } from "./paginas/shot.tsx";
+import { PaginaPipelines } from "./paginas/pipelines.tsx";
 import { PaginaTiposGeracao } from "./paginas/tipos-geracao.tsx";
 import { IrParaVideo, PaginaVideos } from "./paginas/videos.tsx";
 import { PaginaWorkflows } from "./paginas/workflows.tsx";
@@ -39,6 +40,7 @@ const roteador = createBrowserRouter([
       { path: "conversas/:id", element: <PaginaConversas /> },
       { path: "assistentes", element: <PaginaAssistentes /> },
       { path: "tipos-geracao", element: <PaginaTiposGeracao /> },
+      { path: "pipelines", element: <PaginaPipelines /> },
       { path: "workflows", element: <PaginaWorkflows /> },
       // Links antigos, de antes do Gerador.
       { path: "geracoes/*", element: <Navigate to="/outputs" replace /> },

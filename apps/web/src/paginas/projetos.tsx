@@ -21,6 +21,7 @@ import {
   Secao,
   Vazio,
 } from "../componentes/ui.tsx";
+import { SeletorPipeline } from "../componentes/etapas.tsx";
 import { EscolhaIcone, iconeDoProjeto } from "../componentes/icones-projeto.tsx";
 import { GradeArrastavel } from "../componentes/ordenavel.tsx";
 import { useAvisarFavoritos } from "../componentes/projetos-favoritos.tsx";
@@ -332,6 +333,7 @@ function FormProjeto({ projeto, aoSalvar }: { projeto?: Projeto; aoSalvar: (p: P
   const avisarFavoritos = useAvisarFavoritos();
   const [nome, setNome] = useState(projeto?.nome ?? "");
   const [icone, setIcone] = useState<string | null>(projeto?.icone ?? null);
+  const [pipeline, setPipeline] = useState<string | null>(projeto?.pipelinePadrao ?? null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
@@ -344,7 +346,7 @@ function FormProjeto({ projeto, aoSalvar }: { projeto?: Projeto; aoSalvar: (p: P
         setSalvando(true);
         setErro(null);
         try {
-          const dados = { nome, icone };
+          const dados = { nome, icone, pipelinePadrao: pipeline };
           aoSalvar(projeto ? await projetosApi.salvar(projeto.id, dados) : await projetosApi.criar(dados));
         } catch (er) {
           setErro((er as Error).message);
@@ -357,6 +359,9 @@ function FormProjeto({ projeto, aoSalvar }: { projeto?: Projeto; aoSalvar: (p: P
       </Campo>
       <Campo rotulo="Ícone" dica="Aparece no menu lateral e no cartão do projeto.">
         <EscolhaIcone valor={icone} aoMudar={setIcone} />
+      </Campo>
+      <Campo rotulo="Pipeline dos shots" dica="As etapas que o Gerador de cada shot mostra. Vale na hora para todo shot que não escolheu o seu.">
+        <SeletorPipeline valor={pipeline} aoMudar={setPipeline} />
       </Campo>
       {erro && <Aviso>{erro}</Aviso>}
       {/* Excluir mora aqui, e não ao lado do "Editar" na página: lá ficava um

@@ -22,6 +22,8 @@ export type Projeto = {
   favorito: boolean;
   /** Posição na página, a partir de 0. */
   ordem: number;
+  /** O pipeline padrão dos shots deste projeto (a chave). Vazio: geração única. */
+  pipelinePadrao: string | null;
   descricao: string | null;
   /** O número da versão atual da descrição (0: nunca foi salva). */
   descricaoVersao: number;
@@ -61,6 +63,8 @@ export type ShotResumo = {
   nome: string | null;
   descricao: string | null;
   ordem: number;
+  /** O pipeline deste shot (a chave). Vazio: herda o padrão do projeto. */
+  pipeline: string | null;
   criadoEm: string;
   /** Muda sozinho quando o rascunho do Gerador salva: é o "último trabalhado". */
   editadoEm: string;
@@ -83,7 +87,8 @@ export type Cena = {
   storyboard: string;
   criadoEm: string;
   editadoEm: string;
-  projeto: ProjetoRef | null;
+  /** Com o padrão de pipeline: o "Editar shot" mostra o nome do que ele herda. */
+  projeto: (ProjetoRef & { pipelinePadrao: string | null }) | null;
   shots: ShotResumo[];
 };
 
@@ -169,6 +174,8 @@ export type Output = {
   tipoGeracaoNome: string;
   workflow: string;
   workflowNome: string;
+  /** A etapa do pipeline que produziu isto. Vazia: antes dos pipelines (a etapa sai do tipo). */
+  etapa: string | null;
   modelo: string | null;
   prompt: string;
   seed: number | null;
@@ -233,6 +240,8 @@ export type Execucao = {
   id: string;
   status: StatusExecucao;
   workflow: string;
+  /** A etapa do pipeline em que foi enviada. Vazia: antes dos pipelines. */
+  etapa: string | null;
   seed: number | null;
   erro: string | null;
   criadoEm: string;
@@ -320,6 +329,52 @@ export type RascunhoGerador = {
   valores: Record<string, unknown>;
   assistente: string | null;
   ideia: string | null;
+  /** O output aprovado desta etapa: é ele que as etapas seguintes recebem. */
+  escolhido: string | null;
+};
+
+/*
+ * Pipelines: as etapas de um shot ("First frame + vídeo"). Espelha
+ * apps/api/src/geracao/pipelines.ts.
+ */
+
+export type EntradaDeEtapa = {
+  /** A chave do campo de imagem que recebe a imagem. */
+  campo: string;
+  /** De que etapa anterior vem a imagem escolhida. */
+  daEtapa: string;
+};
+
+export type EtapaPipeline = {
+  chave: string;
+  nome: string;
+  /** O tipo de geração da etapa. Vazio (só num pipeline de uma etapa): todos. */
+  tipoGeracao: string | null;
+  entradas: EntradaDeEtapa[];
+};
+
+/** O pipeline que vale para um dono do Gerador: o cadastrado ou o embutido "unica". */
+export type PipelineResolvido = {
+  chave: string;
+  nome: string;
+  descricao: string | null;
+  etapas: EtapaPipeline[];
+};
+
+/** As etapas do Gerador de um dono e onde cada uma parou. */
+export type EtapasDoGerador = { pipeline: PipelineResolvido; rascunhos: Record<string, RascunhoGerador> };
+
+/** Um pipeline como o cadastro mostra. */
+export type Pipeline = {
+  id: string;
+  chave: string;
+  nome: string;
+  descricao: string | null;
+  etapas: EtapaPipeline[];
+  criadoEm: string;
+  editadoEm: string;
+  /** Quem o usa — e por isso barra a exclusão. */
+  uso: { shots: number; projetos: number };
 };
 
 export type TipoCatalogo = {
