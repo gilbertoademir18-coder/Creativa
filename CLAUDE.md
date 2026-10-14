@@ -468,9 +468,13 @@ em 2026-10-14. O `.env` de cada máquina é que muda — o código é o mesmo.
     Para resolver: um `tailscale serve` da 11434 em casa (a **8447** está
     livre) e `OLLAMA_URL` apontando para ela. Prefira o `serve` a
     `OLLAMA_HOST=0.0.0.0`, que abriria a LAN de casa sem autenticação.
-  - **Referências e outputs já cadastrados dão 404**: os arquivos estão em
-    `D:\Creativa` em casa e o banco guarda só o caminho relativo. Gerações
-    novas feitas de fora funcionam; as antigas aparecem quebradas.
+  - **Os arquivos antigos** (referências e outputs) moram em `D:\Creativa` em
+    casa, e o banco guarda só o caminho relativo. Resolvido pelo
+    `ARQUIVOS_REMOTOS` do `.env`: o que não está na pasta local vira um
+    **redirect 302** para o Creativa de casa, e o navegador busca direto pelo
+    tailnet (~1,3 s um PNG de 1 MB). Sem a variável, arquivo que falta é 404,
+    como antes — é assim na máquina que tem os arquivos. O que se gera ou
+    envia daqui fica local e nem passa por isso.
   - **"Iniciar"/"Parar" o ComfyUI**: procuram o `python_embeded` e a porta
     nesta máquina. O ComfyUI tem de estar ligado em casa.
 - **O tray mente sobre o ComfyUI remoto:** `Vigiar-Comfy` (`scripts\tray.ps1`)

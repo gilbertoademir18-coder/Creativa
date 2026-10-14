@@ -137,7 +137,24 @@ if (SERVIR_FRONT) {
   app.log.warn(`Front não encontrado em ${WEB_DIST} — rode "npm run build". Servindo só a API.`);
 }
 
+/*
+ * Outro Creativa que tem os arquivos — o de casa, publicado no tailnet.
+ *
+ * Rodando no notebook, o banco é o de casa mas a pasta de arquivos é local e
+ * está vazia: toda referência e todo output antigos apontam para bytes que
+ * moram no D: de lá. Em vez de copiar tudo, o que não existe aqui é
+ * redirecionado para o Creativa que tem — o navegador busca direto, pelo
+ * tailnet. Arquivo novo, gerado ou enviado daqui, fica local e nem chega a
+ * passar por isto.
+ */
+const ARQUIVOS_REMOTOS = (process.env.ARQUIVOS_REMOTOS ?? "").replace(/\/$/, "");
+if (ARQUIVOS_REMOTOS) app.log.info(`Arquivo que faltar aqui será buscado em ${ARQUIVOS_REMOTOS}`);
+
 app.setNotFoundHandler((req, reply) => {
+  // Arquivo que não está nesta máquina: manda buscar em quem tem.
+  if (ARQUIVOS_REMOTOS && req.url.startsWith("/api/arquivos/")) {
+    return reply.redirect(ARQUIVOS_REMOTOS + req.url, 302);
+  }
   // Rota da API (ou arquivo de /api/arquivos) que não existe é 404 em JSON,
   // no formato `{ erro }` de todo o resto.
   if (req.url.startsWith("/api/")) {
