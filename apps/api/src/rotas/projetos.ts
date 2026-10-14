@@ -38,7 +38,24 @@ export async function rotasProjetos(app: FastifyInstance) {
     return prisma.projeto.findMany({
       where: { nome: contem(busca) },
       include: contagens,
-      orderBy: { editadoEm: "desc" },
+      // A posição manda; empate (ninguém arrastou ainda) desempata pela edição.
+      orderBy: [{ ordem: "asc" }, { editadoEm: "desc" }],
+    });
+  });
+
+  /**
+   * Reordena a página de projetos: recebe todos os ids, na ordem nova. Vem
+   * antes do "/:id" para "ordem" não cair na rota de um projeto chamado assim.
+   */
+  app.put("/ordem", async (req) => {
+    const { projetos } = validar(z.object({ projetos: z.array(Uuid).min(1) }), req.body);
+    return prisma.$transaction(async (tx) => {
+      const atuais = await tx.projeto.findMany({ select: { id: true } });
+      const mesmos =
+        atuais.length === projetos.length && new Set(projetos).size === projetos.length && atuais.every((p) => projetos.includes(p.id));
+      if (!mesmos) throw new ErroHttp(400, "A ordem nova precisa ter todos os projetos, cada um uma vez só.");
+      for (const [ordem, id] of projetos.entries()) await tx.projeto.update({ where: { id }, data: { ordem } });
+      return tx.projeto.findMany({ include: contagens, orderBy: [{ ordem: "asc" }, { editadoEm: "desc" }] });
     });
   });
 

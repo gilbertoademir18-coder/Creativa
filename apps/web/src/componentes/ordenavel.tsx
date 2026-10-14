@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
-import type { ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 /**
  * Uma lista numerada com ↑ ↓ em cada linha: shots de uma cena, vídeos de
@@ -54,4 +54,87 @@ export function movido<T>(lista: T[], i: number, delta: -1 | 1): T[] {
   const [x] = nova.splice(i, 1);
   nova.splice(i + delta, 0, x!);
   return nova;
+}
+
+/**
+ * Uma grade em que se arrasta para reordenar — os cartões de projeto.
+ *
+ * Grade e não lista: aqui os itens são cartões lado a lado, e setinhas ↑ ↓ não
+ * diriam o que fazem. Usa o arrastar nativo do navegador, sem biblioteca.
+ *
+ * Quem usa guarda a ordem e chama a API em `aoSoltar` — de preferência
+ * otimista, mexendo na tela antes da resposta.
+ */
+export function GradeArrastavel<T extends { id: string }>({
+  itens,
+  className,
+  aoSoltar,
+  cartao,
+}: {
+  itens: T[];
+  /** As classes da grade (a mesma `GRADE` de sempre). */
+  className?: string;
+  /** A lista inteira na ordem nova. Só chamada quando a ordem muda de fato. */
+  aoSoltar: (ordem: T[]) => void;
+  cartao: (item: T, i: number) => ReactNode;
+}) {
+  // Quem está sendo arrastado vai num ref, não no estado: o dragover vem logo
+  // depois do dragstart e precisa do valor JÁ atualizado para chamar
+  // preventDefault() — sem isso o navegador recusa o "soltar". O estado fica
+  // só para o visual, que pode esperar um render.
+  const pegandoRef = useRef<string | null>(null);
+  const [pegando, setPegando] = useState<string | null>(null);
+  const [alvo, setAlvo] = useState<string | null>(null);
+
+  function soltarEm(idDestino: string) {
+    const de = itens.findIndex((x) => x.id === pegandoRef.current);
+    const para = itens.findIndex((x) => x.id === idDestino);
+    pegandoRef.current = null;
+    setPegando(null);
+    setAlvo(null);
+    if (de < 0 || para < 0 || de === para) return;
+    const nova = [...itens];
+    const [movido] = nova.splice(de, 1);
+    nova.splice(para, 0, movido!);
+    aoSoltar(nova);
+  }
+
+  return (
+    <div className={className}>
+      {itens.map((item, i) => (
+        <div
+          key={item.id}
+          draggable
+          onDragStart={(e) => {
+            pegandoRef.current = item.id;
+            setPegando(item.id);
+            e.dataTransfer.effectAllowed = "move";
+            // Sem isto, o Firefox não começa o arrasto.
+            e.dataTransfer.setData("text/plain", item.id);
+          }}
+          onDragEnd={() => {
+            pegandoRef.current = null;
+            setPegando(null);
+            setAlvo(null);
+          }}
+          onDragOver={(e) => {
+            if (!pegandoRef.current || pegandoRef.current === item.id) return;
+            e.preventDefault(); // sem isto o navegador recusa o "soltar"
+            e.dataTransfer.dropEffect = "move";
+            setAlvo(item.id);
+          }}
+          onDragLeave={() => setAlvo((a) => (a === item.id ? null : a))}
+          onDrop={(e) => {
+            e.preventDefault();
+            soltarEm(item.id);
+          }}
+          className={`cursor-grab rounded-xl transition-opacity active:cursor-grabbing ${pegando === item.id ? "opacity-40" : ""} ${
+            alvo === item.id ? "outline-2 outline-offset-2 outline-violet-500" : ""
+          }`}
+        >
+          {cartao(item, i)}
+        </div>
+      ))}
+    </div>
+  );
 }

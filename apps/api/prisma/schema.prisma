@@ -82,6 +82,9 @@ model Projeto {
   /// O número da versão atual da descrição (0: nunca foi salva). Quem salva
   /// manda o número em que se baseou: se outra versão entrou no meio, a API recusa.
   descricaoVersao Int      @default(0) @map("descricao_versao")
+  /// Posição na página de projetos, a partir de 0. Enquanto ninguém arrasta,
+  /// todos ficam em 0 e vale o desempate por editadoEm — a ordem de antes.
+  ordem           Int      @default(0)
   criadoEm        DateTime @default(now()) @map("criado_em") @db.Timestamptz
   editadoEm       DateTime @updatedAt @map("editado_em") @db.Timestamptz
 

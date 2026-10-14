@@ -115,6 +115,8 @@ export const projetosApi = {
   versaoDescricao: (id: string, numero: number) =>
     api<VersaoDescricao & { texto: string | null }>(`/projetos/${id}/descricao/versoes/${numero}`),
   apagar: (id: string) => api<void>(`/projetos/${id}`, { method: "DELETE" }),
+  /** A página inteira na ordem nova — todos os ids, cada um uma vez. */
+  reordenar: (projetos: string[]) => api<Projeto[]>("/projetos/ordem", { method: "PUT", corpo: { projetos } }),
 };
 
 export const assetsApi = {

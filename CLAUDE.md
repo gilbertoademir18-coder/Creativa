@@ -159,6 +159,16 @@ as cenas (`SetNull`), nunca as apaga.
   lado do excluir da cena seria pedir para alguém apagar a coisa errada. Sobra
   para a página o Gerador, as referências e uma faixa que só aparece se houver
   vídeo ou descrição.
+- **Projeto tem `ordem`, e a página se reordena arrastando** (`GradeArrastavel`
+  em `componentes/ordenavel.tsx`, arrasto nativo, sem biblioteca). Grade e não
+  lista: entre cartões lado a lado, setinhas ↑ ↓ não diriam o que fazem.
+  Quem está sendo arrastado mora num **ref**, não no estado — o `dragover` vem
+  logo depois do `dragstart` e precisa do valor já atualizado para chamar
+  `preventDefault()`; com estado, o navegador recusava o "soltar".
+  Todo projeto nasce em `ordem: 0` e a listagem desempata por `editadoEm`, então
+  a ordem de antes vale até alguém arrastar o primeiro. **Com busca ativa a
+  grade é só de leitura**: a lista à vista é um pedaço, e reordenar nela
+  reescreveria a página inteira a partir dele.
 - Filtros moram na URL (`useFiltros`), para dar para voltar, recarregar e
   mandar o link de um filtro pronto.
 - **Texto longo em markdown** usa o editor visual `EditorMarkdown`

@@ -21,6 +21,7 @@ import {
   Secao,
   Vazio,
 } from "../componentes/ui.tsx";
+import { GradeArrastavel } from "../componentes/ordenavel.tsx";
 import { useCarregar, useFiltros } from "../hooks.ts";
 import type { Projeto } from "../tipos.ts";
 import { CartaoAsset, FILEIRA_ASSETS, ModalAsset } from "./assets.tsx";
@@ -28,8 +29,29 @@ import { CartaoCena, ModalCena } from "./cenas.tsx";
 
 export function PaginaProjetos() {
   const [f, mudar] = useFiltros(["busca"] as const);
-  const { dados, erro, carregando, recarregar } = useCarregar(() => projetosApi.listar({ busca: f.busca }), [f.busca]);
+  const { dados, erro, carregando, recarregar, setDados } = useCarregar(
+    () => projetosApi.listar({ busca: f.busca }),
+    [f.busca],
+  );
   const [novo, setNovo] = useState(false);
+  const [erroOrdem, setErroOrdem] = useState<string | null>(null);
+
+  /**
+   * Arrastar grava a ordem de todos. A lista mexe na hora e volta atrás se a
+   * API recusar — com busca ativa a ordem é só da parte à vista, então
+   * reordenar aí reescreveria a página inteira com um pedaço: não deixa.
+   */
+  async function reordenar(ordem: Projeto[]) {
+    const antes = dados ?? [];
+    setDados(ordem);
+    setErroOrdem(null);
+    try {
+      setDados(await projetosApi.reordenar(ordem.map((p) => p.id)));
+    } catch (e) {
+      setErroOrdem((e as Error).message);
+      setDados(antes);
+    }
+  }
 
   return (
     <>
@@ -62,12 +84,26 @@ export function PaginaProjetos() {
             }
           />
         )}
-        {!!dados?.length && (
+        {erroOrdem && <Aviso>{erroOrdem}</Aviso>}
+        {/*
+          Com busca, a lista à vista é um pedaço: reordenar nela reescreveria a
+          página inteira a partir dele. Aí a grade é só de leitura, e a dica da
+          busca explica.
+        */}
+        {!!dados?.length && f.busca && (
           <div className={GRADE}>
             {dados.map((p) => (
               <CartaoProjeto key={p.id} p={p} />
             ))}
           </div>
+        )}
+        {!!dados?.length && !f.busca && (
+          <GradeArrastavel
+            itens={dados}
+            className={GRADE}
+            aoSoltar={reordenar}
+            cartao={(p) => <CartaoProjeto p={p} />}
+          />
         )}
       </div>
       <ModalProjeto
@@ -86,6 +122,8 @@ function CartaoProjeto({ p }: { p: Projeto }) {
   return (
     <Link
       to={`/projetos/${p.id}`}
+      // O link não se arrasta sozinho: quem arrasta é o quadro da GradeArrastavel.
+      draggable={false}
       className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-5 transition-colors hover:border-violet-500/60"
     >
       <div className="flex items-center gap-2.5">
