@@ -95,12 +95,15 @@ as cenas (`SetNull`), nunca as apaga.
   tela inteira já diz (toda página erra ao carregar). O selo "Banco no ar" que
   havia no pé do menu saiu em 2026-10-14 — não o traga de volta. A rota
   `/api/banco/estado` fica: serve para conferir o banco sem escrever nele.
-- **Ações de uma janela ou painel que rola ficam sempre à vista:** barra de
-  ferramentas grudada em cima, botões (Salvar, Fechar, Excluir, abrir em aba
-  nova) embaixo, com fundo opaco e uma linha separando. Na `Modal`, o lugar
-  deles é a prop **`rodape`**, que fica **fora** do que rola — sem `sticky`,
-  sem como vazar. `sticky` só onde não dá para sair do fluxo (a barra do
-  editor, o rodapé do painel do output).
+- **O que é fixo numa janela fica fora do que rola.** A `Modal` tem duas
+  entradas para isso: **`rodape`** (as ações — Salvar, Fechar — à vista em
+  qualquer ponto do conteúdo) e **`lateral`** (uma coluna à esquerda com
+  rolagem própria, hoje a lista de versões da descrição). Dentro da rolagem
+  os dois precisariam de `sticky`, e `sticky` não passa do fim do bloco que o
+  contém: a coluna de versões era empurrada para cima no último ponto da
+  rolagem, e o rodapé deixava o texto passar por baixo. `sticky` fica só
+  onde não dá para sair do fluxo (a barra do editor, o rodapé do painel do
+  output), com fundo opaco e uma linha separando.
 - **Container que rola não leva padding vertical.** O padding dele encolhe a
   área onde um filho `sticky` pode encostar: com `p-5`, a barra do editor
   parava 20px abaixo do topo e o rodapé 20px acima do fim, e o texto passava

@@ -174,71 +174,68 @@ export function ModalDocumento({
           </div>
         </div>
       }
-    >
-      <div className="flex flex-col gap-4">
-        <div className={historico ? "grid grid-cols-[20rem_minmax(0,1fr)] gap-4" : ""}>
-          {historico && (
-            // Sticky e com altura da janela: o editor rola o corpo da modal, a lista rola sozinha.
-            // `top-5` e não `top-0`: o respiro agora é do conteúdo, e sem isso
-            // ela encostaria no título ao rolar.
-            <aside className="sticky top-5 flex max-h-[calc(90vh-10rem)] flex-col self-start overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
-              <h3 className="border-b border-zinc-800 px-4 py-2.5 text-xs font-semibold tracking-wide text-zinc-400 uppercase">
-                Versões
-              </h3>
-              <div className="flex min-h-0 flex-col gap-1 overflow-y-auto p-2">
-                {!versoes && <Carregando />}
-                {versoes?.length === 0 && <p className="px-2 py-3 text-sm text-zinc-500">Nenhuma versão salva ainda.</p>}
-                {versoes?.map((v) => {
-                  const ativa = vendo ? vendo.versao.numero === v.numero : v.numero === historico.atual;
-                  return (
-                    <button
-                      key={v.numero}
-                      type="button"
-                      onClick={() => abrirVersao(v.numero)}
-                      disabled={carregandoVersao !== null}
-                      className={`flex shrink-0 flex-col gap-1 rounded-lg px-3 py-2 text-left text-sm transition-colors ${ativa ? "bg-violet-950/60 ring-1 ring-violet-700" : "hover:bg-zinc-800"}`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <b className="text-zinc-100">v{v.numero}</b>
-                        <Etiqueta className={v.origem === "CLAUDE" ? "bg-orange-950/60 text-orange-300" : "bg-zinc-800 text-zinc-300"}>
-                          {v.origem === "CLAUDE" ? "Claude" : "Tela"}
-                        </Etiqueta>
-                        {v.numero === historico.atual && <Etiqueta className="bg-emerald-950/60 text-emerald-300">atual</Etiqueta>}
-                        <span className="ml-auto text-xs text-zinc-500">
-                          {carregandoVersao === v.numero ? "abrindo..." : formatarData(v.criadoEm)}
-                        </span>
+      lateral={
+        historico && (
+          // Fora do que rola (a `lateral` da Modal): fica parada enquanto o
+          // editor passa, e rola por dentro quando as versões não cabem.
+          <aside className="flex h-full w-80 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
+            <h3 className="border-b border-zinc-800 px-4 py-2.5 text-xs font-semibold tracking-wide text-zinc-400 uppercase">
+              Versões
+            </h3>
+            <div className="flex min-h-0 flex-col gap-1 overflow-y-auto p-2">
+              {!versoes && <Carregando />}
+              {versoes?.length === 0 && <p className="px-2 py-3 text-sm text-zinc-500">Nenhuma versão salva ainda.</p>}
+              {versoes?.map((v) => {
+                const ativa = vendo ? vendo.versao.numero === v.numero : v.numero === historico.atual;
+                return (
+                  <button
+                    key={v.numero}
+                    type="button"
+                    onClick={() => abrirVersao(v.numero)}
+                    disabled={carregandoVersao !== null}
+                    className={`flex shrink-0 flex-col gap-1 rounded-lg px-3 py-2 text-left text-sm transition-colors ${ativa ? "bg-violet-950/60 ring-1 ring-violet-700" : "hover:bg-zinc-800"}`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <b className="text-zinc-100">v{v.numero}</b>
+                      <Etiqueta className={v.origem === "CLAUDE" ? "bg-orange-950/60 text-orange-300" : "bg-zinc-800 text-zinc-300"}>
+                        {v.origem === "CLAUDE" ? "Claude" : "Tela"}
+                      </Etiqueta>
+                      {v.numero === historico.atual && <Etiqueta className="bg-emerald-950/60 text-emerald-300">atual</Etiqueta>}
+                      <span className="ml-auto text-xs text-zinc-500">
+                        {carregandoVersao === v.numero ? "abrindo..." : formatarData(v.criadoEm)}
                       </span>
-                      {v.nota && <span className="text-xs text-zinc-400">{v.nota}</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            </aside>
-          )}
-          <div className="flex min-w-0 flex-col gap-3">
-            {avisos?.(texto).map((a) => (
-              <p key={a} className="rounded-lg border border-amber-900/50 bg-amber-950/30 px-3 py-2 text-xs text-amber-200">
-                {a}
-              </p>
-            ))}
-            {vendo && (
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-900/60 bg-amber-950/30 px-4 py-2.5 text-sm text-amber-200">
-                <span>
-                  Você está vendo a <b>versão {vendo.versao.numero}</b>, de {formatarData(vendo.versao.criadoEm)}. Salvar a
-                  restaura como versão nova; a atual continua no histórico.
-                </span>
-                <Botao variante="fantasma" onClick={() => abrirVersao(historico!.atual)}>
-                  Voltar para a atual
-                </Botao>
-              </div>
-            )}
-            {/* Sem overflow-hidden: ele prenderia a barra de ferramentas (sticky) aqui dentro, e ela rolaria junto com o texto. */}
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900">
-              <Suspense fallback={<Carregando />}>
-                <EditorMarkdown key={chaveEditor} valor={texto} aoMudar={mudou} placeholder={placeholder} />
-              </Suspense>
+                    </span>
+                    {v.nota && <span className="text-xs text-zinc-400">{v.nota}</span>}
+                  </button>
+                );
+              })}
             </div>
+          </aside>
+        )
+      }
+    >
+      <div className="flex min-w-0 flex-col gap-3">
+        {avisos?.(texto).map((a) => (
+          <p key={a} className="rounded-lg border border-amber-900/50 bg-amber-950/30 px-3 py-2 text-xs text-amber-200">
+            {a}
+          </p>
+        ))}
+        {vendo && (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-900/60 bg-amber-950/30 px-4 py-2.5 text-sm text-amber-200">
+            <span>
+              Você está vendo a <b>versão {vendo.versao.numero}</b>, de {formatarData(vendo.versao.criadoEm)}. Salvar a
+              restaura como versão nova; a atual continua no histórico.
+            </span>
+            <Botao variante="fantasma" onClick={() => abrirVersao(historico!.atual)}>
+              Voltar para a atual
+            </Botao>
           </div>
+        )}
+        {/* Sem overflow-hidden: ele prenderia a barra de ferramentas (sticky) aqui dentro, e ela rolaria junto com o texto. */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900">
+          <Suspense fallback={<Carregando />}>
+            <EditorMarkdown key={chaveEditor} valor={texto} aoMudar={mudou} placeholder={placeholder} />
+          </Suspense>
         </div>
       </div>
     </Modal>

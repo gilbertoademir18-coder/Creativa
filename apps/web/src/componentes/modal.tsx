@@ -18,6 +18,7 @@ export function Modal({
   aoFechar,
   children,
   rodape,
+  lateral,
 }: {
   aberto: boolean;
   titulo: string;
@@ -30,6 +31,14 @@ export function Modal({
    * conteúdo. Janela curta não precisa: os botões vão no próprio conteúdo.
    */
   rodape?: React.ReactNode;
+  /**
+   * Coluna fixa à esquerda, também fora do que rola: ela fica parada
+   * enquanto o conteúdo passa, e rola por dentro se não couber (a lista de
+   * versões da descrição). Dentro da rolagem ela precisaria de `sticky`, e
+   * `sticky` não passa do fim do bloco que o contém — no último ponto da
+   * rolagem a coluna era empurrada para cima.
+   */
+  lateral?: React.ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
 
@@ -79,7 +88,10 @@ export function Modal({
         O conteúdo só existe enquanto a janela está aberta: toda abertura
         começa limpa, sem o estado da edição anterior.
       */}
-      <div className="min-h-0 flex-1 overflow-y-auto">{aberto && <div className="p-5">{children}</div>}</div>
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        {lateral && <div className="shrink-0 overflow-hidden p-5 pr-0">{aberto && lateral}</div>}
+        <div className="min-w-0 flex-1 overflow-y-auto">{aberto && <div className="p-5">{children}</div>}</div>
+      </div>
       {/*
         O rodapé fica FORA do que rola: assim ele está sempre à vista sem
         depender de `sticky`, e nada do texto pode aparecer embaixo dele.
