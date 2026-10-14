@@ -168,7 +168,9 @@ export function BarraCena() {
           </button>
           <span className="h-4 w-px bg-zinc-800" />
           <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
-            {video.cenas.map((c) => (
+            {/* Numeradas pela posição, como os shots: o número é a ordem no
+                vídeo, não parte do nome — reordenar renumera sozinho. */}
+            {video.cenas.map((c, i) => (
               <Link
                 key={c.id}
                 to={`/cenas/${c.id}`}
@@ -176,7 +178,7 @@ export function BarraCena() {
                   c.id === id ? "bg-zinc-700/60 font-medium text-zinc-100" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
                 }`}
               >
-                {c.nome}
+                {i + 1}. {c.nome}
               </Link>
             ))}
             {/* Cria no fim do vídeo, com o nome automático ("Cena 3"), e já abre
