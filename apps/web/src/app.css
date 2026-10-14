@@ -131,17 +131,26 @@ body {
 }
 
 /*
- * O olho da barra do topo: oculta o conteúdo gerado, como o saldo escondido
- * num app de banco.
+ * O olho da barra do topo: as imagens somem e fica um olho riscado no lugar.
  *
  * Pelo endereço e não por uma classe: toda imagem e todo vídeo de conteúdo vem
  * de `/api/arquivos/`, então a regra pega os que existem e os que vierem
  * depois, sem passar por componente nenhum. O ícone do app, que não vem de lá,
  * fica à vista.
+ *
+ * O truque é o `object-position`: em vez de esconder o elemento (o que levaria
+ * o fundo junto) ou borrar (que ainda deixa adivinhar), a imagem é empurrada
+ * para fora da própria caixa. Sobra o fundo, com o olho riscado no meio — e a
+ * caixa continua do mesmo tamanho, então nada na página se mexe.
  */
 [data-thumbs-ocultas] img[src*="/api/arquivos/"],
 [data-thumbs-ocultas] video[src*="/api/arquivos/"] {
-  filter: blur(18px) saturate(0.4);
-  /* O borrão puxa pixels de fora e deixa uma franja clara na borda. */
-  clip-path: inset(0);
+  object-fit: none;
+  object-position: -99999px -99999px;
+  background-color: #18181b;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2352525b' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49'/%3E%3Cpath d='M14.084 14.158a3 3 0 0 1-4.242-4.242'/%3E%3Cpath d='M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143'/%3E%3Cpath d='m2 2 20 20'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  /* Discreto: o mesmo tamanho num thumb pequeno e no visor grande. */
+  background-size: 28px 28px;
 }

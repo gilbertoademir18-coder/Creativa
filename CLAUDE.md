@@ -184,13 +184,17 @@ as cenas (`SetNull`), nunca as apaga.
   Prisma toca o `editadoEm` (`@updatedAt`), e como a listagem desempata por
   ele, favoritar fazia o projeto pular para o começo quando as ordens ainda
   estavam todas em 0.
-- **O olho da barra do topo oculta as imagens** — como o saldo escondido num
-  app de banco. Some só o conteúdo gerado; nomes, prompts e datas ficam.
+- **O olho da barra do topo some com as imagens**, deixando um olho riscado
+  discreto no lugar — nada de borrar, que ainda deixa adivinhar. Some só o
+  conteúdo gerado; nomes, prompts e datas ficam.
   Quem esconde é uma regra do `app.css` presa a `data-thumbs-ocultas` no
   `<html>`, mirando `[src*="/api/arquivos/"]`: pega toda imagem e vídeo de
   conteúdo, inclusive os que entrarem depois, sem passar por componente
-  nenhum — e deixa de fora o ícone do app, que não vem de lá. A escolha é da
-  máquina, não do projeto: fica no `localStorage`.
+  nenhum — e deixa de fora o ícone do app, que não vem de lá. O que apaga a
+  imagem é um `object-position` que a empurra para fora da própria caixa:
+  esconder o elemento levaria o fundo (e o ícone) junto, e a caixa segue do
+  mesmo tamanho, então nada na página se mexe. A escolha é da máquina, não do
+  projeto: fica no `localStorage`.
 - Filtros moram na URL (`useFiltros`), para dar para voltar, recarregar e
   mandar o link de um filtro pronto.
 - **Texto longo em markdown** usa o editor visual `EditorMarkdown`
