@@ -2,6 +2,7 @@ import { Plus, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { cenasApi } from "../api.ts";
+import { paraCampo, titulo } from "../rotulos.ts";
 import type { Cena, ShotResumo } from "../tipos.ts";
 import { ConfirmarExclusao, Modal } from "./modal.tsx";
 import { ListaOrdenavel, movido } from "./ordenavel.tsx";
@@ -22,6 +23,7 @@ export function ModalPainelCena({
   aoSalvar,
   aoMudarShots,
   unica,
+  numero,
 }: {
   cena: Cena | null;
   aberto: boolean;
@@ -30,11 +32,13 @@ export function ModalPainelCena({
   aoMudarShots: () => void;
   /** É a única cena do vídeo? Então não dá para excluir. */
   unica: boolean;
+  /** A posição da cena no vídeo: é o que identifica quando não há nome. */
+  numero: number;
 }) {
   if (!cena) return null;
   return (
-    <Modal aberto={aberto} titulo={cena.nome} largura="enorme" aoFechar={aoFechar}>
-      <PainelCena cena={cena} aoSalvar={aoSalvar} aoMudarShots={aoMudarShots} aoFechar={aoFechar} unica={unica} />
+    <Modal aberto={aberto} titulo={titulo("Cena", cena.nome, numero)} largura="enorme" aoFechar={aoFechar}>
+      <PainelCena cena={cena} aoSalvar={aoSalvar} aoMudarShots={aoMudarShots} aoFechar={aoFechar} unica={unica} numero={numero} />
     </Modal>
   );
 }
@@ -45,12 +49,14 @@ function PainelCena({
   aoMudarShots,
   aoFechar,
   unica,
+  numero,
 }: {
   cena: Cena;
   aoSalvar: (c: Cena) => void;
   aoMudarShots: () => void;
   aoFechar: () => void;
   unica: boolean;
+  numero: number;
 }) {
   const navegar = useNavigate();
   const [excluindo, setExcluindo] = useState(false);
@@ -60,7 +66,7 @@ function PainelCena({
       <div className="grid grid-cols-[1fr_24rem] gap-8">
         <Storyboard cena={cena} aoSalvar={aoSalvar} />
         <div className="flex flex-col gap-8">
-          <Identidade cena={cena} aoSalvar={aoSalvar} />
+          <Identidade cena={cena} aoSalvar={aoSalvar} numero={numero} />
           <Shots cena={cena} aoSalvar={aoSalvar} aoMudarShots={aoMudarShots} aoFechar={aoFechar} />
         </div>
       </div>
@@ -85,7 +91,7 @@ function PainelCena({
         titulo="Excluir cena"
         texto={
           <>
-            A cena <b>{cena.nome}</b> e os shots dela serão excluídos. Se algum shot tiver referências ou gerações,
+            A cena <b>{titulo("Cena", cena.nome, numero)}</b> e os shots dela serão excluídos. Se algum shot tiver referências ou gerações,
             exclua-as antes.
           </>
         }
@@ -100,16 +106,16 @@ function PainelCena({
 }
 
 /** Nome e descrição curta da cena. */
-function Identidade({ cena, aoSalvar }: { cena: Cena; aoSalvar: (c: Cena) => void }) {
-  const [nome, setNome] = useState(cena.nome);
+function Identidade({ cena, aoSalvar, numero }: { cena: Cena; aoSalvar: (c: Cena) => void; numero: number }) {
+  const [nome, setNome] = useState(paraCampo(cena.nome));
   const [descricao, setDescricao] = useState(cena.descricao ?? "");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   useEffect(() => {
-    setNome(cena.nome);
+    setNome(paraCampo(cena.nome));
     setDescricao(cena.descricao ?? "");
   }, [cena.nome, cena.descricao]);
-  const mudou = nome !== cena.nome || descricao !== (cena.descricao ?? "");
+  const mudou = nome !== paraCampo(cena.nome) || descricao !== (cena.descricao ?? "");
 
   return (
     <Secao
@@ -117,7 +123,7 @@ function Identidade({ cena, aoSalvar }: { cena: Cena; aoSalvar: (c: Cena) => voi
       acoes={
         <Botao
           variante="primario"
-          disabled={!mudou || !nome.trim()}
+          disabled={!mudou}
           carregando={salvando}
           onClick={async () => {
             setSalvando(true);
@@ -125,7 +131,7 @@ function Identidade({ cena, aoSalvar }: { cena: Cena; aoSalvar: (c: Cena) => voi
             try {
               aoSalvar(
                 await cenasApi.salvar(cena.id, {
-                  nome,
+                  nome: nome.trim() || null,
                   projetoId: cena.projetoId,
                   videoId: cena.videoId,
                   descricao: descricao || null,
@@ -146,7 +152,7 @@ function Identidade({ cena, aoSalvar }: { cena: Cena; aoSalvar: (c: Cena) => voi
       {erro && <Aviso>{erro}</Aviso>}
       <div className="flex flex-col gap-4">
         <Campo rotulo="Nome">
-          <Entrada value={nome} onChange={(e) => setNome(e.target.value)} />
+          <Entrada value={nome} onChange={(e) => setNome(e.target.value)} placeholder={`Sem nome — o número (${numero}) identifica`} />
         </Campo>
         <Campo rotulo="Descrição">
           <AreaTexto value={descricao} onChange={(e) => setDescricao(e.target.value)} className="min-h-24" />
@@ -271,9 +277,9 @@ function Shots({
       <ListaOrdenavel
         itens={shots}
         aoMover={mover}
-        linha={(s) => (
+        linha={(s, i) => (
           <Link to={`/shots/${s.id}`} onClick={aoFechar} className="flex min-w-0 flex-col gap-0.5 px-4 py-3">
-            <span className="truncate font-medium">{s.nome}</span>
+            <span className={`truncate ${s.nome ? "font-medium" : "text-zinc-500 italic"}`}>{s.nome ?? "sem nome"}</span>
             {s.descricao && <span className="line-clamp-2 text-sm text-zinc-400">{s.descricao}</span>}
             <span className="text-xs text-zinc-500">
               {s._count.referencias} referências · {s._count.outputs} outputs

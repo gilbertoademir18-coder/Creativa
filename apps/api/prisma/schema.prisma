@@ -160,7 +160,9 @@ model Cena {
   videoId    String?  @map("video_id") @db.Uuid
   /// Posição dentro do vídeo, a partir de 0. Fora de vídeo, não importa.
   ordem      Int      @default(0)
-  nome       String
+  /// Sem nome: o número (a posição) identifica. Nome é opcional, para quando
+  /// a cena merece um: "A fuga", "O reencontro".
+  nome       String?
   descricao  String?
   /// Texto livre por enquanto: roteiro, planos, intenção da cena.
   storyboard String   @default("")
@@ -221,7 +223,8 @@ model Video {
 model Shot {
   id              String   @id @default(uuid()) @db.Uuid
   cenaId          String   @map("cena_id") @db.Uuid
-  nome            String
+  /// Sem nome: o número (a posição) identifica, como na cena.
+  nome            String?
   descricao       String?
   /// Posição na cena, a partir de 0.
   ordem           Int

@@ -1,6 +1,6 @@
 import { assetsApi, cenasApi, projetosApi, type DonoReferencia } from "../api.ts";
 import { useCarregar } from "../hooks.ts";
-import { rotuloTipoAsset } from "../rotulos.ts";
+import { titulo, rotuloTipoAsset } from "../rotulos.ts";
 import type { Asset, Cena } from "../tipos.ts";
 import { Pilulas, Seletor } from "./ui.tsx";
 
@@ -62,9 +62,9 @@ export function SeletorDono({ valor, aoMudar }: { valor: DonoReferencia; aoMudar
           {!cenas?.length && <option value="">Nenhuma cena cadastrada</option>}
           {(cenas ?? []).map((c) => (
             <optgroup key={c.id} label={rotuloCena(c)}>
-              {c.shots.map((s) => (
+              {c.shots.map((s, i) => (
                 <option key={s.id} value={s.id}>
-                  {s.nome}
+                  {titulo("Shot", s.nome, i + 1)}
                 </option>
               ))}
             </optgroup>
@@ -75,7 +75,11 @@ export function SeletorDono({ valor, aoMudar }: { valor: DonoReferencia; aoMudar
   );
 }
 
-const rotuloCena = (c: Cena) => (c.projeto ? `${c.projeto.nome} › ${c.nome}` : c.nome);
+// A cena pode não ter nome: aí vale o número (a posição no vídeo).
+const rotuloCena = (c: Cena) => {
+  const nome = titulo("Cena", c.nome, c.ordem + 1);
+  return c.projeto ? `${c.projeto.nome} › ${nome}` : nome;
+};
 
 function agrupar(itens: Asset[], chave: (a: Asset) => string): [string, Asset[]][] {
   const grupos = new Map<string, Asset[]>();

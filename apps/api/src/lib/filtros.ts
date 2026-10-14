@@ -40,7 +40,9 @@ export const incluirDono = {
     select: {
       id: true,
       nome: true,
-      cena: { select: { id: true, nome: true, projeto: { select: { id: true, nome: true } } } },
+      ordem: true,
+      // A ordem vem junto: cena e shot podem não ter nome, e aí o número identifica.
+      cena: { select: { id: true, nome: true, ordem: true, projeto: { select: { id: true, nome: true } } } },
     },
   },
 } as const;

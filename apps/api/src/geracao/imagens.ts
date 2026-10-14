@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { caminhoDoShot } from "../lib/rotulos.ts";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { caminhoAbsoluto } from "../lib/arquivos.ts";
@@ -61,13 +62,13 @@ async function filtroDono(dono: DonoImagens, referencia = false) {
 
 const comDono = {
   asset: { select: { id: true, nome: true } },
-  shot: { select: { id: true, nome: true, cena: { select: { nome: true } } } },
+  shot: { select: { id: true, nome: true, ordem: true, cena: { select: { nome: true, ordem: true } } } },
 } as const;
 
 type ComDono = {
   assetId: string | null;
   asset: { id: string; nome: string } | null;
-  shot: { id: string; nome: string; cena: { nome: string } } | null;
+  shot: { id: string; nome: string | null; ordem: number; cena: { nome: string | null; ordem: number } } | null;
   projeto?: { id: string; nome: string } | null;
 };
 
@@ -75,7 +76,7 @@ function donoDa(x: ComDono, dono: DonoImagens): Pick<ImagemDisponivel, "dono" | 
   const d: ImagemDisponivel["dono"] = x.asset
     ? { tipo: "asset", id: x.asset.id, nome: x.asset.nome }
     : x.shot
-      ? { tipo: "shot", id: x.shot.id, nome: `${x.shot.cena.nome} › ${x.shot.nome}` }
+      ? { tipo: "shot", id: x.shot.id, nome: caminhoDoShot(x.shot) }
       : x.projeto
         ? { tipo: "projeto", id: x.projeto.id, nome: `Projeto ${x.projeto.nome}` }
         : { tipo: "solta", id: "", nome: "Solta" };

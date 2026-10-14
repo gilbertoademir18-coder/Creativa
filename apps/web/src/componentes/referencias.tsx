@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { referenciasApi, urlArquivo, type DonoReferencia } from "../api.ts";
 import { useCarregar } from "../hooks.ts";
-import { formatarBytes, formatarData, TIPOS_REFERENCIA } from "../rotulos.ts";
+import { caminhoDoShot, formatarBytes, formatarData, TIPOS_REFERENCIA } from "../rotulos.ts";
 import type { Referencia } from "../tipos.ts";
 import { ICONE_TIPO_REFERENCIA, Miniatura } from "./midia.tsx";
 import { ConfirmarExclusao, Modal } from "./modal.tsx";
@@ -22,7 +22,7 @@ export function DescricaoDono({ r }: { r: Pick<Referencia, "asset" | "shot"> & {
   if (r.shot) {
     return (
       <Link to={`/shots/${r.shot.id}`} className="hover:text-violet-300">
-        {r.shot.cena.nome} › {r.shot.nome}
+        {caminhoDoShot(r.shot)}
       </Link>
     );
   }

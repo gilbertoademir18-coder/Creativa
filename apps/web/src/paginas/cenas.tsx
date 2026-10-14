@@ -19,6 +19,7 @@ import {
   Vazio,
 } from "../componentes/ui.tsx";
 import { useCarregar, useFiltros, type Volta } from "../hooks.ts";
+import { titulo } from "../rotulos.ts";
 import type { Cena } from "../tipos.ts";
 
 /**
@@ -110,7 +111,7 @@ export function CartaoCena({ c, mostrarProjeto, volta }: { c: Cena; mostrarProje
     >
       <div className="flex items-center gap-2.5">
         <Clapperboard className="size-5 shrink-0 text-violet-400" />
-        <span className="truncate font-medium">{c.nome}</span>
+        <span className={`truncate ${c.nome ? "font-medium" : "text-zinc-400 italic"}`}>{titulo("Cena", c.nome, c.ordem + 1)}</span>
       </div>
       {c.video && (
         <span className="flex items-center gap-1.5 truncate text-xs text-violet-300/80">
@@ -181,7 +182,7 @@ function FormCena({
         setErro(null);
         try {
           const dados = {
-            nome,
+            nome: nome.trim() || null,
             projetoId: projetoId || null,
             videoId: videoId || null,
             descricao: descricao || null,
@@ -194,8 +195,8 @@ function FormCena({
         }
       }}
     >
-      <Campo rotulo="Nome">
-        <Entrada value={nome} onChange={(e) => setNome(e.target.value)} autoFocus required placeholder="Cena da ponte" />
+      <Campo rotulo="Nome" dica="Opcional: sem nome, a cena se identifica pelo número.">
+        <Entrada value={nome} onChange={(e) => setNome(e.target.value)} autoFocus placeholder="Cena da ponte" />
       </Campo>
       <Campo rotulo="Projeto">
         <EscolhaProjeto

@@ -48,6 +48,14 @@ e diga na resposta final o que acrescentou ou mudou.
 de "temporada"/"episódio" no código nem na tela. Apagar lista ou vídeo solta
 as cenas (`SetNull`), nunca as apaga.
 
+- **Cena e shot nascem sem nome** (`nome` é `String?` desde 2026-10-14): o
+  número — a **posição na lista**, nunca o campo `ordem` — já identifica, e
+  nome é só para quando merecem um ("A fuga"), posto pelo usuário. Os rótulos
+  saem de `rotulos.ts`: `comNumero` nas abas e listas (`2`, ou `2. A fuga`),
+  `titulo` em títulos e frases (`Cena 2`), `paraCampo` nos formulários.
+  Onde há só um registro solto (fila, escolha de imagem), a API usa `ordem + 1`
+  (`lib/rotulos.ts`) — aproximação consciente: apagar um do meio deixa buraco
+  na ordem guardada, e aí esse rótulo diverge da posição que a barra mostra.
 - **Vídeo nunca está solto:** vídeo sempre tem lista, e lista sempre tem
   projeto (os dois campos são obrigatórios no banco). Por isso o filtro de
   projeto da página de vídeos usa `permitirSem={false}` — "Sem projeto" ali

@@ -2,6 +2,7 @@ import { Clapperboard, Film, Plus } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { cenasApi, videosApi } from "../api.ts";
+import { comNumero, titulo } from "../rotulos.ts";
 import type { Cena, VideoDetalhe } from "../tipos.ts";
 import { BotaoEditarShot } from "./editar-shot.tsx";
 import { ModalPainelCena } from "./painel-cena.tsx";
@@ -118,6 +119,8 @@ export function BarraCena() {
   const [painelVideo, setPainelVideo] = useState(false);
   const [criandoCena, setCriandoCena] = useState(false);
   const [erroCena, setErroCena] = useState<string | null>(null);
+  // A posição da cena no vídeo; fora de vídeo não há irmãs, então vale a ordem.
+  const numeroDaCena = video ? video.cenas.findIndex((c) => c.id === id) + 1 : (cena?.ordem ?? 0) + 1;
 
   if (!id) return null;
 
@@ -178,11 +181,11 @@ export function BarraCena() {
                   c.id === id ? "bg-zinc-700/60 font-medium text-zinc-100" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
                 }`}
               >
-                {i + 1}. {c.nome}
+                {comNumero(c.nome, i + 1)}
               </Link>
             ))}
-            {/* Cria no fim do vídeo, com o nome automático ("Cena 3"), e já abre
-                — a cena nasce com um shot, então cai direto nele. */}
+            {/* Cria no fim do vídeo e já abre — a cena nasce sem nome e com um
+                shot, então cai direto nele. */}
             <button
               type="button"
               disabled={criandoCena}
@@ -204,7 +207,7 @@ export function BarraCena() {
         className="flex min-w-0 shrink-0 items-center gap-2 text-sm font-semibold text-zinc-200 underline-offset-4 hover:text-white hover:underline hover:decoration-dotted"
       >
         <Clapperboard className="size-4 text-zinc-500" />
-        <span className="max-w-72 truncate">{cena?.nome ?? "…"}</span>
+        <span className="max-w-72 truncate">{cena ? titulo("Cena", cena.nome, numeroDaCena) : "…"}</span>
       </button>
       <span className="h-5 w-px bg-zinc-800" />
       {/* Pular de shot em shot da mesma cena, sem sair da cena. */}
@@ -217,10 +220,10 @@ export function BarraCena() {
               s.id === shotAtivo ? "bg-violet-600/20 font-medium text-violet-200" : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
             }`}
           >
-            {i + 1}. {s.nome}
+            {comNumero(s.nome, i + 1)}
           </Link>
         ))}
-        {/* Cria no fim da cena, com o nome automático ("Shot 3"), e já abre. */}
+        {/* Cria no fim da cena, sem nome, e já abre. */}
         <button
           type="button"
           disabled={criando}
@@ -244,6 +247,7 @@ export function BarraCena() {
         aoMudarShots={recarregar}
         // Sem vídeo, a cena não tem essa amarra; o vídeo já está carregado aqui.
         unica={!!video && video.cenas.length <= 1}
+        numero={numeroDaCena}
       />
     </div>
   );

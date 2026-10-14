@@ -96,9 +96,10 @@ export async function rotasListas(app: FastifyInstance) {
   });
 
   /**
-   * Vídeo novo no fim da lista, e já nasce com uma cena, que por sua vez nasce com um shot — como
-   * a cena sempre nasceu. Vídeo vazio não tem para onde levar quem clica nele,
-   * e a dupla "criar o vídeo, agora criar a cena" era só um passo a mais.
+   * Vídeo novo no fim da lista, já com uma cena — que por sua vez nasce com um
+   * shot. Vídeo vazio não tem para onde levar quem clica nele, e "criar o
+   * vídeo, agora criar a cena" era um passo a mais. Nascem sem nome: o número
+   * identifica.
    */
   app.post("/:id/videos", async (req, reply) => {
     const { id } = validar(z.object({ id: Uuid }), req.params);
@@ -113,7 +114,7 @@ export async function rotasListas(app: FastifyInstance) {
           listaId: id,
           ordem: (ultimo._max.ordem ?? -1) + 1,
           // A cena é do mesmo projeto da lista, como o encaixarNoVideo garante.
-          cenas: { create: { nome: "Cena 1", ordem: 0, projetoId: lista.projetoId, shots: { create: { nome: "Shot 1", ordem: 0 } } } },
+          cenas: { create: { ordem: 0, projetoId: lista.projetoId, shots: { create: { ordem: 0 } } } },
         },
         include: { _count: { select: { cenas: true } } },
       });
@@ -155,9 +156,9 @@ export async function rotasVideos(app: FastifyInstance) {
   });
 
   /**
-   * Cena nova no fim do vídeo, com o nome automático — o "+ Nova cena" da
-   * barra, irmão do "+ Novo shot". Nasce com um shot, como toda cena, e no
-   * projeto da lista do vídeo.
+   * Cena nova no fim do vídeo — o "+ Nova cena" da barra, irmão do "+ Novo
+   * shot". Nasce sem nome (o número identifica), com um shot, e no projeto da
+   * lista do vídeo.
    */
   app.post("/:id/cenas", async (req, reply) => {
     const { id } = validar(z.object({ id: Uuid }), req.params);
@@ -171,9 +172,8 @@ export async function rotasVideos(app: FastifyInstance) {
         data: {
           videoId: id,
           projetoId: video.lista.projetoId,
-          nome: `Cena ${video.cenas.length + 1}`,
           ordem: Math.max(-1, ...video.cenas.map((c) => c.ordem)) + 1,
-          shots: { create: { nome: "Shot 1", ordem: 0 } },
+          shots: { create: { ordem: 0 } },
         },
         include: daCena,
       });

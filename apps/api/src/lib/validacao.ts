@@ -39,6 +39,18 @@ export const Uuid = z.uuid("id inválido");
 
 export const Nome = z.string().trim().min(1, "não pode ficar vazio").max(120, "no máximo 120 caracteres");
 
+/**
+ * Nome que pode não existir — cena e shot se identificam pelo número, e só
+ * ganham nome quando merecem um. Vazio vira null, para o banco não guardar
+ * "" e null misturados.
+ */
+export const NomeOpcional = z
+  .string()
+  .trim()
+  .max(120, "no máximo 120 caracteres")
+  .nullish()
+  .transform((n) => n || null);
+
 /** Texto opcional: vazio vira null, para o banco não guardar "" e null misturados. */
 export const TextoOpcional = (max = 5000) =>
   z

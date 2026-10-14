@@ -2,6 +2,7 @@ import { Clapperboard, Plus, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { videosApi } from "../api.ts";
+import { titulo } from "../rotulos.ts";
 import { ModalCena } from "../paginas/cenas.tsx";
 import type { Cena, VideoDetalhe } from "../tipos.ts";
 import { ModalDocumento } from "./documento-markdown.tsx";
@@ -97,7 +98,7 @@ function PainelVideo({ video, aoMudar, aoFechar }: { video: VideoDetalhe; aoMuda
                     </span>
                     <span className="text-sm text-zinc-400">
                       {travado
-                        ? `Não dá: ${presos.map((c) => `“${c.nome}”`).join(", ")} ${presos.length === 1 ? "tem" : "têm"} shots com referências ou outputs. Exclua-os antes.`
+                        ? `Não dá: ${presos.map((c) => `“${titulo("Cena", c.nome, video.cenas.indexOf(c) + 1)}”`).join(", ")} ${presos.length === 1 ? "tem" : "têm"} shots com referências ou outputs. Exclua-os antes.`
                         : "Sem isso, as cenas voltam para “Cenas sem vídeo” do projeto."}
                     </span>
                   </span>
@@ -237,9 +238,9 @@ function Cenas({ video, aoMudar, aoFechar }: { video: VideoDetalhe; aoMudar: () 
         <ListaOrdenavel
           itens={cenas}
           aoMover={mover}
-          linha={(c) => (
+          linha={(c, i) => (
             <Link to={`/cenas/${c.id}`} onClick={aoFechar} className="flex min-w-0 flex-col gap-0.5 px-4 py-3">
-              <span className="truncate font-medium">{c.nome}</span>
+              <span className={`truncate ${c.nome ? "font-medium" : "text-zinc-500 italic"}`}>{c.nome ?? "sem nome"}</span>
               {(c.descricao || c.storyboard) && (
                 <span className="line-clamp-2 text-sm text-zinc-400">{c.descricao || c.storyboard}</span>
               )}

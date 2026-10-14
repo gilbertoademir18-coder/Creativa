@@ -51,7 +51,8 @@ export type AssetDetalhe = Asset & { referencias: Referencia[] };
 export type ShotResumo = {
   id: string;
   cenaId: string;
-  nome: string;
+  /** Sem nome: o número (a posição) identifica. */
+  nome: string | null;
   descricao: string | null;
   ordem: number;
   criadoEm: string;
@@ -70,7 +71,8 @@ export type Cena = {
   /** Posição dentro do vídeo. */
   ordem: number;
   video: VideoDaCena | null;
-  nome: string;
+  /** Sem nome: o número (a posição) identifica. */
+  nome: string | null;
   descricao: string | null;
   storyboard: string;
   criadoEm: string;
@@ -82,10 +84,10 @@ export type Cena = {
 export type ShotDetalhe = Omit<ShotResumo, "_count"> & {
   cena: {
     id: string;
-    nome: string;
+    nome: string | null;
     projeto: ProjetoRef | null;
     video: VideoDaCena | null;
-    shots: { id: string; nome: string; ordem: number }[];
+    shots: { id: string; nome: string | null; ordem: number }[];
   };
   referencias: Referencia[];
 };
@@ -124,7 +126,7 @@ export type VideoDetalhe = Omit<VideoResumo, "_count"> & {
 /** O dono de uma referência ou output, com o caminho até o projeto. */
 export type DonoDetalhado = {
   asset: { id: string; nome: string; tipo: TipoAsset; projeto: ProjetoRef | null } | null;
-  shot: { id: string; nome: string; cena: { id: string; nome: string; projeto: ProjetoRef | null } } | null;
+  shot: { id: string; nome: string | null; ordem: number; cena: { id: string; nome: string | null; ordem: number; projeto: ProjetoRef | null } } | null;
 };
 
 export type Referencia = {

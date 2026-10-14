@@ -2,7 +2,7 @@ import { Check, ChevronLeft, ChevronRight, Copy, ExternalLink, Star, Trash, Wand
 import { useEffect, useState } from "react";
 import { outputsApi, urlArquivo } from "../api.ts";
 import { useCarregar } from "../hooks.ts";
-import { formatarBytes, formatarData } from "../rotulos.ts";
+import { caminhoDoShot, formatarBytes, formatarData } from "../rotulos.ts";
 import type { Output, OutputDetalhe } from "../tipos.ts";
 import { Miniatura } from "./midia.tsx";
 import { ConfirmarExclusao, Modal } from "./modal.tsx";
@@ -88,7 +88,7 @@ export function CartaoOutput({
         />
       </div>
       <button type="button" onClick={aoAbrir} className="flex w-full flex-col gap-0.5 px-3 py-2 text-left">
-        {mostrarDono && <span className="truncate text-sm text-zinc-200">{o.asset?.nome ?? (o.shot && `${o.shot.cena.nome} › ${o.shot.nome}`)}</span>}
+        {mostrarDono && <span className="truncate text-sm text-zinc-200">{o.asset?.nome ?? (o.shot && caminhoDoShot(o.shot))}</span>}
         <span className="flex justify-between gap-3 text-xs text-zinc-500">
           <span className="truncate">{o.tipoGeracaoNome}</span>
           <span className="shrink-0 tabular-nums">{formatarData(o.criadoEm)}</span>

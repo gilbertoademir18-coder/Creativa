@@ -2,6 +2,7 @@ import { Pencil, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { shotsApi } from "../api.ts";
+import { paraCampo, titulo } from "../rotulos.ts";
 import type { Cena, ShotResumo } from "../tipos.ts";
 import { ConfirmarExclusao, Modal } from "./modal.tsx";
 import { AreaTexto, Aviso, Botao, Campo, Entrada } from "./ui.tsx";
@@ -24,7 +25,11 @@ export function BotaoEditarShot({
   aoMudar: () => void;
 }) {
   const [aberto, setAberto] = useState(false);
-  const shot = cena?.shots.find((s) => s.id === shotId) ?? null;
+  // O número é a POSIÇÃO na cena, não o campo ordem: apagar um shot do meio
+  // deixa buraco na ordem guardada, e a barra conta pela posição.
+  const indice = cena?.shots.findIndex((s) => s.id === shotId) ?? -1;
+  const shot = indice >= 0 ? cena!.shots[indice]! : null;
+  const numero = indice + 1;
 
   return (
     <>
@@ -32,11 +37,12 @@ export function BotaoEditarShot({
         Editar shot
       </Botao>
       {shot && (
-        <Modal aberto={aberto} titulo={`Editar ${shot.nome}`} aoFechar={() => setAberto(false)}>
+        <Modal aberto={aberto} titulo={`Editar ${titulo("Shot", shot.nome, numero)}`} aoFechar={() => setAberto(false)}>
           <FormShot
             shot={shot}
             unico={(cena?.shots.length ?? 0) <= 1}
             cenaId={cena!.id}
+            numero={numero}
             aoPronto={() => {
               setAberto(false);
               aoMudar();
@@ -52,21 +58,24 @@ function FormShot({
   shot,
   unico,
   cenaId,
+  numero,
   aoPronto,
 }: {
   shot: ShotResumo;
   unico: boolean;
   cenaId: string;
+  /** A posição do shot na cena: é o que identifica quando não há nome. */
+  numero: number;
   aoPronto: () => void;
 }) {
   const navegar = useNavigate();
-  const [nome, setNome] = useState(shot.nome);
+  const [nome, setNome] = useState(paraCampo(shot.nome));
   const [descricao, setDescricao] = useState(shot.descricao ?? "");
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   useEffect(() => {
-    setNome(shot.nome);
+    setNome(paraCampo(shot.nome));
     setDescricao(shot.descricao ?? "");
   }, [shot.id, shot.nome, shot.descricao]);
 
@@ -78,7 +87,7 @@ function FormShot({
         setSalvando(true);
         setErro(null);
         try {
-          await shotsApi.salvar(shot.id, { nome, descricao: descricao || null });
+          await shotsApi.salvar(shot.id, { nome: nome.trim() || null, descricao: descricao || null });
           aoPronto();
         } catch (er) {
           setErro((er as Error).message);
@@ -87,7 +96,7 @@ function FormShot({
       }}
     >
       <Campo rotulo="Nome">
-        <Entrada value={nome} onChange={(e) => setNome(e.target.value)} autoFocus required />
+        <Entrada value={nome} onChange={(e) => setNome(e.target.value)} autoFocus placeholder={`Sem nome — o número (${numero}) identifica`} />
       </Campo>
       <Campo rotulo="Descrição">
         <AreaTexto value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={5} placeholder="Enquadramento, ação, câmera..." />
@@ -112,7 +121,7 @@ function FormShot({
         titulo="Excluir shot"
         texto={
           <>
-            O shot <b>{shot.nome}</b> será excluído. Se ele tiver referências ou outputs, exclua-os antes.
+            O shot <b>{titulo("Shot", shot.nome, numero)}</b> será excluído. Se ele tiver referências ou outputs, exclua-os antes.
           </>
         }
         aoFechar={() => setExcluindo(false)}

@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { caminhoDoShot } from "../lib/rotulos.ts";
 import { z } from "zod";
 import { nomesDoCatalogo } from "../geracao/catalogo.ts";
 import { cancelarExecucao, lerFila, progressoDe } from "../geracao/execucao.ts";
@@ -27,14 +28,14 @@ const daExecucao = {
   iniciadaEm: true,
   concluidaEm: true,
   asset: { select: { id: true, nome: true } },
-  shot: { select: { id: true, nome: true, cena: { select: { nome: true } } } },
+  shot: { select: { id: true, nome: true, ordem: true, cena: { select: { nome: true, ordem: true } } } },
 } as const;
 
 type ExecucaoDaFila = {
   tipo: string;
   parametros: unknown;
   asset: { id: string; nome: string } | null;
-  shot: { id: string; nome: string; cena: { nome: string } } | null;
+  shot: { id: string; nome: string | null; ordem: number; cena: { nome: string | null; ordem: number } } | null;
 };
 
 /** O que a barra precisa de cada execução: título, tipo, e de quem é (com o link para lá). */
@@ -43,7 +44,7 @@ function resumo(e: ExecucaoDaFila, nomes: Awaited<ReturnType<typeof nomesDoCatal
   return {
     titulo: typeof prompt === "string" && prompt.trim() ? prompt.slice(0, 80) : "Sem prompt",
     tipoNome: nomes.tipo(e.tipo),
-    dono: e.asset ? e.asset.nome : e.shot ? `${e.shot.cena.nome} › ${e.shot.nome}` : null,
+    dono: e.asset ? e.asset.nome : e.shot ? caminhoDoShot(e.shot) : null,
     link: e.asset ? `/assets/${e.asset.id}` : e.shot ? `/shots/${e.shot.id}` : null,
   };
 }

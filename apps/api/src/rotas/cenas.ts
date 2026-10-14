@@ -10,6 +10,7 @@ import {
   FiltroProjeto,
   naoEncontrado,
   Nome,
+  NomeOpcional,
   TextoOpcional,
   Uuid,
   UuidOpcional,
@@ -19,8 +20,9 @@ import {
 /**
  * Rotas de cenas (`/api/cenas`) e de shots (`/api/shots`).
  *
- * Toda cena tem pelo menos um shot: nasce com o "Shot 1", e o último shot
- * de uma cena não pode ser apagado.
+ * Toda cena tem pelo menos um shot: nasce com um, e o último shot de uma
+ * cena não pode ser apagado. Cena e shot nascem SEM nome — o número (a
+ * posição) identifica; nome é para quando merecem um, e vem do usuário.
  *
  * A cena pode estar num vídeo (de uma lista de vídeos do projeto). Aí o
  * projeto dela é o da lista — quem manda é o vídeo — e ela entra no fim.
@@ -29,13 +31,13 @@ import {
 const CorpoCena = z.object({
   projetoId: UuidOpcional,
   videoId: UuidOpcional,
-  nome: Nome,
+  nome: NomeOpcional,
   descricao: TextoOpcional(),
   storyboard: z.string().max(100_000, "storyboard longo demais").default(""),
 });
 
 const CorpoShot = z.object({
-  nome: Nome,
+  nome: NomeOpcional,
   descricao: TextoOpcional(),
 });
 
@@ -116,7 +118,7 @@ export async function rotasCenas(app: FastifyInstance) {
     const corpo = validar(CorpoCena, req.body);
     const cena = await prisma.$transaction(async (tx) =>
       tx.cena.create({
-        data: { ...(await encaixarNoVideo(tx, corpo)), shots: { create: { nome: "Shot 1", ordem: 0 } } },
+        data: { ...(await encaixarNoVideo(tx, corpo)), shots: { create: { ordem: 0 } } },
         include: daCena,
       }),
     );
@@ -161,7 +163,7 @@ export async function rotasCenas(app: FastifyInstance) {
       return tx.shot.create({
         data: {
           cenaId: id,
-          nome: corpo.nome ?? `Shot ${cena.shots.length + 1}`,
+          nome: corpo.nome ?? null,
           descricao: corpo.descricao ?? null,
           ordem: proxima,
         },

@@ -78,10 +78,10 @@ export type DonoReferencia = Dono & { projetoId?: string | null };
 export type ProjetoNovo = { nome: string };
 export type AssetNovo = { nome: string; tipo: TipoAsset; projetoId: string | null; descricao: string | null };
 /** Com vídeo, o projeto da cena é o da lista do vídeo (a API acerta). */
-export type CenaNova = { nome: string; projetoId: string | null; videoId: string | null; descricao: string | null; storyboard: string };
+export type CenaNova = { nome: string | null; projetoId: string | null; videoId: string | null; descricao: string | null; storyboard: string };
 export type ListaNova = { nome: string; descricao: string | null };
 export type VideoNovo = { nome: string; descricao: string | null };
-export type ShotNovo = { nome: string; descricao: string | null };
+export type ShotNovo = { nome: string | null; descricao: string | null };
 /** O que o Gerador manda ao clicar em "Gerar". */
 export type Pedido = Dono & {
   tipo: string;

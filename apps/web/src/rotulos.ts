@@ -27,3 +27,27 @@ export function formatarBytes(n: number | null): string {
   if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`;
   return `${(n / 1024 ** 3).toFixed(2)} GB`;
 }
+
+/*
+ * Como chamar uma cena ou um shot que não tem nome.
+ *
+ * Os dois nascem sem nome: o número — a posição na lista — já identifica. Nome
+ * é para quando a cena merece um ("A fuga"), e vem do usuário.
+ *
+ * O número sai sempre do **índice na lista ordenada**, não do campo `ordem`:
+ * apagar um shot do meio deixa buraco na ordem guardada, e o que a pessoa
+ * conta na tela é a posição.
+ */
+
+/** Na barra e nas listas: `2` sem nome, `2. A fuga` com. */
+export const comNumero = (nome: string | null, numero: number): string => (nome ? `${numero}. ${nome}` : String(numero));
+
+/** Em títulos e frases corridas: `A fuga`, ou `Cena 2` / `Shot 1` quando não há nome. */
+export const titulo = (tipo: "Cena" | "Shot", nome: string | null, numero: number): string => nome ?? `${tipo} ${numero}`;
+
+/** O que o campo "Nome" mostra: vazio quando não há nome. */
+export const paraCampo = (nome: string | null): string => nome ?? "";
+
+/** O caminho até um shot, para rótulos de dono: `A fuga › 2`, `Cena 3 › Shot 1`. */
+export const caminhoDoShot = (s: { nome: string | null; ordem: number; cena: { nome: string | null; ordem: number } }): string =>
+  `${titulo("Cena", s.cena.nome, s.cena.ordem + 1)} › ${titulo("Shot", s.nome, s.ordem + 1)}`;
