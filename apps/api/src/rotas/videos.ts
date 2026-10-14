@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { Prisma } from "../generated/prisma/client.ts";
 import { prisma } from "../lib/prisma.ts";
-import { ErroHttp, naoEncontrado, Nome, TextoOpcional, Uuid, validar } from "../lib/validacao.ts";
+import { Busca, contem, ErroHttp, naoEncontrado, Nome, TextoOpcional, Uuid, validar } from "../lib/validacao.ts";
 
 /**
  * Listas de vídeos (`/api/listas`) e vídeos (`/api/videos`).
@@ -28,6 +28,12 @@ const videosDaLista = {
   orderBy: { ordem: "asc" as const },
   include: { _count: { select: { cenas: true } } },
 };
+
+/** O vídeo na listagem: o caminho até o projeto e quantas cenas tem. */
+const daListagem = {
+  lista: { select: { id: true, nome: true, projeto: { select: { id: true, nome: true } } } },
+  _count: { select: { cenas: true } },
+} satisfies Prisma.VideoInclude;
 
 /** O vídeo aberto: a lista e o projeto (para o caminho) e as cenas em ordem, com os shots. */
 const daPaginaDoVideo = {
@@ -113,6 +119,19 @@ export async function rotasListas(app: FastifyInstance) {
 }
 
 export async function rotasVideos(app: FastifyInstance) {
+  /**
+   * Todos os vídeos, para a página de vídeos. Não há filtro "sem projeto":
+   * vídeo sempre tem lista, e lista sempre tem projeto.
+   */
+  app.get("/", async (req) => {
+    const { projeto, busca } = validar(z.object({ projeto: Uuid.optional(), busca: Busca }), req.query);
+    return prisma.video.findMany({
+      where: { ...(projeto && { lista: { projetoId: projeto } }), nome: contem(busca) },
+      include: daListagem,
+      orderBy: { editadoEm: "desc" },
+    });
+  });
+
   app.get("/:id", async (req) => {
     const { id } = validar(z.object({ id: Uuid }), req.params);
     const v = await prisma.video.findUnique({ where: { id }, include: daPaginaDoVideo });

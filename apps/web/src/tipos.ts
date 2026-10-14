@@ -100,6 +100,11 @@ export type VideoResumo = {
   _count: { cenas: number };
 };
 
+/** O vídeo na página de vídeos: o caminho até o projeto e quantas cenas tem. */
+export type VideoNaLista = VideoResumo & {
+  lista: { id: string; nome: string; projeto: ProjetoRef };
+};
+
 /** Uma lista de vídeos de um projeto ("Temporada 1", "Trailers"), com os vídeos em ordem. */
 export type ListaVideos = {
   id: string;

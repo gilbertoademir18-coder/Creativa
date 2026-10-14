@@ -48,6 +48,11 @@ e diga na resposta final o que acrescentou ou mudou.
 de "temporada"/"episódio" no código nem na tela. Apagar lista ou vídeo solta
 as cenas (`SetNull`), nunca as apaga.
 
+- **Vídeo nunca está solto:** vídeo sempre tem lista, e lista sempre tem
+  projeto (os dois campos são obrigatórios no banco). Por isso o filtro de
+  projeto da página de vídeos usa `permitirSem={false}` — "Sem projeto" ali
+  seria um filtro que nunca acha nada — e o `GET /api/videos` recusa
+  `projeto=sem` com 400. Asset e cena, sim, podem estar soltos.
 - Cena num vídeo: o projeto dela é **sempre** o da lista do vídeo — quem
   acerta é a API (`encaixarNoVideo` em `rotas/cenas.ts`), não a tela.
 - Quem salva uma cena manda o `videoId` junto (mesmo só mudando o

@@ -15,6 +15,7 @@ import type {
   Execucao,
   ListaVideos,
   VideoDetalhe,
+  VideoNaLista,
   VideoResumo,
   Output,
   OutputDetalhe,
@@ -149,6 +150,7 @@ export const listasApi = {
 };
 
 export const videosApi = {
+  listar: (f: { projeto?: string; busca?: string } = {}) => api<VideoNaLista[]>(`/videos${consulta(f)}`),
   ler: (id: string) => api<VideoDetalhe>(`/videos/${id}`),
   salvar: (id: string, v: VideoNovo) => api<VideoDetalhe>(`/videos/${id}`, { method: "PUT", corpo: v }),
   apagar: (id: string) => api<void>(`/videos/${id}`, { method: "DELETE" }),

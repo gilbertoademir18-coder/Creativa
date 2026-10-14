@@ -1,4 +1,4 @@
-import { Clapperboard, FolderKanban, Images, LayoutDashboard, MessagesSquare, Shapes, Sparkles } from "lucide-react";
+import { Clapperboard, Film, FolderKanban, Images, LayoutDashboard, MessagesSquare, Shapes, Sparkles } from "lucide-react";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 import { projetosApi } from "../api.ts";
@@ -37,8 +37,10 @@ export function useProjetoAtual(id: string | null | undefined) {
 /** Os links fixos da barra, e as rotas em que cada um fica aceso. */
 function links(id: string) {
   return [
-    { rotulo: "Visão geral", para: `/projetos/${id}`, icone: LayoutDashboard, aceso: (p: string) => p.startsWith("/projetos/") || p.startsWith("/videos/") },
+    { rotulo: "Visão geral", para: `/projetos/${id}`, icone: LayoutDashboard, aceso: (p: string) => p.startsWith("/projetos/") },
     { rotulo: "Assets", para: `/assets?projeto=${id}`, icone: Shapes, aceso: (p: string) => p.startsWith("/assets") },
+    // O vídeo aberto acende "Vídeos", não mais a visão geral do projeto.
+    { rotulo: "Vídeos", para: `/videos?projeto=${id}`, icone: Film, aceso: (p: string) => p.startsWith("/videos") },
     { rotulo: "Cenas", para: `/cenas?projeto=${id}`, icone: Clapperboard, aceso: (p: string) => p.startsWith("/cenas") || p.startsWith("/shots/") },
     { rotulo: "Referências", para: `/referencias?projeto=${id}`, icone: Images, aceso: (p: string) => p.startsWith("/referencias") },
     { rotulo: "Outputs", para: `/outputs?projeto=${id}`, icone: Sparkles, aceso: (p: string) => p.startsWith("/outputs") },

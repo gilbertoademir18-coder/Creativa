@@ -61,11 +61,24 @@ export function FiltroSelecao({
  * Filtro de projeto: "Todos", "Sem projeto" (os soltos) ou um projeto. Os
  * valores são os que a API entende: "", "sem" ou o id.
  */
-export function FiltroProjeto({ valor, aoMudar }: { valor: string; aoMudar: (v: string) => void }) {
+/**
+ * `permitirSem`: em listas cujo item pode estar solto (asset, cena). Vídeo
+ * sempre tem lista, e lista sempre tem projeto — lá a opção só traria um
+ * filtro que nunca acha nada.
+ */
+export function FiltroProjeto({
+  valor,
+  aoMudar,
+  permitirSem = true,
+}: {
+  valor: string;
+  aoMudar: (v: string) => void;
+  permitirSem?: boolean;
+}) {
   const { dados: projetos } = useCarregar(() => projetosApi.listar(), []);
   return (
     <FiltroSelecao valor={valor} aoMudar={aoMudar} todos="Todos os projetos">
-      <option value="sem">Sem projeto</option>
+      {permitirSem && <option value="sem">Sem projeto</option>}
       {projetos?.map((p) => (
         <option key={p.id} value={p.id}>
           {p.nome}
