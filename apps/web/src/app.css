@@ -129,3 +129,19 @@ body {
   border-bottom: 1px solid #27272a;
   box-shadow: 0 6px 12px -6px rgb(0 0 0 / 0.6);
 }
+
+/*
+ * O olho da barra do topo: oculta o conteúdo gerado, como o saldo escondido
+ * num app de banco.
+ *
+ * Pelo endereço e não por uma classe: toda imagem e todo vídeo de conteúdo vem
+ * de `/api/arquivos/`, então a regra pega os que existem e os que vierem
+ * depois, sem passar por componente nenhum. O ícone do app, que não vem de lá,
+ * fica à vista.
+ */
+[data-thumbs-ocultas] img[src*="/api/arquivos/"],
+[data-thumbs-ocultas] video[src*="/api/arquivos/"] {
+  filter: blur(18px) saturate(0.4);
+  /* O borrão puxa pixels de fora e deixa uma franja clara na borda. */
+  clip-path: inset(0);
+}

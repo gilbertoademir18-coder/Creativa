@@ -1,4 +1,5 @@
 import { ExternalLink, LoaderCircle, Play, ScrollText, Square, Unplug } from "lucide-react";
+import { BotaoThumbnails } from "./thumbnails.tsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api.ts";
 import { ConfirmarExclusao, Modal } from "./modal.tsx";
@@ -87,6 +88,11 @@ export function BarraComfy() {
   return (
     <div className={`flex h-10 items-center justify-end gap-3 border-b px-8 text-sm ${cor}`}>
       {erro && <span className="mr-auto text-red-300">{erro}</span>}
+
+      {/* Antes do estado do ComfyUI: não depende dele, e fica no mesmo lugar
+          mesmo quando a barra muda de cor e de conteúdo. */}
+      <BotaoThumbnails />
+      <span className="h-4 w-px bg-current opacity-20" />
 
       {semServidor && (
         <span className="flex items-center gap-2 font-medium text-red-300">
