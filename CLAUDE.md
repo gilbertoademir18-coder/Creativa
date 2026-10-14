@@ -348,6 +348,40 @@ O que isso muda nas escolhas:
   "Picture 3" mesmo sem a Personagem 2. As três são opcionais. A imagem nasce
   de um `EmptySD3LatentImage` 16:9 (não da imagem 1, como no template de edição).
 
+# Rodar de outra máquina, com a IA em casa
+
+O notebook `dev` (i5-1235U, **sem GPU NVIDIA**) roda o Creativa local e usa o
+que é pesado em casa (`overdrive`, `100.65.76.22`), pelo Tailscale. Conferido
+em 2026-10-14. O `.env` de cada máquina é que muda — o código é o mesmo.
+
+- **Nome da máquina de casa: `overdrive`** (era `x570-aorus` até 2026-10-14).
+  O IP do tailnet não mudou.
+- **Funciona:** o banco (`5432` direto no IP) e o ComfyUI (`8445`, pelo
+  `tailscale serve`). Gerar vai de ponta a ponta: a API só fala HTTP com o
+  ComfyUI (`/prompt`, `/history`, `/view`, `/upload/image`), então a 3080 Ti
+  de casa trabalha e o arquivo é **baixado para o `ARQUIVOS_DIR` local**.
+- **Não funciona, e o motivo:**
+  - **Assistentes e Conversas**: o Ollama só atende em `127.0.0.1:11434` na
+    máquina de casa — o `publicar-no-tailnet.ps1` publica a 8444 e a 8445, e
+    **não** a 11434. De fora, `/api/assistentes/estado` dá `noAr: false`.
+    Para resolver: um `tailscale serve` da 11434 em casa (a **8447** está
+    livre) e `OLLAMA_URL` apontando para ela. Prefira o `serve` a
+    `OLLAMA_HOST=0.0.0.0`, que abriria a LAN de casa sem autenticação.
+  - **Referências e outputs já cadastrados dão 404**: os arquivos estão em
+    `D:\Creativa` em casa e o banco guarda só o caminho relativo. Gerações
+    novas feitas de fora funcionam; as antigas aparecem quebradas.
+  - **"Iniciar"/"Parar" o ComfyUI**: procuram o `python_embeded` e a porta
+    nesta máquina. O ComfyUI tem de estar ligado em casa.
+- **O tray mente sobre o ComfyUI remoto:** `Vigiar-Comfy` (`scripts\tray.ps1`)
+  decide pelo `Porta-Ouvindo $COMFY_PORTA`, que olha **listener TCP local**.
+  Com o ComfyUI em casa nada ouve na 8445 aqui, então o ícone diz
+  "ComfyUI — parado" enquanto a barra do topo — que consulta por HTTP — diz
+  "no ar". A barra é que está certa.
+- **A GPU continua sendo uma só.** Gerar do notebook e de casa ao mesmo tempo
+  põe dois clientes na mesma 3080 Ti, e o revezamento LLM/ComfyUI é
+  coordenado por quem chama (`descarregar()` em `lib/ollama.ts`), não por uma
+  trava central.
+
 # Banco de dados
 
 **Os dados são do usuário. Não escreva neles.**
