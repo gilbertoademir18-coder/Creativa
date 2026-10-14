@@ -59,6 +59,21 @@ export async function rotasProjetos(app: FastifyInstance) {
     });
   });
 
+  /**
+   * A estrela do cartão: só destaca, não mexe na ordem.
+   *
+   * SQL cru de propósito: o `update` do Prisma toca o `editadoEm` (@updatedAt),
+   * e como a listagem desempata por ele, favoritar fazia o projeto pular para
+   * o começo — justo o que esta marca não deve fazer.
+   */
+  app.put("/:id/favorito", async (req) => {
+    const { id } = validar(z.object({ id: Uuid }), req.params);
+    const { favorito } = validar(z.object({ favorito: z.boolean() }), req.body);
+    const linhas = await prisma.$executeRaw`UPDATE projeto SET favorito = ${favorito} WHERE id = ${id}::uuid`;
+    if (linhas === 0) throw naoEncontrado("Projeto não encontrado.");
+    return prisma.projeto.findUniqueOrThrow({ where: { id }, include: contagens });
+  });
+
   app.get("/:id", async (req) => {
     const { id } = validar(z.object({ id: Uuid }), req.params);
     const projeto = await prisma.projeto.findUnique({ where: { id }, include: contagens });

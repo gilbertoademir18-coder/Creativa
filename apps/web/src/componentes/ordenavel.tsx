@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, GripVertical } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 
 /**
@@ -76,7 +76,11 @@ export function GradeArrastavel<T extends { id: string }>({
   className?: string;
   /** A lista inteira na ordem nova. Só chamada quando a ordem muda de fato. */
   aoSoltar: (ordem: T[]) => void;
-  cartao: (item: T, i: number) => ReactNode;
+  /**
+   * O cartão. Recebe a `alca` para pôr onde quiser — é por ela que se arrasta;
+   * o resto do cartão continua clicável, com links e botões funcionando.
+   */
+  cartao: (item: T, i: number, alca: ReactNode) => ReactNode;
 }) {
   // Quem está sendo arrastado vai num ref, não no estado: o dragover vem logo
   // depois do dragstart e precisa do valor JÁ atualizado para chamar
@@ -85,11 +89,18 @@ export function GradeArrastavel<T extends { id: string }>({
   const pegandoRef = useRef<string | null>(null);
   const [pegando, setPegando] = useState<string | null>(null);
   const [alvo, setAlvo] = useState<string | null>(null);
+  /*
+   * O quadro inteiro é `draggable`, para o navegador arrastar a imagem do
+   * cartão todo — mas o arrasto só vale se começou na alça. Sem isto, puxar o
+   * cartão em qualquer ponto arrastava, e um clique na estrela virava arrasto.
+   */
+  const daAlca = useRef(false);
 
   function soltarEm(idDestino: string) {
     const de = itens.findIndex((x) => x.id === pegandoRef.current);
     const para = itens.findIndex((x) => x.id === idDestino);
     pegandoRef.current = null;
+    daAlca.current = false;
     setPegando(null);
     setAlvo(null);
     if (de < 0 || para < 0 || de === para) return;
@@ -99,6 +110,20 @@ export function GradeArrastavel<T extends { id: string }>({
     aoSoltar(nova);
   }
 
+  const alcaDe = (id: string) => (
+    <span
+      onMouseDown={() => (daAlca.current = true)}
+      onMouseUp={() => (daAlca.current = false)}
+      title="Arraste para mudar a ordem"
+      aria-label="Arrastar para reordenar"
+      className={`cursor-grab text-zinc-600 transition-colors hover:text-zinc-300 active:cursor-grabbing ${
+        pegando === id ? "text-zinc-300" : ""
+      }`}
+    >
+      <GripVertical className="size-4" />
+    </span>
+  );
+
   return (
     <div className={className}>
       {itens.map((item, i) => (
@@ -106,6 +131,10 @@ export function GradeArrastavel<T extends { id: string }>({
           key={item.id}
           draggable
           onDragStart={(e) => {
+            if (!daAlca.current) {
+              e.preventDefault(); // não começou na alça: não é para arrastar
+              return;
+            }
             pegandoRef.current = item.id;
             setPegando(item.id);
             e.dataTransfer.effectAllowed = "move";
@@ -114,6 +143,7 @@ export function GradeArrastavel<T extends { id: string }>({
           }}
           onDragEnd={() => {
             pegandoRef.current = null;
+            daAlca.current = false;
             setPegando(null);
             setAlvo(null);
           }}
@@ -128,11 +158,11 @@ export function GradeArrastavel<T extends { id: string }>({
             e.preventDefault();
             soltarEm(item.id);
           }}
-          className={`h-full cursor-grab rounded-xl transition-opacity active:cursor-grabbing ${pegando === item.id ? "opacity-40" : ""} ${
+          className={`h-full rounded-xl transition-opacity ${pegando === item.id ? "opacity-40" : ""} ${
             alvo === item.id ? "outline-2 outline-offset-2 outline-violet-500" : ""
           }`}
         >
-          {cartao(item, i)}
+          {cartao(item, i, alcaDe(item.id))}
         </div>
       ))}
     </div>

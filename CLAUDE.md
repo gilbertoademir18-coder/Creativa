@@ -169,6 +169,15 @@ as cenas (`SetNull`), nunca as apaga.
   a ordem de antes vale até alguém arrastar o primeiro. **Com busca ativa a
   grade é só de leitura**: a lista à vista é um pedaço, e reordenar nela
   reescreveria a página inteira a partir dele.
+- **Arrasta-se pela alça, não pelo cartão inteiro.** A `GradeArrastavel` passa
+  uma `alca` ao cartão, que a põe onde quiser; o quadro só aceita o arrasto se
+  ele começou nela (um `ref` marcado no `mousedown`, conferido no `dragstart`).
+  Sem isso, o cartão inteiro arrastava e um clique na estrela virava arrasto.
+- **Projeto favorito é só destaque** (a estrela do cartão): não mexe na ordem,
+  que é só do arrastar. A rota usa **SQL cru** de propósito — o `update` do
+  Prisma toca o `editadoEm` (`@updatedAt`), e como a listagem desempata por
+  ele, favoritar fazia o projeto pular para o começo quando as ordens ainda
+  estavam todas em 0.
 - Filtros moram na URL (`useFiltros`), para dar para voltar, recarregar e
   mandar o link de um filtro pronto.
 - **Texto longo em markdown** usa o editor visual `EditorMarkdown`

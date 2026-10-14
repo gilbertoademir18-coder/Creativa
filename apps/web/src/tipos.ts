@@ -16,6 +16,10 @@ export type ProjetoRef = { id: string; nome: string };
 export type Projeto = {
   id: string;
   nome: string;
+  /** Destaque na página de projetos; não mexe na ordem. */
+  favorito: boolean;
+  /** Posição na página, a partir de 0. */
+  ordem: number;
   descricao: string | null;
   /** O número da versão atual da descrição (0: nunca foi salva). */
   descricaoVersao: number;

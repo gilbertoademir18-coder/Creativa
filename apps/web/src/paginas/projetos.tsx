@@ -1,6 +1,6 @@
 import { useProjetoAtual } from "../componentes/barra-projeto.tsx";
-import { Clapperboard, FileText, FolderKanban, Pencil, Plus, Shapes, Trash } from "lucide-react";
-import { useState } from "react";
+import { Clapperboard, FileText, FolderKanban, Pencil, Plus, Shapes, Star, Trash } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { assetsApi, cenasApi, projetosApi } from "../api.ts";
 import { ModalDescricaoProjeto } from "../componentes/descricao-projeto.tsx";
@@ -53,6 +53,19 @@ export function PaginaProjetos() {
     }
   }
 
+  /** A estrela só destaca: a posição do cartão não muda. */
+  async function favoritar(p: Projeto) {
+    const antes = dados ?? [];
+    const alvo = !p.favorito;
+    setDados(antes.map((x) => (x.id === p.id ? { ...x, favorito: alvo } : x)));
+    try {
+      await projetosApi.favoritar(p.id, alvo);
+    } catch (e) {
+      setErroOrdem((e as Error).message);
+      setDados(antes);
+    }
+  }
+
   return (
     <>
       <Cabecalho
@@ -93,7 +106,7 @@ export function PaginaProjetos() {
         {!!dados?.length && f.busca && (
           <div className={GRADE}>
             {dados.map((p) => (
-              <CartaoProjeto key={p.id} p={p} />
+              <CartaoProjeto key={p.id} p={p} aoFavoritar={favoritar} />
             ))}
           </div>
         )}
@@ -102,7 +115,7 @@ export function PaginaProjetos() {
             itens={dados}
             className={GRADE}
             aoSoltar={reordenar}
-            cartao={(p) => <CartaoProjeto p={p} />}
+            cartao={(p, _i, alca) => <CartaoProjeto p={p} alca={alca} aoFavoritar={favoritar} />}
           />
         )}
       </div>
@@ -118,19 +131,38 @@ export function PaginaProjetos() {
   );
 }
 
-function CartaoProjeto({ p }: { p: Projeto }) {
+function CartaoProjeto({ p, alca, aoFavoritar }: { p: Projeto; alca?: ReactNode; aoFavoritar?: (p: Projeto) => void }) {
   return (
     <Link
       to={`/projetos/${p.id}`}
-      // O link não se arrasta sozinho: quem arrasta é o quadro da GradeArrastavel.
+      // O link não se arrasta sozinho: quem arrasta é o quadro, pela alça.
       draggable={false}
       // h-full: o cartão já não é o item da grade (o quadro do arrasto é), e
       // sem isto ele encolhe para o conteúdo em vez de acompanhar a linha.
-      className="flex h-full flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-5 transition-colors hover:border-violet-500/60"
+      className="group flex h-full flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-5 transition-colors hover:border-violet-500/60"
     >
       <div className="flex items-center gap-2.5">
-        <FolderKanban className="size-5 text-violet-400" />
-        <span className="truncate font-medium">{p.nome}</span>
+        <FolderKanban className="size-5 shrink-0 text-violet-400" />
+        <span className="min-w-0 flex-1 truncate font-medium">{p.nome}</span>
+        {aoFavoritar && (
+          <button
+            type="button"
+            // Dentro de um link: sem isto, favoritar abriria o projeto.
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              aoFavoritar(p);
+            }}
+            title={p.favorito ? "Tirar dos favoritos" : "Marcar como favorito"}
+            aria-pressed={p.favorito}
+            className={`shrink-0 rounded-md p-0.5 transition-colors ${
+              p.favorito ? "text-amber-400 hover:text-amber-300" : "text-zinc-600 hover:text-amber-400"
+            }`}
+          >
+            <Star className={`size-4 ${p.favorito ? "fill-amber-400" : ""}`} />
+          </button>
+        )}
+        {alca}
       </div>
       {p.descricao && <p className="line-clamp-2 text-sm text-zinc-400">{resumoMarkdown(p.descricao)}</p>}
       <div className="mt-auto flex gap-4 text-xs text-zinc-500">
