@@ -350,6 +350,10 @@ O que isso muda nas escolhas:
 
 # Rodar de outra máquina, com a IA em casa
 
+**O que só dá para fazer na máquina de casa vai para `docs/pendencias-em-casa.md`** —
+com o que fazer, como conferir e por quê. Escreveu uma pendência? Anote lá, não
+na resposta: a próxima sessão não lê esta conversa.
+
 O notebook `dev` (i5-1235U, **sem GPU NVIDIA**) roda o Creativa local e usa o
 que é pesado em casa (`overdrive`, `100.65.76.22`), pelo Tailscale. Conferido
 em 2026-10-14. O `.env` de cada máquina é que muda — o código é o mesmo.
