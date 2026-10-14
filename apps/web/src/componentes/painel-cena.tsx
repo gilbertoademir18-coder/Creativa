@@ -1,13 +1,14 @@
 import { Plus, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { cenasApi } from "../api.ts";
+import { cenasApi, listasApi } from "../api.ts";
+import { useCarregar } from "../hooks.ts";
 import { comNumero, paraCampo, titulo } from "../rotulos.ts";
 import type { Cena, ShotResumo } from "../tipos.ts";
 import { ModalDocumento } from "./documento-markdown.tsx";
 import { ConfirmarExclusao, Modal } from "./modal.tsx";
 import { ListaOrdenavel, movido } from "./ordenavel.tsx";
-import { AreaTexto, Aviso, Botao, Campo, Entrada, Secao } from "./ui.tsx";
+import { AreaTexto, Aviso, Botao, Campo, Entrada, Secao, Seletor } from "./ui.tsx";
 
 /*
  * O painel da cena, aberto pela barra da cena — é o que sobrou no lugar da
@@ -70,7 +71,7 @@ function PainelCena({
       <div className="grid grid-cols-[1fr_24rem] gap-8">
         <Shots cena={cena} aoSalvar={aoSalvar} aoMudarShots={aoMudarShots} aoFechar={aoFechar} />
         <div className="flex flex-col gap-8">
-          <Identidade cena={cena} aoSalvar={aoSalvar} numero={numero} />
+          <Identidade cena={cena} aoSalvar={aoSalvar} aoMudarVideo={aoMudarShots} numero={numero} />
           <Storyboard cena={cena} aoSalvar={aoSalvar} numero={numero} />
         </div>
       </div>
@@ -109,17 +110,39 @@ function PainelCena({
   );
 }
 
-/** Nome e descrição curta da cena. */
-function Identidade({ cena, aoSalvar, numero }: { cena: Cena; aoSalvar: (c: Cena) => void; numero: number }) {
+/** Nome, descrição curta e em que vídeo do projeto a cena entra. */
+function Identidade({
+  cena,
+  aoSalvar,
+  aoMudarVideo,
+  numero,
+}: {
+  cena: Cena;
+  aoSalvar: (c: Cena) => void;
+  /** Trocar de vídeo muda a barra inteira: ela tem de recarregar. */
+  aoMudarVideo: () => void;
+  numero: number;
+}) {
   const [nome, setNome] = useState(paraCampo(cena.nome));
   const [descricao, setDescricao] = useState(cena.descricao ?? "");
+  const [videoId, setVideoId] = useState(cena.videoId ?? "");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   useEffect(() => {
     setNome(paraCampo(cena.nome));
     setDescricao(cena.descricao ?? "");
-  }, [cena.nome, cena.descricao]);
-  const mudou = nome !== paraCampo(cena.nome) || descricao !== (cena.descricao ?? "");
+    setVideoId(cena.videoId ?? "");
+  }, [cena.nome, cena.descricao, cena.videoId]);
+
+  // Os vídeos entre os quais dá para mover: os do projeto da cena. Cena sem
+  // projeto não tem a que vídeo pertencer — vídeo é sempre de uma lista de um.
+  const { dados: listas } = useCarregar(
+    () => (cena.projetoId ? listasApi.listar(cena.projetoId) : Promise.resolve([])),
+    [cena.projetoId],
+  );
+  const comVideos = (listas ?? []).filter((l) => l.videos.length > 0);
+  const mudou =
+    nome !== paraCampo(cena.nome) || descricao !== (cena.descricao ?? "") || videoId !== (cena.videoId ?? "");
 
   return (
     <Secao
@@ -133,15 +156,17 @@ function Identidade({ cena, aoSalvar, numero }: { cena: Cena; aoSalvar: (c: Cena
             setSalvando(true);
             setErro(null);
             try {
+              const trocouDeVideo = videoId !== (cena.videoId ?? "");
               aoSalvar(
                 await cenasApi.salvar(cena.id, {
                   nome: nome.trim() || null,
                   projetoId: cena.projetoId,
-                  videoId: cena.videoId,
+                  videoId: videoId || null,
                   descricao: descricao || null,
                   storyboard: cena.storyboard,
                 }),
               );
+              if (trocouDeVideo) aoMudarVideo();
             } catch (e) {
               setErro((e as Error).message);
             } finally {
@@ -157,6 +182,33 @@ function Identidade({ cena, aoSalvar, numero }: { cena: Cena; aoSalvar: (c: Cena
       <div className="flex flex-col gap-4">
         <Campo rotulo="Nome">
           <Entrada value={nome} onChange={(e) => setNome(e.target.value)} placeholder={`Sem nome — o número (${numero}) identifica`} />
+        </Campo>
+        <Campo
+          rotulo="Vídeo"
+          dica={
+            !cena.projetoId
+              ? "A cena não está num projeto, e vídeo é sempre de um."
+              : comVideos.length === 0
+                ? "Este projeto ainda não tem vídeo nenhum. Crie um em Vídeos."
+                : "Sem vídeo, a cena fica em “Cenas sem vídeo” do projeto."
+          }
+        >
+          <Seletor
+            value={videoId}
+            disabled={!cena.projetoId || comVideos.length === 0}
+            onChange={(e) => setVideoId(e.target.value)}
+          >
+            <option value="">— Sem vídeo —</option>
+            {comVideos.map((l) => (
+              <optgroup key={l.id} label={l.nome}>
+                {l.videos.map((v, i) => (
+                  <option key={v.id} value={v.id}>
+                    {i + 1}. {v.nome}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </Seletor>
         </Campo>
         <Campo rotulo="Descrição">
           <AreaTexto value={descricao} onChange={(e) => setDescricao(e.target.value)} className="min-h-24" />
