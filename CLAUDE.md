@@ -697,6 +697,11 @@ Coisas que já custaram tempo — e o contorno:
   não com `npx tsx`. Com `npx`, parar a tarefa mata só o `npx` e o filho do
   `tsx` fica órfão na 3401 rodando código velho. Depois de parar, confira que a
   porta 3401 ficou livre.
+- **`tsx watch` trava sob o `npm run dev`:** com o stdin em pipe (o que o
+  `concurrently` faz), o `tsx watch` 4.23 congela ao importar o Prisma Client
+  gerado: sem erro, sem abrir a porta. Por isso o `dev` da API é
+  `node --watch --import tsx`. Não voltar para `tsx watch`. (Achado no
+  NeuroBeat em 2026-10-15; o Trimly tinha o mesmo problema.)
 - **Barras invertidas:** o Git Bash estraga caminhos do Windows em `sed` e em
   `node -e '...'`. Para editar texto com `C:\...`, escreva um script `.cjs` no
   scratchpad e rode com `node`.

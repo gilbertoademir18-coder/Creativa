@@ -48,6 +48,25 @@ anunciaria "no ar" e abriria o navegador no app errado.
 Com portas diferentes para produção e desenvolvimento, dá para mexer no
 código com o app no ar.
 
+### A API em `npm run dev`
+
+O `npm run dev` da raiz sobe API e Vite juntos com o `concurrently`. Duas
+regras para a API de dev (`apps/api/package.json` e `server.ts`):
+
+- **`"dev": "node --watch --import tsx src/server.ts --dev"`**, e não
+  `tsx watch`. Com o stdin em pipe (é o que o `concurrently` faz), o
+  `tsx watch` 4.23 trava ao importar o Prisma Client gerado: não dá erro, não
+  abre a porta, e o Vite só reclama de `ECONNREFUSED`. O `--watch` nativo do
+  Node reinicia igual ao salvar. Achado no NeuroBeat em 2026-10-15; Trimly e
+  Creativa foram corrigidos no mesmo dia.
+- **Dev ouve só em `127.0.0.1`**, produção em `0.0.0.0`:
+  ```ts
+  await app.listen({ port: PORTA, host: MODO_DEV ? "127.0.0.1" : "0.0.0.0" });
+  ```
+  Quem fala com a API de dev é o Vite, pelo proxy em `127.0.0.1`. Em
+  `0.0.0.0`, no notebook do trabalho, ela ficaria aberta na rede da empresa.
+  Isso vale mesmo com `server.host: true` no Vite: o proxy continua local.
+
 **Já ocupadas nesta máquina:**
 
 | Projeto | Portas |
@@ -56,10 +75,11 @@ código com o app no ar.
 | NihongoHub | 3100, 8446 (tailnet) |
 | Trimly | 3200, 3201, 3210, 8443 (tailnet) |
 | Creativa | 3400, 3401, 3410, 8444 e 8445 (tailnet, a 8445 é do ComfyUI) |
+| NeuroBeat | 3500, 3501, 3510, 8447 (tailnet) |
 | Compartilhadas | 5432 (PostgreSQL), 8188 (ComfyUI) |
 
-A próxima centena livre é a **3500**, e a próxima porta de tailnet é a
-**8447**. A 3300 não aparece em nenhum projeto, mas também não foi usada por
+A próxima centena livre é a **3600**, e a próxima porta de tailnet é a
+**8448**. A 3300 não aparece em nenhum projeto, mas também não foi usada por
 ninguém de propósito; se quiser usá-la, confira antes:
 
 ```powershell
@@ -427,6 +447,8 @@ imprime o endereço. Modelo: o do Creativa ou do Trimly.
 - [ ] `<Projeto>.cmd` com fallback do fnm.
 - [ ] `<Projeto>.code-workspace`.
 - [ ] `GET /api/saude` → `{ app: "<Projeto>", ok: true }`.
+- [ ] API de dev com `node --watch --import tsx` e ouvindo só em `127.0.0.1`
+      (seção 2).
 - [ ] `npm run servir` = migrar + build + start na `x00`.
 - [ ] `apps\web\scripts\gerar-icones.mjs` com a marca em SVG; `npm run icons`.
 - [ ] `scripts\tray.ps1` (UTF-8 com BOM): nome, Mutex, portas, menu padrão.

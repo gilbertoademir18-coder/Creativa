@@ -172,8 +172,11 @@ app.setNotFoundHandler((req, reply) => {
   return reply.header("Cache-Control", "no-cache").sendFile("index.html");
 });
 
-// 0.0.0.0 e não localhost: assim os outros PCs chegam pelo IP do tailnet.
-await app.listen({ port: PORTA, host: "0.0.0.0" });
+// Produção em 0.0.0.0: assim os outros PCs chegam pelo IP do tailnet.
+// Dev só no localhost: quem fala com ela é o Vite (que repassa o /api por
+// 127.0.0.1), e no notebook do trabalho 0.0.0.0 abriria a API para a rede da
+// empresa.
+await app.listen({ port: PORTA, host: MODO_DEV ? "127.0.0.1" : "0.0.0.0" });
 
 // Retoma e acompanha as execuções que estão no ComfyUI (ver geracao/execucao.ts).
 iniciarAcompanhamento(app.log);
