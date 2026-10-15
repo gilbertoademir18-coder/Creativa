@@ -150,8 +150,11 @@ export type DefWorkflow = {
   saidas: string[];
 };
 
-/** As ferramentas que sabem rodar um workflow. Ferramenta nova = um adaptador em `execucao.ts`. */
-export const FERRAMENTAS = [{ chave: "comfyui", nome: "ComfyUI" }] as const;
+/** As ferramentas que sabem rodar um workflow. Ferramenta nova = um adaptador em `execucao.ts` (o do Blender é `blender.ts`). */
+export const FERRAMENTAS = [
+  { chave: "comfyui", nome: "ComfyUI" },
+  { chave: "blender", nome: "Blender" },
+] as const;
 export const nomeFerramenta = (chave: string) => FERRAMENTAS.find((f) => f.chave === chave)?.nome ?? chave;
 
 /** Os alvos de um campo, para conferir e para montar. */

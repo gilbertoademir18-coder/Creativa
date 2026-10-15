@@ -133,7 +133,7 @@ export async function rotasWorkflows(app: FastifyInstance) {
    */
   app.post("/testar", { bodyLimit: LIMITE }, async (req) => {
     const { valores, ...d } = validar(Definicao.extend({ valores: z.record(z.string(), z.unknown()).default({}) }), req.body);
-    if (d.ferramenta !== "comfyui") throw new ErroHttp(400, `O Creativa ainda não sabe rodar workflows de “${d.ferramenta}”.`);
+    if (d.ferramenta !== "comfyui") throw new ErroHttp(400, "O Testar só roda workflows do ComfyUI. O do Blender precisa de um shot com marcação: gere direto no shot.");
     const grafo = conferirDefinicao(d);
     const prontos = prepararParaEnvio(d, validarValores(d, valores));
     // Sem dono: o teste pode usar qualquer imagem do Creativa.

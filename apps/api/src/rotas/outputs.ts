@@ -48,6 +48,8 @@ const daGaleria = {
   shotId: true,
   tipo: true,
   arquivo: true,
+  /** A imagem para olhar, quando o arquivo é dado (o depth do blockout). */
+  previa: true,
   largura: true,
   altura: true,
   tamanhoBytes: true,
@@ -126,8 +128,10 @@ export async function rotasOutputs(app: FastifyInstance) {
   /** Apaga o output e o arquivo dele. O arquivo só sai depois do banco: se o banco recusa, ele fica. */
   app.delete("/:id", async (req, reply) => {
     const { id } = validar(z.object({ id: Uuid }), req.params);
-    const o = await prisma.output.delete({ where: { id }, select: { arquivo: true } });
-    await apagar(o.arquivo).catch((e) => req.log.warn({ err: e, arquivo: o.arquivo }, "não consegui apagar o arquivo do output"));
+    const o = await prisma.output.delete({ where: { id }, select: { arquivo: true, previa: true } });
+    for (const arquivo of [o.arquivo, o.previa]) {
+      if (arquivo) await apagar(arquivo).catch((e) => req.log.warn({ err: e, arquivo }, "não consegui apagar o arquivo do output"));
+    }
     return reply.code(204).send();
   });
 }

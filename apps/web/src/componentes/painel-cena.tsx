@@ -8,6 +8,7 @@ import type { Cena, ShotResumo } from "../tipos.ts";
 import { ModalDocumento } from "./documento-markdown.tsx";
 import { ConfirmarExclusao, Modal } from "./modal.tsx";
 import { ListaOrdenavel, movido } from "./ordenavel.tsx";
+import { PainelMarcacao } from "./blockout.tsx";
 import { AreaTexto, Aviso, Botao, Campo, Entrada, Secao, Seletor } from "./ui.tsx";
 
 /*
@@ -73,6 +74,7 @@ function PainelCena({
         <div className="flex flex-col gap-8">
           <Identidade cena={cena} aoSalvar={aoSalvar} aoMudarVideo={aoMudarShots} numero={numero} />
           <Storyboard cena={cena} aoSalvar={aoSalvar} numero={numero} />
+          <PainelMarcacao cena={cena} />
         </div>
       </div>
       <div className="flex items-center justify-between gap-4 border-t border-zinc-800 pt-5">

@@ -7,6 +7,7 @@ import { EscolhaProjeto, FiltroBusca, FiltroProjeto } from "../componentes/filtr
 import { PainelGerador } from "../componentes/gerador.tsx";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
 import { PainelReferencias } from "../componentes/referencias.tsx";
+import { PainelBlockoutAsset } from "../componentes/blockout.tsx";
 import {
   AreaTexto,
   Aviso,
@@ -185,6 +186,7 @@ export function PaginaAsset() {
       <div className="flex flex-col gap-10 p-8">
         <PainelGerador key={a.id} dono={{ assetId: a.id, shotId: null }} />
         <PainelReferencias dono={{ assetId: a.id, shotId: null }} />
+        <PainelBlockoutAsset asset={a} />
       </div>
       <ModalAsset
         aberto={editando}

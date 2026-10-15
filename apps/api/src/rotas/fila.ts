@@ -59,7 +59,7 @@ export async function rotasFila(app: FastifyInstance) {
       }),
       prisma.execucao.findMany({
         where: { status: { in: ["CONCLUIDA", "FALHOU", "CANCELADA"] }, concluidaEm: { gte: new Date(Date.now() - RECENTE_MS) } },
-        select: { ...daExecucao, outputs: { select: { arquivo: true }, take: 1 } },
+        select: { ...daExecucao, outputs: { select: { arquivo: true, previa: true }, take: 1 } },
         orderBy: { concluidaEm: "desc" },
         take: 8,
       }),
@@ -91,7 +91,7 @@ export async function rotasFila(app: FastifyInstance) {
         status: e.status,
         concluidaEm: e.concluidaEm,
         erro: e.erro,
-        capa: e.outputs[0]?.arquivo ?? null,
+        capa: e.outputs[0]?.previa ?? e.outputs[0]?.arquivo ?? null,
         ...resumo(e, nomes),
       })),
       externos,

@@ -46,6 +46,8 @@ export type Asset = {
   tipo: TipoAsset;
   nome: string;
   descricao: string | null;
+  /** O modelo do blockout: a planta (cenário) ou o manequim (personagem). Formato em geracao/blockout.ts da API. */
+  blockout: unknown | null;
   criadoEm: string;
   editadoEm: string;
   projeto: ProjetoRef | null;
@@ -85,6 +87,8 @@ export type Cena = {
   nome: string | null;
   descricao: string | null;
   storyboard: string;
+  /** A marcação do blockout: o cenário e quem fica onde. */
+  marcacao: unknown | null;
   criadoEm: string;
   editadoEm: string;
   /** Com o padrão de pipeline: o "Editar shot" mostra o nome do que ele herda. */
@@ -165,6 +169,8 @@ export type Output = {
   shotId: string | null;
   tipo: TipoOutput;
   arquivo: string;
+  /** A imagem para olhar, quando o arquivo é dado: no blockout, o arquivo é o depth e a prévia é o render colorido. */
+  previa: string | null;
   largura: number | null;
   altura: number | null;
   tamanhoBytes: number | null;

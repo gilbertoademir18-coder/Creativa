@@ -1,10 +1,13 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { Prisma } from "../generated/prisma/client.ts";
 import { TipoAsset } from "../generated/prisma/enums.ts";
+import { Blockout } from "../geracao/blockout.ts";
 import { prisma } from "../lib/prisma.ts";
 import { referenciaParaJson } from "./referencias.ts";
 import {
   Busca,
+  ErroHttp,
   contem,
   FiltroProjeto,
   naoEncontrado,
@@ -115,6 +118,22 @@ export async function rotasAssets(app: FastifyInstance) {
     const { id } = validar(z.object({ id: Uuid }), req.params);
     const dados = validar(CorpoAsset, req.body);
     return comCapa(await prisma.asset.update({ where: { id }, data: dados, include: daListagem }));
+  });
+
+  /**
+   * O blockout do asset: a planta (cenário) ou o manequim (personagem). Null
+   * apaga. O formato tem de combinar com o tipo do asset.
+   */
+  app.put("/:id/blockout", async (req) => {
+    const { id } = validar(z.object({ id: Uuid }), req.params);
+    const { blockout } = validar(z.object({ blockout: Blockout.nullable() }), req.body);
+    const asset = await prisma.asset.findUnique({ where: { id }, select: { tipo: true } });
+    if (!asset) throw naoEncontrado("Asset não encontrado.");
+    const esperado = asset.tipo === "CENARIO" ? "cenario" : asset.tipo === "PERSONAGEM" ? "personagem" : null;
+    if (blockout && !esperado) throw new ErroHttp(400, "Só cenário e personagem têm blockout.");
+    if (blockout && blockout.formato !== esperado) throw new ErroHttp(400, `Este asset é ${esperado === "cenario" ? "um cenário" : "uma personagem"}: o blockout tem de ter formato "${esperado}".`);
+    await prisma.asset.update({ where: { id }, data: { blockout: blockout ?? Prisma.DbNull } });
+    return { blockout };
   });
 
   /** Recusado (409) enquanto houver referências ou outputs: eles têm arquivo. */

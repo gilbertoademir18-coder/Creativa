@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
-import { open } from "node:fs/promises";
 import { Readable } from "node:stream";
 import type { FastifyBaseLogger } from "fastify";
 import type { Execucao } from "../generated/prisma/client.ts";
-import { apagar, caminhoAbsoluto, gravar } from "../lib/arquivos.ts";
+import { apagar, caminhoAbsoluto, gravar, tamanhoPng } from "../lib/arquivos.ts";
 import { configComfy, consultarComfy } from "../lib/comfyui.ts";
 import { descarregar } from "../lib/ollama.ts";
 import { prisma } from "../lib/prisma.ts";
 import { ErroHttp } from "../lib/validacao.ts";
+import { cancelarBlender, executarBlender, iniciarBlender } from "./blender.ts";
 import { acharWorkflow, prepararParaEnvio, seedDe, validarValores } from "./catalogo.ts";
 import type { DefWorkflow, GrafoApi } from "./definicoes.ts";
 import { montarGrafo } from "./grafo.ts";
@@ -106,7 +106,8 @@ export async function enviarAoComfy(grafo: GrafoApi): Promise<string> {
  * volta como 400. As que já foram para a fila antes do erro ficam.
  */
 export async function executar(w: DefWorkflow, pedido: Pedido): Promise<void> {
-  // Ferramenta nova = um adaptador aqui. Por enquanto só existe o ComfyUI.
+  // Ferramenta nova = um adaptador aqui.
+  if (w.ferramenta === "blender") return executarBlender(w, pedido);
   if (w.ferramenta !== "comfyui") throw new ErroHttp(400, `O Creativa ainda não sabe rodar workflows de “${w.ferramenta}”.`);
   const base = validarValores(w, pedido.parametros);
   const seeds = w.campos.filter((c) => c.tipo === "seed").map((c) => c.chave);
@@ -141,6 +142,8 @@ export async function cancelarExecucao(id: string): Promise<void> {
   const e = await prisma.execucao.findUnique({ where: { id } });
   if (!e) throw new ErroHttp(404, "Execução não encontrada.");
   if (e.status !== "NA_FILA" && e.status !== "EXECUTANDO") throw new ErroHttp(409, "Esta execução já terminou.");
+  // Sem prompt_id é do Blender, que roda aqui e não no ComfyUI.
+  if (!e.promptIdComfy) return cancelarBlender(e.id);
   await cancelarExecucoes([e]);
 }
 
@@ -179,19 +182,6 @@ type Historico = {
   status?: { status_str?: string; completed?: boolean; messages?: [string, Record<string, unknown>][] };
   outputs?: Record<string, { images?: { filename: string; subfolder: string; type: string }[] }>;
 };
-
-/** Largura e altura de um PNG, lidas do cabeçalho (IHDR), sem biblioteca. */
-async function tamanhoPng(absoluto: string): Promise<{ largura: number; altura: number } | null> {
-  const f = await open(absoluto, "r");
-  try {
-    const b = Buffer.alloc(24);
-    await f.read(b, 0, 24, 0);
-    if (b.toString("ascii", 12, 16) !== "IHDR") return null;
-    return { largura: b.readUInt32BE(16), altura: b.readUInt32BE(20) };
-  } finally {
-    await f.close();
-  }
-}
 
 /** O tipo do output pelo mime que o ComfyUI mandou: o SaveVideo também sai na lista "images". */
 function tipoDoMime(mime: string): "IMAGEM" | "VIDEO" | "AUDIO" | "OUTRO" {
@@ -396,5 +386,6 @@ function garantirWebSocket() {
 
 /** Liga o acompanhamento. Chamado uma vez, quando o servidor sobe. */
 export function iniciarAcompanhamento(log: FastifyBaseLogger) {
+  iniciarBlender(log).catch((e) => log.warn({ err: e }, "não consegui conferir as execuções do Blender"));
   setInterval(() => acompanhar(log), 1_500);
 }

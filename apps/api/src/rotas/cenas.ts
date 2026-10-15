@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import type { Prisma } from "../generated/prisma/client.ts";
+import { Prisma } from "../generated/prisma/client.ts";
+import { Marcacao } from "../geracao/blockout.ts";
 import { prisma } from "../lib/prisma.ts";
 import { referenciaParaJson } from "./referencias.ts";
 import {
@@ -141,6 +142,29 @@ export async function rotasCenas(app: FastifyInstance) {
       if (atual.videoId && corpo.videoId !== atual.videoId) await exigirOutraCenaNoVideo(tx, atual.videoId, id);
       return tx.cena.update({ where: { id }, data: await encaixarNoVideo(tx, corpo, atual), include: daCena });
     });
+  });
+
+  /**
+   * A marcação do blockout: o cenário e quem fica onde. Null apaga. Os assets
+   * têm de ser do projeto da cena — cenário e personagens, cada um no tipo certo.
+   */
+  app.put("/:id/marcacao", async (req) => {
+    const { id } = validar(z.object({ id: Uuid }), req.params);
+    const { marcacao } = validar(z.object({ marcacao: Marcacao.nullable() }), req.body);
+    const cena = await prisma.cena.findUnique({ where: { id }, select: { projetoId: true } });
+    if (!cena) throw naoEncontrado("Cena não encontrada.");
+    if (marcacao) {
+      const ids = [marcacao.cenario, ...marcacao.personagens.map((p) => p.asset)];
+      const assets = await prisma.asset.findMany({ where: { id: { in: ids } }, select: { id: true, tipo: true, nome: true, projetoId: true } });
+      const de = new Map(assets.map((a) => [a.id, a]));
+      const cenario = de.get(marcacao.cenario);
+      if (cenario?.tipo !== "CENARIO") throw new ErroHttp(400, "cenario: escolha um asset de cenário.");
+      for (const p of marcacao.personagens) if (de.get(p.asset)?.tipo !== "PERSONAGEM") throw new ErroHttp(400, "personagens: só assets de personagem.");
+      const fora = assets.find((a) => a.projetoId !== cena.projetoId);
+      if (fora) throw new ErroHttp(400, `"${fora.nome}" não é do projeto desta cena.`);
+    }
+    await prisma.cena.update({ where: { id }, data: { marcacao: marcacao ?? Prisma.DbNull } });
+    return { marcacao };
   });
 
   /**

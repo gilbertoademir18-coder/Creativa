@@ -156,6 +156,8 @@ export function EditorWorkflow({
   const [notas, setNotas] = useState(workflow?.notas ?? "");
   const [origem, setOrigem] = useState(workflow?.origem ?? "");
   const [modelo, setModelo] = useState(workflow?.modelo ?? "");
+  // A ferramenta do workflow. Mudar de ferramenta é outro grafo: só na hora de criar.
+  const [ferramenta, setFerramenta] = useState(workflow?.ferramenta ?? "comfyui");
   const [grafo, setGrafo] = useState<GrafoApi | null>(workflow?.grafo ?? null);
   const [campos, setCampos] = useState<CampoWorkflow[]>(workflow?.campos ?? []);
   const [saidas, setSaidas] = useState<string[]>(workflow?.saidas ?? []);
@@ -218,7 +220,7 @@ export function EditorWorkflow({
   const dados = (): WorkflowNovo => ({
     nome,
     tipoGeracaoId,
-    ferramenta: "comfyui",
+    ferramenta,
     descricao: descricao || null,
     notas: notas || null,
     origem: origem || null,
@@ -309,9 +311,10 @@ export function EditorWorkflow({
                     ))}
                   </Seletor>
                 </Campo>
-                <Campo rotulo="Ferramenta" dica="Por enquanto só o ComfyUI.">
-                  <Seletor value="comfyui" disabled>
+                <Campo rotulo="Ferramenta" dica={workflow ? "Fixa depois de criado: cada ferramenta tem o seu grafo." : "O Blender monta o blockout de um shot (etapa Geometria)."}>
+                  <Seletor value={ferramenta} onChange={(e) => setFerramenta(e.target.value)} disabled={!!workflow}>
                     <option value="comfyui">ComfyUI</option>
+                    <option value="blender">Blender</option>
                   </Seletor>
                 </Campo>
               </div>
@@ -342,7 +345,12 @@ export function EditorWorkflow({
 
         {aba === "saidas" && <EditorSaidas grafo={grafo} saidas={saidas} aoMudar={setSaidas} />}
 
-        {aba === "testar" && <PainelTeste grafo={grafo} campos={campos} saidas={saidas} />}
+        {aba === "testar" &&
+          (ferramenta === "comfyui" ? (
+            <PainelTeste grafo={grafo} campos={campos} saidas={saidas} />
+          ) : (
+            <Aviso>O Testar só roda workflows do ComfyUI. O do Blender precisa de um shot com marcação: gere direto no shot.</Aviso>
+          ))}
       </div>
 
       {erro && <Aviso>{erro}</Aviso>}

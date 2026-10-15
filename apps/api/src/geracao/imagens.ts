@@ -96,7 +96,7 @@ export async function imagensDisponiveis(dono: DonoImagens): Promise<ImagemDispo
     }),
     prisma.output.findMany({
       where: { ...filtro, tipo: "IMAGEM" },
-      select: { id: true, arquivo: true, favorito: true, criadoEm: true, prompt: true, assetId: true, ...comDono },
+      select: { id: true, arquivo: true, previa: true, favorito: true, criadoEm: true, prompt: true, assetId: true, ...comDono },
       orderBy: { criadoEm: "desc" },
       take,
     }),
@@ -106,8 +106,9 @@ export async function imagensDisponiveis(dono: DonoImagens): Promise<ImagemDispo
     ...outs.map((o) => ({
       origem: "output" as const,
       id: o.id,
-      nome: (o.prompt ?? "").slice(0, 80) || "Output",
-      arquivo: o.arquivo,
+      nome: (o.prompt ?? "").slice(0, 80) || (o.previa ? "Geometria" : "Output"),
+      // Só para a miniatura (o valor escolhido vai pelo id): a prévia, se houver.
+      arquivo: o.previa ?? o.arquivo,
       favorito: o.favorito,
       criadoEm: o.criadoEm,
       ...donoDa(o, dono),
@@ -178,8 +179,10 @@ export async function imagensDosParametros(parametros: Record<string, unknown>):
     const achada =
       ref.origem === "referencia"
         ? await prisma.referencia.findUnique({ where: { id: ref.id }, select: { arquivo: true, nome: true } })
-        : await prisma.output.findUnique({ where: { id: ref.id }, select: { arquivo: true, prompt: true } });
-    r[chave] = achada?.arquivo ? { arquivo: achada.arquivo, nome: "nome" in achada ? achada.nome : (achada.prompt.slice(0, 80) || "Output") } : null;
+        : await prisma.output.findUnique({ where: { id: ref.id }, select: { arquivo: true, previa: true, prompt: true } });
+    // Para olhar: a prévia, quando houver (o depth do blockout não diz nada a quem vê).
+    const mostrar = achada && "previa" in achada && achada.previa ? achada.previa : achada?.arquivo;
+    r[chave] = achada?.arquivo && mostrar ? { arquivo: mostrar, nome: "nome" in achada ? achada.nome : (achada.prompt.slice(0, 80) || "Output") } : null;
   }
   return r;
 }

@@ -149,6 +149,10 @@ model Asset {
   /// Onde o Gerador deste asset parou: tipo, workflow, valores, assistente
   /// (pelo nome) e ideia. Salvo sozinho enquanto se mexe no formulário.
   rascunhoGerador Json?     @map("rascunho_gerador")
+  /// O modelo 3D simples do asset, para o blockout: a planta do cenário ou o
+  /// manequim da personagem. É dado, não arquivo: o Blender monta a cena a
+  /// partir dele (`geracao/blockout.ts` diz o formato).
+  blockout        Json?
   criadoEm        DateTime  @default(now()) @map("criado_em") @db.Timestamptz
   editadoEm       DateTime  @updatedAt @map("editado_em") @db.Timestamptz
 
@@ -178,6 +182,9 @@ model Cena {
   descricao  String?
   /// Texto livre por enquanto: roteiro, planos, intenção da cena.
   storyboard String   @default("")
+  /// A marcação da cena para o blockout: qual cenário, quem fica onde,
+  /// virado para onde e em que pose. A câmera é de cada shot (etapa Geometria).
+  marcacao   Json?
   criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz
   editadoEm  DateTime @updatedAt @map("editado_em") @db.Timestamptz
 
@@ -361,6 +368,10 @@ model Output {
   tipo         TipoOutput
   /// Caminho relativo à pasta de arquivos (ARQUIVOS_DIR), com `/`.
   arquivo      String
+  /// Uma imagem para olhar, quando o arquivo é dado e não figura: no render
+  /// do blockout, o arquivo é o depth (vai ao ControlNet) e a prévia é o
+  /// render colorido. A tela mostra a prévia; o workflow usa o arquivo.
+  previa       String?
   mime         String?
   tamanhoBytes BigInt?    @map("tamanho_bytes")
   largura      Int?

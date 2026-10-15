@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createWriteStream } from "node:fs";
-import { mkdir, rm, stat } from "node:fs/promises";
+import { mkdir, open, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 
@@ -57,4 +57,17 @@ export async function gravar(
 /** Apaga um arquivo guardado. Já não existir não é erro. */
 export async function apagar(relativo: string): Promise<void> {
   await rm(caminhoAbsoluto(relativo), { force: true });
+}
+
+/** Largura e altura de um PNG, lidas do cabeçalho (IHDR), sem biblioteca. */
+export async function tamanhoPng(absoluto: string): Promise<{ largura: number; altura: number } | null> {
+  const f = await open(absoluto, "r");
+  try {
+    const b = Buffer.alloc(24);
+    await f.read(b, 0, 24, 0);
+    if (b.toString("ascii", 12, 16) !== "IHDR") return null;
+    return { largura: b.readUInt32BE(16), altura: b.readUInt32BE(20) };
+  } finally {
+    await f.close();
+  }
 }

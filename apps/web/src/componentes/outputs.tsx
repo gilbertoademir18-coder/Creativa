@@ -90,7 +90,7 @@ export function CartaoOutput({
     >
       <div className="relative">
         <button type="button" onClick={aoAbrir} className="block aspect-video w-full overflow-hidden bg-black">
-          <Miniatura tipo={o.tipo} arquivo={o.arquivo} ajuste="contain" />
+          <Miniatura tipo={o.tipo} arquivo={o.previa ?? o.arquivo} ajuste="contain" />
         </button>
         <BotaoFavorito
           favorito={o.favorito}
@@ -197,6 +197,8 @@ function CorpoVisor({
 }) {
   const { dados: o, erro, setDados } = useCarregar(() => outputsApi.ler(abertoId), [abertoId]);
   const [excluindo, setExcluindo] = useState(false);
+  // No blockout, o que se olha é a prévia; o depth (o arquivo de fato) fica a um clique.
+  const [verArquivo, setVerArquivo] = useState(false);
   const i = outputs.findIndex((x) => x.id === abertoId);
   const varios = outputs.length > 1 && i >= 0;
   // Sem dar a volta: do primeiro não se volta ao último, nem do último ao primeiro.
@@ -229,6 +231,7 @@ function CorpoVisor({
   if (erro) return <Aviso>{erro}</Aviso>;
   // A imagem da lista já aparece enquanto os metadados chegam.
   const base = o ?? outputs[i];
+  const mostrado = base ? (base.previa && !verArquivo ? base.previa : base.arquivo) : null;
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_26rem] gap-6">
@@ -237,7 +240,16 @@ function CorpoVisor({
           {base?.tipo === "VIDEO" ? (
             <video key={base.arquivo} src={urlArquivo(base.arquivo)} controls autoPlay loop className="max-h-[75vh] object-contain" />
           ) : (
-            base && <img src={urlArquivo(base.arquivo)} alt="" className="max-h-[75vh] object-contain" />
+            mostrado && <img src={urlArquivo(mostrado)} alt="" className="max-h-[75vh] object-contain" />
+          )}
+          {base?.previa && (
+            <button
+              type="button"
+              onClick={() => setVerArquivo((v) => !v)}
+              className="absolute bottom-3 left-3 rounded-md bg-zinc-950/80 px-2.5 py-1 text-xs text-zinc-200 hover:bg-zinc-800"
+            >
+              {verArquivo ? "Ver a prévia" : "Ver o depth"}
+            </button>
           )}
           {varios && (
             <>
@@ -301,7 +313,9 @@ function CorpoVisor({
           <Parametros o={o} />
 
           <details className="rounded-lg border border-zinc-800 bg-zinc-900/50 text-sm">
-            <summary className="cursor-pointer px-3 py-2 text-zinc-400 hover:text-zinc-200">Grafo enviado ao ComfyUI (formato API)</summary>
+            <summary className="cursor-pointer px-3 py-2 text-zinc-400 hover:text-zinc-200">
+              {o.previa ? "Pedido enviado ao Blender" : "Grafo enviado ao ComfyUI (formato API)"}
+            </summary>
             <div className="relative border-t border-zinc-800">
               <BotaoCopiar texto={JSON.stringify(o.grafoEnviado, null, 2)} className="absolute top-2 right-2" />
               <pre className="max-h-80 overflow-auto p-3 font-mono text-xs text-zinc-400">{JSON.stringify(o.grafoEnviado, null, 2)}</pre>
@@ -310,7 +324,7 @@ function CorpoVisor({
 
           {/* Grudado embaixo do painel, que rola: "aba nova" e "Excluir" à vista em qualquer ponto. */}
           <div className="sticky bottom-0 mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-zinc-800 bg-zinc-950 py-3">
-            <a href={urlArquivo(o.arquivo)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-violet-300 hover:underline">
+            <a href={urlArquivo(mostrado ?? o.arquivo)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-violet-300 hover:underline">
               <ExternalLink className="size-4" /> Tamanho real numa aba nova
             </a>
             <Botao variante="perigo" icone={<Trash className="size-4" />} onClick={() => setExcluindo(true)}>
@@ -409,7 +423,7 @@ function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode
   );
 }
 
-function BotaoCopiar({ texto, className = "" }: { texto: string; className?: string }) {
+export function BotaoCopiar({ texto, className = "" }: { texto: string; className?: string }) {
   const [copiado, setCopiado] = useState(false);
   return (
     <button
