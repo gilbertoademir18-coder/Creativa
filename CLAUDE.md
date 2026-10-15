@@ -644,6 +644,17 @@ Decisão do usuário (2026-10-15): o 3D é **dado no banco, não arquivo .blend*
   `geracao/blockout.ts`) quando o workflow tem o campo `geometria`. O que
   funcionou: abrir com "seen from behind", sem expressão de quem está de
   costas, e o cabelo de cada uma junto com o lado do quadro.
+- **O caminho que funcionou: placa primeiro, personagens depois**
+  (2026-10-15, 3 de 3). O depth segura a **sala** e falha com **gente**;
+  então: (1) blockout **sem** personagens → Qwen + depth (2,5) + placa do asset
+  como referência = a **placa vazia da câmera**; (2) os manequins renderizados
+  à parte (fundo transparente, os móveis como *holdout* para recortar) e
+  **colados sobre a placa**; (3) Qwen Edit **partindo da colagem** (Picture 1,
+  latente do `VAEEncode` dela, não vazio) com Lia e Ami como Picture 2 e 3, e
+  o prompt dizendo qual manequim (pela cor da cabeça) vira quem. O fundo sai
+  idêntico ao da placa. **Sem ControlNet na edição**: a 2,5 ele desenha coisas
+  no céu; a 1,5 não ajuda. Ainda não está no pipeline (é o próximo passo).
+  Resultados: https://claude.ai/artifact/AH7iG49iaQ1ST5NTK9KQEQ
 
 # Banco de dados
 
@@ -687,6 +698,10 @@ Decisão do usuário (2026-10-15): o 3D é **dado no banco, não arquivo .blend*
 
 Coisas que já custaram tempo — e o contorno:
 
+- **ComfyUI depois de "CUDA out of memory" fica preso:** o `/system_stats`
+  passa a dizer 0 MB livres com a placa quase vazia, e toda geração falha no
+  primeiro nó. Não adianta tentar de novo: reinicie o ComfyUI
+  (`POST /api/comfyui/parar` e `/iniciar`, os botões da barra do topo).
 - **Duas APIs no ar = output em dobro:** a 3400 e a de dev (3401) acompanham
   o ComfyUI cada uma por conta própria, e uma geração do ComfyUI pedida em
   qualquer uma é coletada pelas duas. Com a de dev no ar, gere no ComfyUI só
