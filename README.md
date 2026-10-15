@@ -99,6 +99,14 @@ para renomear ou apagar um workflow sem mexer no histórico.
 O workflow aparece no Gerador dos donos que o **tipo de geração** dele
 aceita (página Tipos de geração).
 
+Além do ComfyUI, a ferramenta pode ser o **Blender**: o workflow "Geometria
+do shot" monta o blockout do shot (o cenário e as personagens como manequins,
+nos lugares da marcação da cena) e renderiza pela câmera dos campos. Sai um
+output com o depth, que trava a geometria do primeiro quadro (ControlNet), e
+uma prévia colorida. O Blender precisa estar instalado na máquina da API
+(procurado em Program Files, ou `BLENDER_EXE` no `.env`). Quem escreve a
+planta, os manequins e a marcação é a skill `/blockout` do Claude Code.
+
 Regras que o banco garante (FKs e `CHECK`s):
 
 - Apagar um projeto **solta** os assets e cenas dele; não apaga.
@@ -365,12 +373,15 @@ apps/
     prisma/schema.prisma  Tabelas, enums e as regras de exclusão
     src/server.ts         Fastify: registra as rotas, arquivos e o front pronto
     src/rotas/            projetos, assets, cenas (+ shots), referencias, gerador, outputs, fila
-    src/geracao/          O Gerador: formatos dos campos, montagem do grafo, catálogo (do banco) e execução no ComfyUI
+    src/geracao/          O Gerador: formatos dos campos, montagem do grafo, catálogo (do banco), execução no ComfyUI e no Blender (blender.ts), formato do blockout (blockout.ts)
     src/lib/              prisma, validacao (zod), arquivos (D:\Creativa), filtros
   web/                    React + Vite + Tailwind, tela cheia (Full HD / QHD)
     src/paginas/          Uma por item do menu, com a lista e o detalhe
     src/componentes/      layout, ui, modal, filtros, referencias, gerador, outputs...
     scripts/gerar-icones.mjs
+blender/
+  creativa/render.py      Monta o blockout de um shot a partir do JSON e renderiza prévia + depth
+  sala-de-aula/           Os testes do blockout (2026-10-14) e o que eles ensinaram
 docs/
   padrao-de-projeto.md    Como montar um projeto novo no mesmo molde
 scripts/

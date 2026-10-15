@@ -365,7 +365,11 @@ as cenas (`SetNull`), nunca as apaga.
   deles sem pedido. A exceção é a skill `/workflow-creativa`: invocá-la é o
   pedido, e ela cria ou altera tipos, workflows, assistentes, um asset, cena
   ou shot de exemplo e o rascunho do Gerador, **só** pelos scripts dela
-  (`creativa.mjs`, que passa pela API), sem apagar nada.
+  (`creativa.mjs`, que passa pela API), sem apagar nada. A skill
+  `/blockout` é outra exceção, mais estreita: escreve `asset.blockout`,
+  `cena.marcacao` e o rascunho da etapa de geometria, **só** pelo
+  `blockout.mjs` dela, sem passar por cima do que existe (`--substituir` só
+  com pedido).
 - **O rascunho do Gerador** (`rascunho_gerador` em `asset` e `shot`) guarda
   onde o Gerador parou: tipo, workflow, valores, assistente (pelo nome) e
   ideia. O Gerador abre por ele (antes do último output) e salva sozinho.
@@ -410,8 +414,12 @@ as cenas (`SetNull`), nunca as apaga.
   mime do arquivo (`tipoDoMime` em `geracao/execucao.ts`). Nó V3 com "combo
   dinâmico" (o `format` do `SaveVideo`) vai no grafo API como valor, e as
   sub-escolhas em chaves com ponto: `"format": "auto", "format.codec": "auto"`.
-- Ferramenta nova (fora do ComfyUI) = um adaptador em `geracao/execucao.ts`
-  (hoje `executar` recusa o que não é `comfyui`) e uma linha em `FERRAMENTAS`.
+- Ferramenta nova (fora do ComfyUI) = um adaptador chamado de `executar`
+  (`geracao/execucao.ts`) e uma linha em `FERRAMENTAS`. O do **Blender**
+  (`geracao/blender.ts`) é o modelo: roda aqui mesmo, numa fila própria (um
+  por vez, só em memória — reiniciar o servidor marca as pendentes como
+  falhas), a execução nasce **sem `promptIdComfy`** (por isso o acompanhamento
+  do ComfyUI não a vê) e o pedido montado vai em `grafoEnviado`.
 - Execuções, outputs e assistentes guardam as **chaves** (`tipo_geracao`,
   `workflow`), não ids: a chave nasce do nome e nunca muda.
 - O "Testar" do cadastro (`POST /api/workflows/testar`) roda sem gravar nada
@@ -591,6 +599,9 @@ em 2026-10-14. O `.env` de cada máquina é que muda — o código é o mesmo.
     tailnet (~1,3 s um PNG de 1 MB). Sem a variável, arquivo que falta é 404,
     como antes — é assim na máquina que tem os arquivos. O que se gera ou
     envia daqui fica local e nem passa por isso.
+  - **A etapa Geometria**: o Blender roda onde a API roda. No notebook, instale
+    o Blender (decisão do usuário) — ele acha sozinho em Program Files, ou use
+    `BLENDER_EXE` no `.env`.
   - **"Iniciar"/"Parar" o ComfyUI**: procuram o `python_embeded` e a porta
     nesta máquina. O ComfyUI tem de estar ligado em casa.
 - **O tray mente sobre o ComfyUI remoto:** `Vigiar-Comfy` (`scripts\tray.ps1`)
@@ -602,6 +613,26 @@ em 2026-10-14. O `.env` de cada máquina é que muda — o código é o mesmo.
   põe dois clientes na mesma 3080 Ti, e o revezamento LLM/ComfyUI é
   coordenado por quem chama (`descarregar()` em `lib/ollama.ts`), não por uma
   trava central.
+
+# O blockout (geometria do primeiro quadro)
+
+Decisão do usuário (2026-10-15): o 3D é **dado no banco, não arquivo .blend**.
+
+- `asset.blockout`: a planta do cenário ou o manequim da personagem;
+  `cena.marcacao`: o cenário e quem fica onde; a **câmera é de cada shot**,
+  nos campos do workflow "Geometria do shot (Blender)". O formato (zod) e o
+  sistema de coordenadas estão em `apps/api/src/geracao/blockout.ts`; quem
+  monta é `blender/creativa/render.py`. Mudou o formato? Mude os dois e a
+  skill `/blockout` juntos.
+- O render vira **um output só**: o depth em `arquivo` (o que o workflow
+  seguinte recebe) e o render colorido em `output.previa` (o que a tela
+  mostra: miniatura, visor com "Ver o depth", seletor de imagem, fila).
+- Pipeline "Geometria > First Frame > Vídeo": a etapa `blender` gera a
+  geometria, o escolhido dela entra no campo `geometria` do workflow
+  "Primeiro quadro de shot com geometria" (ControlNet a 2,5), e o escolhido
+  do first frame entra no `primeiro_quadro` do vídeo.
+- O depth só segura personagem **grande no quadro** (~70% da altura deu
+  certo; ~30% não). O `render.py` mede isso no relatório e a skill avisa.
 
 # Banco de dados
 
@@ -645,6 +676,11 @@ em 2026-10-14. O `.env` de cada máquina é que muda — o código é o mesmo.
 
 Coisas que já custaram tempo — e o contorno:
 
+- **Duas APIs no ar = output em dobro:** a 3400 e a de dev (3401) acompanham
+  o ComfyUI cada uma por conta própria, e uma geração do ComfyUI pedida em
+  qualquer uma é coletada pelas duas. Com a de dev no ar, gere no ComfyUI só
+  depois de pará-la. As execuções do Blender não têm esse problema (não têm
+  `promptIdComfy`).
 - **API de dev em segundo plano:** suba com
   `node --import tsx src/server.ts --dev` (em `apps/api`, com `exec` na frente),
   não com `npx tsx`. Com `npx`, parar a tarefa mata só o `npx` e o filho do
