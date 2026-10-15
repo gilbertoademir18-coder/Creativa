@@ -551,6 +551,12 @@ O que isso muda nas escolhas:
   sala obedece e elas vão para o centro (0 de 9). O manequim tem de ser
   silhueta inteira — braço solto do tronco vira gente a mais. Mantenha a placa
   do cenário como Picture 3 (sem ela, a Lia duplicou).
+  **Alternativas testadas e descartadas** (2026-10-14, mesmo blockout): o
+  blockout como imagem de referência (no Qwen, ele pinta os manequins; no
+  FLUX.2 Klein 4B, ignora e copia a placa, a ~150 s por imagem) e o Anima com o
+  depth LLLite (`anima-lllite-depth`), que não segura a sala nem no Anima base
+  nem com o depth do Depth Anything 3. Resultados com imagens:
+  https://claude.ai/artifact/KFa1FpPTYmcZZ4KxMYHbdT
 
 # Rodar de outra máquina, com a IA em casa
 
