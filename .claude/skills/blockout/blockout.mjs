@@ -151,7 +151,7 @@ function renderizar(cena, cam, pasta) {
   }
   const rel = lerJson(abs("relatorio.json"));
   console.log(`Prévia em ${abs("previa.png")} (depth em depth.png, cena em cena.blend).`);
-  console.log(`Depth de ${rel.depth.inicio} m a ${(rel.depth.inicio + rel.depth.profundidade).toFixed(2)} m.`);
+  console.log(`Depth em disparidade: branco a ${rel.depth.perto} m, preto além de ${rel.depth.longe} m.`);
   for (const p of rel.personagens) {
     const pct = Math.round(p.alturaNoQuadro * 100);
     const nota = !p.dentro
@@ -161,7 +161,7 @@ function renderizar(cena, cam, pasta) {
         : p.alturaNoQuadro < 0.6
           ? "· entre o que falhou e o que funcionou: não testado"
           : "✓ tamanho que funcionou nos testes (~70%)";
-    console.log(`  ${p.nome}: ${pct}% da altura do quadro, centro em x=${Math.round(p.centroX * 100)}%  ${nota}`);
+    console.log(`  ${p.nome}: ${p.lado}, ${p.virada}, ${pct}% da altura do quadro${p.cortada ? " (cortada embaixo)" : ""}  ${nota}`);
   }
 }
 

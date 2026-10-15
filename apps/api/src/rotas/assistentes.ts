@@ -7,6 +7,7 @@ import { lerFila } from "../geracao/execucao.ts";
 import { configComfy } from "../lib/comfyui.ts";
 import { consultarOllama, gerarTexto } from "../lib/ollama.ts";
 import { prisma } from "../lib/prisma.ts";
+import { enquadramentoDoShot } from "../geracao/blockout.ts";
 import { Busca, ErroHttp, FiltroProjeto, naoEncontrado, Nome, TextoOpcional, Uuid, UuidOpcional, validar } from "../lib/validacao.ts";
 
 /**
@@ -203,7 +204,11 @@ async function montarPedido(id: string, p: z.output<typeof PedidoExpandir>) {
   const tipo = await prisma.tipoGeracao.findUnique({ where: { chave: w.tipo }, select: { saida: true } });
   const mencoes = [p.ideia, ...dono.linhas].join("\n");
   const doProjeto = contextoDoProjeto(dono.projeto?.descricao ?? null, tipo?.saida ?? "OUTRO", mencoes);
-  const contexto = [...(dono.projeto ? [`Projeto: ${dono.projeto.nome}`] : []), ...doProjeto, ...dono.linhas];
+  // O workflow com geometria recebe o depth do blockout: o prompt tem de
+  // concordar com o enquadramento que ele já travou.
+  const comGeometria = p.shotId && w.campos.some((c) => c.tipo === "imagem" && c.chave === "geometria");
+  const enquadramento = comGeometria ? await enquadramentoDoShot(p.shotId!) : null;
+  const contexto = [...(dono.projeto ? [`Projeto: ${dono.projeto.nome}`] : []), ...doProjeto, ...dono.linhas, ...(enquadramento ? [enquadramento] : [])];
   const usuario = [`Ideia: ${p.ideia}`, "", "Contexto (use o que servir à ideia):", ...contexto.map((l) => `- ${l}`)].join("\n");
 
   const [extra, nomes] = await Promise.all([

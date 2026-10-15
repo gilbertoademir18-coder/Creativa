@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { createReadStream, existsSync, readdirSync } from "node:fs";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { FastifyBaseLogger } from "fastify";
@@ -187,6 +187,9 @@ async function rodar(id: string): Promise<void> {
     const previa = await gravar("outputs", "previa.png", createReadStream(saida.previa));
     copiados.push(previa.relativo);
     const dims = await tamanhoPng(caminhoAbsoluto(depth.relativo));
+    // O relatório (quanto do quadro, de que lado, virada para onde) fica com o
+    // pedido: é dele que o assistente do primeiro quadro tira o enquadramento.
+    const relatorio = JSON.parse(await readFile(saida.relatorio, "utf8")) as unknown;
 
     const agora = await prisma.execucao.findUnique({ where: { id }, select: { status: true } });
     if (agora?.status !== "EXECUTANDO") throw new Error("cancelada");
@@ -202,7 +205,7 @@ async function rodar(id: string): Promise<void> {
           modelo: e.modelo,
           prompt: "",
           parametros: e.parametros as object,
-          grafoEnviado: e.grafoEnviado as object,
+          grafoEnviado: { ...(e.grafoEnviado as object), relatorio } as object,
           assistente: e.assistente,
           ideia: e.ideia,
           tipo: "IMAGEM",

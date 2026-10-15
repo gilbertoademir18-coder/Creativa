@@ -134,6 +134,42 @@ def peca(n, p):
 # --- o cenario ---
 ESP = 0.12  # espessura das paredes
 
+def montar_exterior(c, L, P):
+    """O lado de fora das janelas: chao, arvores e predios ao longe.
+
+    Sem isso a janela e um buraco para o infinito, e o depth fica preto e liso
+    numa area grande — com o ControlNet forte, isso vira mosaico de pixels
+    (visto em 2026-10-15). Com algo la fora, a janela tem profundidade.
+    """
+    tipo = c.get("exterior", "misto")
+    paredes = {a["parede"] for a in c.get("aberturas", []) if a["tipo"] in ("janela", "vao")}
+    if tipo == "nada" or not paredes:
+        return
+    import random
+    sorte = random.Random(7)
+    caixa("chao_externo", (0, 0, -0.12), (400, 400, 0.1), material("planta"))
+    VERDE, PREDIO, TRONCO = material("planta"), material("pedra"), material("movel")
+    for parede in paredes:
+        for i in range(28):
+            dist = sorte.uniform(9, 45)          # da parede para fora
+            ao_longo = sorte.uniform(-40, 40)
+            if parede == "esquerda":
+                x, y = -L / 2 - dist, ao_longo
+            elif parede == "direita":
+                x, y = L / 2 + dist, ao_longo
+            elif parede == "frente":
+                x, y = ao_longo, P / 2 + dist
+            else:
+                x, y = ao_longo, -P / 2 - dist
+            arvore = tipo == "arvores" or (tipo == "misto" and sorte.random() < 0.6)
+            if arvore:
+                h = sorte.uniform(3.5, 8)
+                cilindro(f"tronco_{parede}_{i}", (x, y, h * 0.3), 0.25, h * 0.6, TRONCO)
+                esfera(f"copa_{parede}_{i}", (x, y, h * 0.75), sorte.uniform(1.8, 3.2), VERDE, escala=(1, 1, 0.85))
+            else:
+                h = sorte.uniform(8, 26)
+                caixa(f"predio_{parede}_{i}", (x, y, h / 2), (sorte.uniform(6, 14), sorte.uniform(6, 12), h), PREDIO)
+
 def montar_cenario(c):
     sala = c.get("sala")
     if sala:
@@ -184,6 +220,7 @@ def montar_cenario(c):
             else:
                 centro, tam = (L / 2 - 0.03, p["centro"], zc), (0.04, p["largura"], p["altura"])
             caixa(p.get("nome") or f"painel_{i}", centro, tam, material(p.get("material", "lousa"), p.get("cor")))
+        montar_exterior(c, L, P)
     else:
         caixa("chao", (0, 0, -0.05), (200, 200, 0.1), material("pedra"))
     n = 0
@@ -290,11 +327,11 @@ except Exception:
     pass
 bpy.context.view_layer.update()
 
-# --- a faixa do depth: do mais perto ao mais longe que a camera ve ---
+# --- o mais perto que a camera ve: e o branco do depth ---
 frente = (Vector(cam_d["alvo"]) - Vector(cam_d["pos"])).normalized()
 dists = []
 for o in cena.objects:
-    if o.type != "MESH" or o.hide_render or o.name.startswith("chao"):
+    if o.type != "MESH" or o.hide_render or o.name.startswith(("chao", "tronco_", "copa_", "predio_")):
         continue
     for canto in o.bound_box:
         mundo_p = o.matrix_world @ Vector(canto)
@@ -302,18 +339,34 @@ for o in cena.objects:
         if 0 <= v.x <= 1 and 0 <= v.y <= 1 and v.z > 0:
             dists.append((mundo_p - cam.location).dot(frente))
 perto = max(0.1, min(dists) * 0.9) if dists else 0.5
-longe = min(max(dists) if dists else 12.0, 80.0)
-profundidade = max(longe - perto, 1.0)
+LONGE = 120.0  # o que passa disso (o ceu) fica preto
 
-# --- quanto do quadro cada personagem ocupa ---
-relatorio = {"depth": {"inicio": round(perto, 3), "profundidade": round(profundidade, 3)}, "personagens": []}
+# --- o enquadramento de cada personagem: quanto do quadro, onde, virada para onde ---
+def virada(g):
+    """De frente, de perfil ou de costas para a camera (a frente do manequim e +y local)."""
+    rumo = (g.matrix_world.to_3x3() @ Vector((0, 1, 0))).to_2d().normalized()
+    para_cam = (cam.location - g.matrix_world.translation).to_2d().normalized()
+    ang = math.degrees(math.acos(max(-1.0, min(1.0, rumo.dot(para_cam)))))
+    if ang < 55:
+        return "de frente"
+    if ang > 125:
+        return "de costas"
+    # de perfil: para que lado do quadro ela olha
+    direita_cam = (cam.matrix_world.to_3x3() @ Vector((1, 0, 0))).to_2d()
+    return "de perfil, olhando para a direita do quadro" if rumo.dot(direita_cam) > 0 else "de perfil, olhando para a esquerda do quadro"
+
+relatorio = {"depth": {"mapa": "disparidade", "perto": round(perto, 3), "longe": LONGE}, "personagens": []}
 for nome, (g, topo) in alturas.items():
     base = world_to_camera_view(cena, cam, g.matrix_world @ Vector((0, 0, 0)))
     alto = world_to_camera_view(cena, cam, g.matrix_world @ Vector((0, 0, topo)))
+    cx = (base.x + alto.x) / 2
     relatorio["personagens"].append({
         "nome": nome,
         "alturaNoQuadro": round(max(0.0, min(alto.y, 1) - max(base.y, 0)), 3),
-        "centroX": round((base.x + alto.x) / 2, 3),
+        "centroX": round(cx, 3),
+        "lado": "à esquerda" if cx < 0.4 else "à direita" if cx > 0.6 else "no centro",
+        "virada": virada(g),
+        "cortada": base.y < -0.02,
         "naFrente": base.z > 0,
         "dentro": 0 <= alto.x <= 1 and base.y < 1 and alto.y > 0,
     })
@@ -324,20 +377,34 @@ cena.render.image_settings.color_mode = "RGB"
 cena.render.filepath = saida["previa"]
 bpy.ops.render.render(write_still=True)
 
-# --- passada 2: o depth (mist invertido, perto = claro, sem view transform) ---
-bpy.context.view_layer.use_pass_mist = True
-cena.world.mist_settings.start = perto
-cena.world.mist_settings.depth = profundidade
-cena.world.mist_settings.falloff = "LINEAR"
+# --- passada 2: o depth em disparidade (perto/distancia), sem view transform ---
+# Como os mapas de depth com que os ControlNets sao treinados: o mais perto e
+# branco, cai rapido nos primeiros metros e o longe ainda se distingue do ceu.
+# (Mist linear ate o fundo achataria a sala quando ha arvores a 40 m.)
+bpy.context.view_layer.use_pass_z = True
 grupo_c = bpy.data.node_groups.new("Depth", "CompositorNodeTree")
 grupo_c.interface.new_socket("Image", in_out="OUTPUT", socket_type="NodeSocketColor")
 cena.use_nodes = True
 cena.compositing_node_group = grupo_c
 rl = grupo_c.nodes.new("CompositorNodeRLayers")
-inv = grupo_c.nodes.new("CompositorNodeInvert")
 out = grupo_c.nodes.new("NodeGroupOutput")
-grupo_c.links.new(rl.outputs["Mist"], inv.inputs["Color"])
-grupo_c.links.new(inv.outputs["Color"], out.inputs[0])
+
+def conta(op, a, b, prender=False):
+    n = grupo_c.nodes.new("ShaderNodeMath")
+    n.operation = op
+    n.use_clamp = prender
+    for i, v in enumerate((a, b)):
+        if isinstance(v, (int, float)):
+            n.inputs[i].default_value = v
+        else:
+            grupo_c.links.new(v, n.inputs[i])
+    return n.outputs[0]
+
+# (perto/Z - perto/longe) / (1 - perto/longe), preso entre 0 e 1
+d = conta("DIVIDE", perto, rl.outputs["Depth"])
+d = conta("SUBTRACT", d, perto / LONGE)
+d = conta("DIVIDE", d, 1 - perto / LONGE, prender=True)
+grupo_c.links.new(d, out.inputs[0])
 cena.view_settings.view_transform = "Raw"
 cena.render.image_settings.color_mode = "BW"
 cena.render.filepath = saida["depth"]

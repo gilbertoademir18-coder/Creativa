@@ -633,6 +633,17 @@ Decisão do usuário (2026-10-15): o 3D é **dado no banco, não arquivo .blend*
   do first frame entra no `primeiro_quadro` do vídeo.
 - O depth só segura personagem **grande no quadro** (~70% da altura deu
   certo; ~30% não). O `render.py` mede isso no relatório e a skill avisa.
+- **Janela para o nada vira mosaico** (2026-10-15): buraco preto e liso no
+  depth + ControlNet a 2,5 = fundo de pixels. O `render.py` põe chão, árvores e
+  prédios lá fora (`exterior` da planta) e grava o depth em **disparidade**
+  (1/distância), não mais em mist linear.
+- **O prompt tem de concordar com a câmera.** Depth de costas + prompt pedindo
+  rostos = as duas viradas de frente, gente a mais. O relatório da geometria
+  (lado, de frente/perfil/costas) fica no output, e o assistente do primeiro
+  quadro recebe o enquadramento e regras de escrita (`enquadramentoDoShot` em
+  `geracao/blockout.ts`) quando o workflow tem o campo `geometria`. O que
+  funcionou: abrir com "seen from behind", sem expressão de quem está de
+  costas, e o cabelo de cada uma junto com o lado do quadro.
 
 # Banco de dados
 

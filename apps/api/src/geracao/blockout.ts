@@ -110,6 +110,11 @@ export const BlockoutCenario = z.object({
     .object({ largura: Medida, profundidade: Medida, altura: Medida, teto: z.boolean().default(true) })
     .optional(),
   aberturas: z.array(Abertura).max(40).default([]),
+  /**
+   * O que se vê pelas janelas. Sem nada lá fora, a janela vira um buraco
+   * preto e liso no depth, e o ControlNet forte transforma isso em mosaico.
+   */
+  exterior: z.enum(["misto", "arvores", "predios", "nada"]).default("misto"),
   paineis: z.array(Painel).max(40).default([]),
   pecas: z.array(Peca).max(300).default([]),
   fileiras: z.array(Fileira).max(20).default([]),
@@ -141,6 +146,51 @@ export type BlockoutCenario = z.infer<typeof BlockoutCenario>;
 export type BlockoutPersonagem = z.infer<typeof BlockoutPersonagem>;
 
 export const POSES = ["em_pe", "sentada"] as const;
+
+/** O que o render.py mede de cada personagem, no relatório que fica no output. */
+type NoQuadro = { nome: string; alturaNoQuadro: number; lado: string; virada: string; cortada: boolean; dentro: boolean };
+
+/**
+ * O enquadramento que a geometria escolhida de um shot já travou, em texto,
+ * para o assistente do primeiro quadro: o prompt tem de concordar com o
+ * depth. Nos testes de 2026-10-15, o prompt pedindo rostos com o depth de
+ * costas fez o modelo virar as duas, com gente a mais e imagem embaralhada;
+ * com o prompt de acordo, 3 de 3 saíram certas.
+ *
+ * Vale a geometria escolhida em qualquer etapa do shot (o output com prévia
+ * e relatório). Sem ela, null.
+ */
+export async function enquadramentoDoShot(shotId: string): Promise<string | null> {
+  const { prisma } = await import("../lib/prisma.ts");
+  const shot = await prisma.shot.findUnique({ where: { id: shotId }, select: { rascunhoGerador: true } });
+  const etapas = (shot?.rascunhoGerador as { etapas?: Record<string, { escolhido?: string | null }> } | null)?.etapas ?? {};
+  const ids = Object.values(etapas).map((e) => e.escolhido).filter((x): x is string => !!x);
+  if (!ids.length) return null;
+  const o = await prisma.output.findFirst({ where: { id: { in: ids }, previa: { not: null } }, orderBy: { criadoEm: "desc" }, select: { grafoEnviado: true } });
+  const rel = (o?.grafoEnviado as { relatorio?: { personagens?: NoQuadro[] } } | null)?.relatorio;
+  const ps = (rel?.personagens ?? []).filter((p) => p.dentro);
+  if (!ps.length) return null;
+  const maior = Math.max(...ps.map((p) => p.alturaNoQuadro));
+  const plano = maior >= 0.85 ? "close / plano próximo" : maior >= 0.55 ? "plano médio" : maior >= 0.3 ? "plano americano a inteiro" : "plano geral";
+  // Como escrever com esse enquadramento. Saiu dos testes de 2026-10-15: com
+  // "facing away" no meio da frase e "curious expression", o modelo virou as
+  // duas de frente; abrindo com "seen from behind" e citando o cabelo de cada
+  // uma, 3 de 3 saíram de costas e cada uma do seu lado.
+  const costas = ps.some((p) => p.virada === "de costas");
+  const perfil = ps.some((p) => p.virada.startsWith("de perfil"));
+  const comoEscrever = [
+    `- Abra o prompt pelo ponto de vista${costas && ps.every((p) => p.virada === "de costas") ? ' ("seen from behind", "from the back")' : perfil ? ' (ex.: "in profile")' : ""}, antes de qualquer outra coisa.`,
+    costas && "- Quem está de costas não mostra o rosto: não escreva expressão, olhar nem sorriso dela. A emoção vai pelo gesto e pela postura.",
+    "- Diga de que lado do quadro cada personagem está e descreva o cabelo de cada uma (cor e corte), que é o que amarra quem é quem — principalmente de costas.",
+  ].filter((l): l is string => !!l);
+  return [
+    "Enquadramento já travado pela geometria do shot (o depth do blockout). A imagem vai seguir esta posição e esta orientação; o prompt tem de concordar com elas, sem virar ninguém para outro lado:",
+    `- Plano: ${plano}.`,
+    ...ps.map((p) => `- ${p.nome}: ${p.lado} do quadro, ${p.virada}${p.virada.startsWith("de perfil") ? "" : " para a câmera"}, ocupa ${Math.round(p.alturaNoQuadro * 100)}% da altura${p.cortada ? " (cortada embaixo)" : ""}.`),
+    "Como escrever com este enquadramento:",
+    ...comoEscrever,
+  ].join("\n");
+}
 
 export const Marcacao = z.object({
   versao: z.literal(1).default(1),

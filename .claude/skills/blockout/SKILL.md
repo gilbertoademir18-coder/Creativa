@@ -106,7 +106,14 @@ móveis (o manequim tem ~0,5 m de largura), e virado para onde a ação pede.
      0 de 9). A sala obedece, ela vai para o centro. Diga isso ao usuário e
      proponha aproximar a câmera — ou usar o workflow de primeiro quadro **sem**
      geometria para esse shot.
-3. Com a câmera boa: `camera <shotId> camera.json` (deixa no rascunho; o
+3. **O prompt do primeiro quadro tem de concordar com a câmera.** O relatório
+   diz de que lado cada uma está e se está de frente, de perfil ou de costas,
+   e o assistente do primeiro quadro recebe isso sozinho (quando o workflow
+   tem o campo `geometria` e o shot tem a geometria escolhida). Prompt
+   pedindo rostos com o depth de costas fez o modelo virar as duas: gente a
+   mais e imagem embaralhada (2026-10-15). Escrevendo o prompt à mão,
+   descreva como o relatório diz.
+4. Com a câmera boa: `camera <shotId> camera.json` (deixa no rascunho; o
    usuário clica em Gerar) **ou**, se ele pediu, `gerar` e depois
    `escolher <shotId> <outputId>` — o escolhido vai para o campo "Geometria"
    do primeiro quadro pelo pipeline.
@@ -117,7 +124,13 @@ Mostre a prévia (ou o output) e diga o que ficou gravado. O primeiro quadro é
 o workflow **"Primeiro quadro de shot com geometria"**: Lia/Ami/placa como
 Picture 1/2/3 e o depth no campo Geometria, força **2,5**. Ofereça gerar.
 
-## O que os testes ensinaram (2026-10-14)
+## O que os testes ensinaram (2026-10-14 e 15)
+
+- **Janela sem nada lá fora** é um buraco preto e liso no depth, e o ControlNet
+  forte o transforma em mosaico de pixels. O `render.py` põe chão, árvores e
+  prédios lá fora (`exterior` da planta: `misto`, `arvores`, `predios` ou
+  `nada`) e grava o depth em **disparidade** (1/distância), como os mapas com
+  que o ControlNet foi treinado.
 
 - O patch de depth é do Qwen-Image **base**; no Edit 2511 pede força **2,5**.
 - **Mantenha a placa do cenário como Picture 3** — sem ela, a Lia duplicou.
