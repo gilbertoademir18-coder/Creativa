@@ -120,9 +120,24 @@ móveis (o manequim tem ~0,5 m de largura), e virado para onde a ação pede.
 
 ## 6. Fechar
 
-Mostre a prévia (ou o output) e diga o que ficou gravado. O primeiro quadro é
-o workflow **"Primeiro quadro de shot com geometria"**: Lia/Ami/placa como
-Picture 1/2/3 e o depth no campo Geometria, força **2,5**. Ofereça gerar.
+Mostre a prévia (ou o output) e diga o que ficou gravado. Depois da
+Geometria, o caminho que funciona (2026-10-15, 3 de 3) é **placa primeiro,
+personagens depois**, nas etapas seguintes do pipeline "Geometria > Placa >
+First Frame > Vídeo":
+
+1. **Placa** — workflow "Placa da câmera": a sala **vazia** desta câmera, do
+   depth sem os manequins (a parte `depthVazio` do output da Geometria) e da
+   placa do asset de cenário. Uma placa por câmera: shots com a mesma câmera
+   reaproveitam a mesma, e a sala sai idêntica.
+2. **First Frame** — workflow "Primeiro quadro por edição da placa": os
+   manequins (a parte `manequins`) colados sobre a placa, e o Qwen troca cada
+   um pela personagem dele. **Sem ControlNet.** O assistente dele recebe qual
+   manequim é quem pela cor da cabeça — por isso a **cor do cabelo** no
+   manequim de cada personagem tem de ser bem diferente uma da outra.
+
+O workflow "Primeiro quadro de shot com geometria" (depth direto, com as
+personagens) ficou como alternativa: ele erra mais (personagem virando de
+frente, trocando de lado). Ofereça gerar.
 
 ## O que os testes ensinaram (2026-10-14 e 15)
 

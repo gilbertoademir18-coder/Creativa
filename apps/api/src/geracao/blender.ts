@@ -177,7 +177,14 @@ async function rodar(id: string): Promise<void> {
   const pasta = await mkdtemp(path.join(os.tmpdir(), "creativa-blender-"));
   const copiados: string[] = [];
   try {
-    const saida = { depth: path.join(pasta, "depth.png"), previa: path.join(pasta, "previa.png"), relatorio: path.join(pasta, "relatorio.json") };
+    const saida = {
+      depth: path.join(pasta, "depth.png"),
+      previa: path.join(pasta, "previa.png"),
+      relatorio: path.join(pasta, "relatorio.json"),
+      // As partes de "placa primeiro, personagens depois": a sala vazia e os bonecos.
+      depthVazio: path.join(pasta, "depth_vazio.png"),
+      manequins: path.join(pasta, "manequins.png"),
+    };
     const pedidoJson = path.join(pasta, "pedido.json");
     await writeFile(pedidoJson, JSON.stringify({ ...(e.grafoEnviado as object), saida }), "utf8");
     await chamarBlender(exe, pedidoJson, id);
@@ -186,6 +193,14 @@ async function rodar(id: string): Promise<void> {
     copiados.push(depth.relativo);
     const previa = await gravar("outputs", "previa.png", createReadStream(saida.previa));
     copiados.push(previa.relativo);
+    // Sem personagens na marcação, o render não grava as partes.
+    const partes: Record<string, string> = {};
+    for (const nome of ["depthVazio", "manequins"] as const) {
+      if (!existsSync(saida[nome])) continue;
+      const g = await gravar("outputs", `${nome}.png`, createReadStream(saida[nome]));
+      copiados.push(g.relativo);
+      partes[nome] = g.relativo;
+    }
     const dims = await tamanhoPng(caminhoAbsoluto(depth.relativo));
     // O relatório (quanto do quadro, de que lado, virada para onde) fica com o
     // pedido: é dele que o assistente do primeiro quadro tira o enquadramento.
@@ -211,6 +226,7 @@ async function rodar(id: string): Promise<void> {
           tipo: "IMAGEM",
           arquivo: depth.relativo,
           previa: previa.relativo,
+          partes: Object.keys(partes).length ? partes : undefined,
           mime: "image/png",
           tamanhoBytes: depth.tamanho,
           largura: dims?.largura ?? null,

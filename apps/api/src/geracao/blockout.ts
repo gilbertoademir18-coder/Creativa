@@ -147,6 +147,23 @@ export type BlockoutPersonagem = z.infer<typeof BlockoutPersonagem>;
 
 export const POSES = ["em_pe", "sentada"] as const;
 
+/**
+ * O nome de uma cor (#rrggbb), para a LLM dizer qual manequim é quem:
+ * "o manequim de cabeça vermelho-escura". Grosso de propósito — é a cor da
+ * cabeça na colagem, e o modelo de imagem só precisa distinguir uma da outra.
+ */
+export function nomeDaCor(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255) as [number, number, number];
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
+  if (l < 0.13) return "preta";
+  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  if (s < 0.15) return l > 0.8 ? "branca" : "cinza";
+  const h = (max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4) * 60;
+  const base =
+    h >= 330 || h < 15 ? (l > 0.68 ? "rosa" : "vermelha") : h < 40 ? (l < 0.45 ? "castanha" : "laranja") : h < 70 ? "amarela" : h < 170 ? "verde" : h < 260 ? "azul" : h < 290 ? "roxa" : "rosa";
+  return l < 0.38 && base !== "castanha" ? `${base}-escura` : base;
+}
+
 /** O que o render.py mede de cada personagem, no relatório que fica no output. */
 type NoQuadro = { nome: string; alturaNoQuadro: number; lado: string; virada: string; cortada: boolean; dentro: boolean };
 
@@ -159,15 +176,21 @@ type NoQuadro = { nome: string; alturaNoQuadro: number; lado: string; virada: st
  *
  * Vale a geometria escolhida em qualquer etapa do shot (o output com prévia
  * e relatório). Sem ela, null.
+ *
+ * `manequins`: o workflow parte da placa com os manequins colados ("placa
+ * primeiro, personagens depois"). Aí o texto diz qual manequim — pela cor
+ * da cabeça — vira cada personagem.
  */
-export async function enquadramentoDoShot(shotId: string): Promise<string | null> {
+export async function enquadramentoDoShot(shotId: string, manequins = false): Promise<string | null> {
   const { prisma } = await import("../lib/prisma.ts");
   const shot = await prisma.shot.findUnique({ where: { id: shotId }, select: { rascunhoGerador: true } });
   const etapas = (shot?.rascunhoGerador as { etapas?: Record<string, { escolhido?: string | null }> } | null)?.etapas ?? {};
   const ids = Object.values(etapas).map((e) => e.escolhido).filter((x): x is string => !!x);
   if (!ids.length) return null;
   const o = await prisma.output.findFirst({ where: { id: { in: ids }, previa: { not: null } }, orderBy: { criadoEm: "desc" }, select: { grafoEnviado: true } });
-  const rel = (o?.grafoEnviado as { relatorio?: { personagens?: NoQuadro[] } } | null)?.relatorio;
+  const enviado = o?.grafoEnviado as { relatorio?: { personagens?: NoQuadro[] }; personagens?: { nome: string; modelo?: { cabelo?: { cor?: string } } }[] } | null;
+  const rel = enviado?.relatorio;
+  const corDe = (nome: string) => enviado?.personagens?.find((p) => p.nome === nome)?.modelo?.cabelo?.cor;
   const ps = (rel?.personagens ?? []).filter((p) => p.dentro);
   if (!ps.length) return null;
   const maior = Math.max(...ps.map((p) => p.alturaNoQuadro));
@@ -179,15 +202,24 @@ export async function enquadramentoDoShot(shotId: string): Promise<string | null
   const costas = ps.some((p) => p.virada === "de costas");
   const perfil = ps.some((p) => p.virada.startsWith("de perfil"));
   const comoEscrever = [
-    `- Abra o prompt pelo ponto de vista${costas && ps.every((p) => p.virada === "de costas") ? ' ("seen from behind", "from the back")' : perfil ? ' (ex.: "in profile")' : ""}, antes de qualquer outra coisa.`,
+    manequins
+      ? `- No trecho de cada personagem, diga a orientação dela${costas ? ' ("seen from behind")' : ""} — o pedido começa pela edição, não pelo ponto de vista.`
+      : `- Abra o prompt pelo ponto de vista${costas && ps.every((p) => p.virada === "de costas") ? ' ("seen from behind", "from the back")' : perfil ? ' (ex.: "in profile")' : ""}, antes de qualquer outra coisa.`,
     costas && "- Quem está de costas não mostra o rosto: não escreva expressão, olhar nem sorriso dela. A emoção vai pelo gesto e pela postura.",
     "- Diga de que lado do quadro cada personagem está e descreva o cabelo de cada uma (cor e corte), que é o que amarra quem é quem — principalmente de costas.",
   ].filter((l): l is string => !!l);
   return [
     "Enquadramento já travado pela geometria do shot (o depth do blockout). A imagem vai seguir esta posição e esta orientação; o prompt tem de concordar com elas, sem virar ninguém para outro lado:",
     `- Plano: ${plano}.`,
-    ...ps.map((p) => `- ${p.nome}: ${p.lado} do quadro, ${p.virada}${p.virada.startsWith("de perfil") ? "" : " para a câmera"}, ocupa ${Math.round(p.alturaNoQuadro * 100)}% da altura${p.cortada ? " (cortada embaixo)" : ""}.`),
+    ...ps.map((p) => {
+      const cor = manequins ? corDe(p.nome) : undefined;
+      const quem = cor ? `${p.nome} (no lugar do manequim de cabeça ${nomeDaCor(cor)})` : p.nome;
+      return `- ${quem}: ${p.lado} do quadro, ${p.virada}${p.virada.startsWith("de perfil") ? "" : " para a câmera"}, ocupa ${Math.round(p.alturaNoQuadro * 100)}% da altura${p.cortada ? " (cortada embaixo)" : ""}.`;
+    }),
     "Como escrever com este enquadramento:",
+    ...(manequins
+      ? ["- A imagem de partida é a placa com manequins coloridos no lugar das personagens. Peça para trocar cada manequim (pela cor da cabeça e pelo lado) pela personagem dele, mantendo a sala, a janela, a câmera e a luz exatamente como estão."]
+      : []),
     ...comoEscrever,
   ].join("\n");
 }

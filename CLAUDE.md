@@ -627,10 +627,22 @@ Decisão do usuário (2026-10-15): o 3D é **dado no banco, não arquivo .blend*
 - O render vira **um output só**: o depth em `arquivo` (o que o workflow
   seguinte recebe) e o render colorido em `output.previa` (o que a tela
   mostra: miniatura, visor com "Ver o depth", seletor de imagem, fila).
-- Pipeline "Geometria > First Frame > Vídeo": a etapa `blender` gera a
-  geometria, o escolhido dela entra no campo `geometria` do workflow
-  "Primeiro quadro de shot com geometria" (ControlNet a 2,5), e o escolhido
-  do first frame entra no `primeiro_quadro` do vídeo.
+- Pipeline **"Geometria > Placa > First Frame > Vídeo"** (chave
+  `first-frame-video`, a que o projeto Garota Mágica usa): a etapa `blender`
+  gera a geometria; a `placa` (workflow "Placa da câmera") recebe dela o depth
+  da **sala vazia**; o `first-frame` (workflow "Primeiro quadro por edição da
+  placa") recebe a placa e os **manequins** e troca cada manequim pela
+  personagem; o vídeo recebe o primeiro quadro. O workflow antigo "com
+  geometria" (depth direto, com gente) ficou como alternativa: erra mais.
+- **Partes de um output** (`output.partes`): o render do Blender grava, além
+  do depth (`arquivo`) e da prévia, `depthVazio` e `manequins` (RGBA). Um
+  campo de imagem com `parte` manda essa parte em vez do arquivo
+  (`arquivoDa` em `geracao/imagens.ts`); a colagem dos manequins na placa
+  acontece no ComfyUI (`ImageCompositeMasked`, com `InvertMask` porque o
+  `LoadImage` dá a máscara do alfa invertida).
+- **Qual manequim é quem:** o assistente do primeiro quadro por edição recebe
+  a cor da cabeça de cada um (`nomeDaCor`, da cor do cabelo no blockout da
+  personagem). Personagens com cabelo de cor parecida confundem a troca.
 - O depth só segura personagem **grande no quadro** (~70% da altura deu
   certo; ~30% não). O `render.py` mede isso no relatório e a skill avisa.
 - **Janela para o nada vira mosaico** (2026-10-15): buraco preto e liso no
@@ -653,7 +665,7 @@ Decisão do usuário (2026-10-15): o 3D é **dado no banco, não arquivo .blend*
   latente do `VAEEncode` dela, não vazio) com Lia e Ami como Picture 2 e 3, e
   o prompt dizendo qual manequim (pela cor da cabeça) vira quem. O fundo sai
   idêntico ao da placa. **Sem ControlNet na edição**: a 2,5 ele desenha coisas
-  no céu; a 1,5 não ajuda. Ainda não está no pipeline (é o próximo passo).
+  no céu; a 1,5 não ajuda.
   Resultados: https://claude.ai/artifact/AH7iG49iaQ1ST5NTK9KQEQ
 
 # Banco de dados

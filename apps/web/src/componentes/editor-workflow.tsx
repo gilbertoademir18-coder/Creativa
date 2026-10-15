@@ -610,11 +610,16 @@ function EditorCampo({
         </div>
       )}
       {c.tipo === "imagem" && (
-        <Caixa
-          rotulo="Opcional — vazia, o LoadImage sai do grafo (ele precisa ligar direto numa entrada opcional)"
-          valor={!!c.opcional}
-          aoMudar={(v) => aoMudar({ ...c, opcional: v || undefined })}
-        />
+        <>
+          <Caixa
+            rotulo="Opcional — vazia, o LoadImage sai do grafo (ele precisa ligar direto numa entrada opcional)"
+            valor={!!c.opcional}
+            aoMudar={(v) => aoMudar({ ...c, opcional: v || undefined })}
+          />
+          <Campo rotulo="Parte do output" dica="Vazio: vai o arquivo do output. Com um nome, vai essa parte dele — no render do blockout, depthVazio ou manequins.">
+            <Entrada value={c.parte ?? ""} onChange={(e) => aoMudar({ ...c, parte: e.target.value.trim() || undefined })} className="font-mono" placeholder="(o arquivo)" />
+          </Campo>
+        </>
       )}
       {c.tipo === "opcoes" && <OpcoesLista c={c} entradas={entradas} aoMudar={aoMudar} />}
       {c.tipo === "tamanho" && <OpcoesTamanho c={c} aoMudar={aoMudar} />}

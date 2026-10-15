@@ -410,6 +410,37 @@ cena.render.image_settings.color_mode = "BW"
 cena.render.filepath = saida["depth"]
 bpy.ops.render.render(write_still=True)
 
+# --- as partes para "placa primeiro, personagens depois" (2026-10-15) ---
+# O depth segura a sala e falha com gente: a placa nasce da sala vazia, e as
+# personagens entram depois, por edição, no lugar dos manequins colados.
+def de_personagem(o):
+    while o.parent:
+        o = o.parent
+    return o.name in alturas
+
+if saida.get("depthVazio") and alturas:
+    escondidos = [o for o in cena.objects if de_personagem(o) and not o.hide_render]
+    for o in escondidos:
+        o.hide_render = True
+    cena.render.filepath = saida["depthVazio"]
+    bpy.ops.render.render(write_still=True)
+    for o in escondidos:
+        o.hide_render = False
+
+if saida.get("manequins") and alturas:
+    # So os bonecos, com fundo transparente. O resto vira holdout: nao aparece,
+    # mas recorta quem esta atras dele (a carteira na frente das pernas).
+    for o in cena.objects:
+        if o.type == "MESH" and not de_personagem(o):
+            o.is_holdout = True
+    cena.render.film_transparent = True
+    cena.compositing_node_group = None
+    cena.use_nodes = False
+    cena.view_settings.view_transform = "Standard"
+    cena.render.image_settings.color_mode = "RGBA"
+    cena.render.filepath = saida["manequins"]
+    bpy.ops.render.render(write_still=True)
+
 if saida.get("blend"):
     bpy.ops.wm.save_as_mainfile(filepath=saida["blend"])
 with open(saida["relatorio"], "w", encoding="utf-8") as f:

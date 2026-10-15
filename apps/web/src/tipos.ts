@@ -288,7 +288,8 @@ export type CampoWorkflow =
    * Uma imagem do projeto (referência ou output), enviada ao ComfyUI ao gerar. Alvo: o `image` de um LoadImage.
    * Opcional: vazia, o LoadImage sai do grafo (ele precisa ligar direto numa entrada opcional).
    */
-  | (BaseCampo & { tipo: "imagem"; alvos: Alvo[]; opcional?: boolean })
+  /** `parte`: manda essa parte do output (ex.: "manequins" do render do blockout) em vez do arquivo. */
+  | (BaseCampo & { tipo: "imagem"; alvos: Alvo[]; opcional?: boolean; parte?: string })
   | (BaseCampo & {
       tipo: "tamanho";
       largura: Alvo[];

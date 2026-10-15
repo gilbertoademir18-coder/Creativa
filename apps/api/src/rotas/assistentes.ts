@@ -206,8 +206,11 @@ async function montarPedido(id: string, p: z.output<typeof PedidoExpandir>) {
   const doProjeto = contextoDoProjeto(dono.projeto?.descricao ?? null, tipo?.saida ?? "OUTRO", mencoes);
   // O workflow com geometria recebe o depth do blockout: o prompt tem de
   // concordar com o enquadramento que ele já travou.
-  const comGeometria = p.shotId && w.campos.some((c) => c.tipo === "imagem" && c.chave === "geometria");
-  const enquadramento = comGeometria ? await enquadramentoDoShot(p.shotId!) : null;
+  // A placa (sala vazia) tem "geometria" mas nenhuma personagem: não recebe.
+  const temCampo = (chave: string) => w.campos.some((c) => c.tipo === "imagem" && c.chave === chave);
+  const comManequins = temCampo("manequins");
+  const comGeometria = comManequins || (temCampo("geometria") && temCampo("personagem_1"));
+  const enquadramento = p.shotId && comGeometria ? await enquadramentoDoShot(p.shotId, comManequins) : null;
   const contexto = [...(dono.projeto ? [`Projeto: ${dono.projeto.nome}`] : []), ...doProjeto, ...dono.linhas, ...(enquadramento ? [enquadramento] : [])];
   const usuario = [`Ideia: ${p.ideia}`, "", "Contexto (use o que servir à ideia):", ...contexto.map((l) => `- ${l}`)].join("\n");
 

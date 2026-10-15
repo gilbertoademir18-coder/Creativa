@@ -372,6 +372,11 @@ model Output {
   /// do blockout, o arquivo é o depth (vai ao ControlNet) e a prévia é o
   /// render colorido. A tela mostra a prévia; o workflow usa o arquivo.
   previa       String?
+  /// Outros arquivos do mesmo output, por nome — no render do blockout,
+  /// "depthVazio" (a sala sem as personagens, para a placa) e "manequins"
+  /// (só os bonecos, fundo transparente, para colar na placa). Um campo de
+  /// imagem com `parte` manda um destes em vez do arquivo.
+  partes       Json?
   mime         String?
   tamanhoBytes BigInt?    @map("tamanho_bytes")
   largura      Int?

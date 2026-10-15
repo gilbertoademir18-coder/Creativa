@@ -106,6 +106,12 @@ export const Campo = z.discriminatedUnion("tipo", [
     ...base,
     alvos: z.array(Alvo).min(1, "o campo precisa entrar em algum lugar do grafo"),
     opcional: z.boolean().optional(),
+    /**
+     * Qual parte do output vai, em vez do arquivo dele (`output.partes`): no
+     * render do blockout, "depthVazio" (a sala sem ninguém) ou "manequins"
+     * (os bonecos recortados). Referência não tem partes.
+     */
+    parte: z.string().regex(/^[a-zA-Z]+$/, "a parte é um nome simples, como manequins").optional(),
   }),
   z.object({
     /** Um tamanho escolhido numa lista, que preenche largura E altura. */

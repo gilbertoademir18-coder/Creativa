@@ -120,13 +120,18 @@ export async function imagensDisponiveis(dono: DonoImagens): Promise<ImagemDispo
 }
 
 /** O arquivo de uma imagem escolhida, conferindo que o dono pode usá-la. */
-async function arquivoDa(ref: RefImagem, dono: DonoImagens): Promise<string> {
+async function arquivoDa(ref: RefImagem, dono: DonoImagens, parte?: string): Promise<string> {
   const achada =
     ref.origem === "referencia"
       ? await prisma.referencia.findFirst({ where: { ...(await filtroDono(dono, true)), id: ref.id, tipo: "IMAGEM" }, select: { arquivo: true } })
-      : await prisma.output.findFirst({ where: { ...(await filtroDono(dono)), id: ref.id, tipo: "IMAGEM" }, select: { arquivo: true } });
+      : await prisma.output.findFirst({ where: { ...(await filtroDono(dono)), id: ref.id, tipo: "IMAGEM" }, select: { arquivo: true, partes: true } });
   if (!achada?.arquivo) throw new ErroHttp(400, "A imagem escolhida não existe mais, ou não é deste projeto.");
-  return achada.arquivo;
+  if (!parte) return achada.arquivo;
+  // O campo pede uma parte do output (ex.: os manequins do render do blockout).
+  const partes = "partes" in achada ? (achada.partes as Record<string, string> | null) : null;
+  const arquivo = partes?.[parte];
+  if (!arquivo) throw new ErroHttp(400, `A imagem escolhida não tem "${parte}". Use uma geometria gerada pelo Blender depois que as partes existiram (gere a etapa Geometria de novo).`);
+  return arquivo;
 }
 
 /** Envia um arquivo à pasta `input/creativa` do ComfyUI e devolve o nome que o LoadImage usa. */
@@ -162,7 +167,7 @@ export async function enviarImagens(w: Pick<DefWorkflow, "campos">, valores: Rec
     const ref = valores[c.chave] as RefImagem | null;
     // Opcional e vazia: não vai nada (o LoadImage sai do grafo).
     if (!ref && c.opcional) continue;
-    nomes[c.chave] = await enviarArquivo(await arquivoDa(ref as RefImagem, dono));
+    nomes[c.chave] = await enviarArquivo(await arquivoDa(ref as RefImagem, dono, c.parte));
   }
   return nomes;
 }
