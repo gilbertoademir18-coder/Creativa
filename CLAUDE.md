@@ -585,6 +585,14 @@ O que isso muda nas escolhas:
   reconhecível, com som, em ~105 s a 864×480. Defeito visto: ela já aparece na
   borda no quadro 0 (ou ainda no último). O prompt segue o formato do template
   (`subject_definitions` / `summary` / `audio`). Não precisou de quadro-chave.
+  Cadastrado como **"Vídeo com personagem entrando (MiniMax H3 ref2va fp8)"**
+  (tipo "Vídeo do primeiro quadro", assistente
+  `docs/assistentes/video-personagem-entrando-h3.md`). No cadastro a ordem
+  é `<Picture 1>` = o lugar vazio, `<Picture 2>` = personagem 1,
+  `<Picture 3>` = personagem 2 (opcional, por último para não renumerar);
+  o campo de guia chama `primeiro_quadro`, como nos outros vídeos, então a
+  ligação do pipeline vale igual (com o First Frame pulado, recebe a placa).
+  "Termina: Livre" põe o guia final no quadro 0 (repete o do começo, inócuo).
 - **Placa de cenário em anime: o mesmo Anima Aesthetic** (2026-10-12), 16:9 e
   **sempre vazia** — decisão do usuário. O vazio se segura nas duas pontas:
   `scenery, no humans` no começo do prompt e pessoas no negativo (cfg 4). A
