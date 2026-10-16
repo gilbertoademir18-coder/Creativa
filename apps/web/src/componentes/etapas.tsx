@@ -1,4 +1,4 @@
-import { Check, ChevronRight, GalleryHorizontal, Maximize2 } from "lucide-react";
+import { Check, ChevronRight, GalleryHorizontal, Maximize2, SkipForward } from "lucide-react";
 import { Fragment } from "react";
 import { pipelinesApi } from "../api.ts";
 import { useCarregar } from "../hooks.ts";
@@ -57,9 +57,32 @@ export const alimentaOutra = (p: PipelineResolvido, chave: string) =>
  * vídeo, que também se escolhe), a última. É a que o Gerador abre ao entrar
  * no shot (ou no F5).
  */
-export function etapaDaVez(p: PipelineResolvido, rascunhos: Record<string, { escolhido?: string | null }>): string {
-  const daVez = p.etapas.find((e) => !rascunhos[e.chave]?.escolhido);
+export function etapaDaVez(p: PipelineResolvido, rascunhos: Record<string, { escolhido?: string | null; pulada?: boolean }>): string {
+  const daVez = p.etapas.find((e) => !rascunhos[e.chave]?.escolhido && !rascunhos[e.chave]?.pulada);
   return (daVez ?? p.etapas.at(-1)!).chave;
+}
+
+/**
+ * De que etapa vem, de fato, a imagem de uma entrada: a etapa ligada, ou —
+ * se ela foi pulada neste shot — a de antes dela, e assim por diante. null:
+ * todas as de antes foram puladas (o campo fica para a pessoa preencher).
+ */
+export function fonteDe(p: PipelineResolvido, rascunhos: Record<string, { pulada?: boolean }>, daEtapa: string): string | null {
+  for (let i = p.etapas.findIndex((e) => e.chave === daEtapa); i >= 0; i--) {
+    const e = p.etapas[i]!;
+    if (!rascunhos[e.chave]?.pulada) return e.chave;
+  }
+  return null;
+}
+
+/** O caminho de `daEtapa` até a fonte passa por `alvo`? (A fonte conta, e as puladas no meio.) */
+export function passaPor(p: PipelineResolvido, rascunhos: Record<string, { pulada?: boolean }>, daEtapa: string, alvo: string): boolean {
+  for (let i = p.etapas.findIndex((e) => e.chave === daEtapa); i >= 0; i--) {
+    const e = p.etapas[i]!;
+    if (e.chave === alvo) return true;
+    if (!rascunhos[e.chave]?.pulada) return false;
+  }
+  return false;
 }
 
 /** As entradas desta etapa, com o nome da etapa de onde cada uma vem. */
@@ -117,6 +140,8 @@ export function SeletorPipeline({
 export type EstadoEtapa = {
   outputs: number;
   escolhida: boolean;
+  /** Pulada neste shot: o cartão fica apagado, sem miniatura. */
+  pulada?: boolean;
   /** A miniatura do escolhido (a prévia, quando houver): o que a etapa entregou. */
   miniatura?: { tipo: TipoOutput; arquivo: string };
 };
@@ -145,7 +170,7 @@ export function AbasEtapas({
   return (
     <div className="flex items-center gap-1.5 border-b border-zinc-800 px-4 py-3" title={`Pipeline: ${pipeline.nome}`}>
       {pipeline.etapas.map((e, n) => {
-        const { outputs, escolhida, miniatura } = estado(e.chave);
+        const { outputs, escolhida, miniatura, pulada } = estado(e.chave);
         const aqui = e.chave === atual;
         return (
           <Fragment key={e.chave}>
@@ -157,10 +182,15 @@ export function AbasEtapas({
                 aria-current={aqui}
                 className={`flex w-full flex-col gap-1 rounded-lg border p-1 text-left transition-colors ${
                   aqui ? "border-violet-500 bg-violet-950/40" : "border-zinc-800 hover:border-zinc-600"
-                }`}
+                } ${pulada ? "border-dashed opacity-60" : ""}`}
               >
                 <span className="relative block aspect-video w-full overflow-hidden rounded-md bg-zinc-950">
-                  {miniatura ? (
+                  {pulada ? (
+                    <span className="flex h-full flex-col items-center justify-center gap-0.5 text-[11px] text-zinc-500">
+                      <SkipForward className="size-4" />
+                      pulada
+                    </span>
+                  ) : miniatura ? (
                     <Miniatura tipo={miniatura.tipo} arquivo={miniatura.arquivo} ajuste="contain" />
                   ) : (
                     <span className="flex h-full items-center justify-center px-1 text-center text-[11px] leading-tight text-zinc-600">
@@ -183,7 +213,7 @@ export function AbasEtapas({
                   )}
                 </span>
               </button>
-              {miniatura && aoVerPipeline && (
+              {miniatura && !pulada && aoVerPipeline && (
                 <button
                   type="button"
                   onClick={() => aoVerPipeline(e.chave)}

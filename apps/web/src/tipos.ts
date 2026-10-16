@@ -341,6 +341,8 @@ export type RascunhoGerador = {
   ideia: string | null;
   /** O output aprovado desta etapa: é ele que as etapas seguintes recebem. */
   escolhido: string | null;
+  /** A etapa foi pulada neste shot: quem come o escolhido dela recebe o da etapa de antes. */
+  pulada?: boolean;
   /** A ideia de onde saiu o prompt atual (null: escrito à mão). Ausente nos rascunhos antigos. */
   ideiaDoPrompt?: string | null;
   /** As opções da ideia escolhidas, grupo → rótulo. */

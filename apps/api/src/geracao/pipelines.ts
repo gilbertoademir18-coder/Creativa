@@ -152,6 +152,12 @@ export const RascunhoEtapa = z.object({
     .nullish()
     .transform((v) => v ?? null),
   /**
+   * A etapa foi pulada neste shot (a placa já é o primeiro quadro: o shot
+   * começa sem ninguém). Quem comia o escolhido dela recebe o da etapa de
+   * antes. O `escolhido` fica guardado: voltar a usar a etapa o traz de volta.
+   */
+  pulada: z.boolean().optional(),
+  /**
    * A ideia de onde saiu o prompt que está no formulário (null: o prompt foi
    * escrito à mão). A tela compara com a ideia atual e avisa quando a pessoa
    * mudou a ideia e não expandiu de novo. Ausente nos rascunhos antigos: aí a

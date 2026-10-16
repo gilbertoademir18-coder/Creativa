@@ -357,6 +357,12 @@ as cenas (`SetNull`), nunca as apaga.
     elas pegarem a nova; fora isso, o campo só é preenchido quando está vazio
     — trocar a imagem à mão continua valendo. O aviso de "escolha a imagem"
     só aparece com o campo vazio: com ele preenchido não falta nada.
+  - **Pular uma etapa num shot** (2026-10-16; ex.: o shot começa sem
+    ninguém, e a placa já é o primeiro quadro): `pulada: true` no rascunho
+    daquela etapa, nada no pipeline. Quem comia o escolhido dela recebe o da
+    etapa de antes (`fonteDe` em `componentes/etapas.tsx`), `etapaDaVez`
+    passa por cima dela, e o `escolhido` dela fica guardado para quando
+    voltar a usá-la. A última etapa não se pula.
   - **O rascunho se grava com a linha travada** (`PUT /api/gerador/rascunho`,
     `SELECT ... FOR UPDATE` numa transação): ele lê o JSON inteiro, troca uma
     etapa e grava tudo de volta, e escolher grava duas etapas de uma vez. Sem

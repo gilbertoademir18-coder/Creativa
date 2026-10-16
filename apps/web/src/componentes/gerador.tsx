@@ -1,4 +1,4 @@
-import { ArrowDownToLine, LoaderCircle, Play, Sparkles, Square, X } from "lucide-react";
+import { ArrowDownToLine, LoaderCircle, Play, SkipForward, Sparkles, Square, Undo2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { assistentesApi, geradorApi, outputsApi, type Dono } from "../api.ts";
@@ -6,7 +6,7 @@ import { useCarregar } from "../hooks.ts";
 import type { Execucao, Output, OutputDetalhe, PipelineResolvido, RascunhoGerador, TipoCatalogo } from "../tipos.ts";
 import { BarraAssistente, limparTextoLlm, SeletorAssistente } from "./assistente-prompt.tsx";
 import { CampoDinamico, SeletorQuantidade, valoresPara } from "./campos-workflow.tsx";
-import { AbasEtapas, alimentaOutra, CHAVE_UNICA, entradasDe, etapaDaVez, etapaDe, PIPELINE_UNICO, temEtapas } from "./etapas.tsx";
+import { AbasEtapas, alimentaOutra, CHAVE_UNICA, entradasDe, etapaDaVez, etapaDe, fonteDe, passaPor, PIPELINE_UNICO, temEtapas } from "./etapas.tsx";
 import { CartaoOutput, GruposDeOutputs, VisorOutputs, type Escolha } from "./outputs.tsx";
 import { ideiaComEscolhas, separarIdeia } from "../opcoes-ideia.ts";
 import { Aviso, Botao, Campo, Carregando, Seletor, Vazio } from "./ui.tsx";
@@ -118,6 +118,13 @@ export function PainelGerador({ dono }: { dono: Dono }) {
   const tipoDoWorkflow = (w: string) => tipos.find((t) => t.workflows.some((x) => x.chave === w))?.chave ?? "";
   /** O output aprovado desta etapa: o que as seguintes recebem, ou, na última, a versão final do shot. */
   const escolhido = rascunhos?.[etapaAtual]?.escolhido ?? null;
+  /** Esta etapa foi pulada neste shot (ex.: a placa já é o primeiro quadro). */
+  const puladaAqui = !!rascunhos?.[etapaAtual]?.pulada;
+  /** O escolhido que uma entrada recebe: o da etapa ligada, ou o de antes dela se ela foi pulada. */
+  const escolhidoPara = (daEtapa: string) => {
+    const fonte = pipeline && rascunhos ? fonteDe(pipeline, rascunhos, daEtapa) : null;
+    return fonte ? (rascunhos?.[fonte]?.escolhido ?? null) : null;
+  };
   // Toda etapa de um pipeline de verdade escolhe — até a última, que não alimenta ninguém.
   const podeEscolher = !!pipeline && temEtapas(pipeline);
   const alimenta = !!pipeline && alimentaOutra(pipeline, etapaAtual);
@@ -142,7 +149,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     const valores = { ...c.valores };
     let mudou = false;
     for (const en of entradasDe(pipeline, etapaAtual)) {
-      const fonte = rascunhos[en.daEtapa]?.escolhido;
+      const fonte = escolhidoPara(en.daEtapa);
       if (fonte && en.campo in valores && valores[en.campo] == null) {
         valores[en.campo] = { origem: "output", id: fonte };
         mudou = true;
@@ -341,6 +348,8 @@ export function PainelGerador({ dono }: { dono: Dono }) {
       escolhas,
       // A escolha é de quem clica no cartão, não do formulário: só passa adiante.
       escolhido,
+      // Idem o "pulada": sem passar adiante, o salvar sozinho desfazia o pular.
+      ...(puladaAqui ? { pulada: true } : {}),
       // Para o aviso de "a ideia mudou e não foi expandida" sobreviver a um F5.
       ideiaDoPrompt,
     };
@@ -361,7 +370,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
       clearTimeout(t);
       if (pendente.current === salvar) pendente.current = null;
     };
-  }, [config, assistenteNome, ideia, escolhas, ideiaDoPrompt, expandindo, disponiveis.carregando, chaveDono, escolhido]);
+  }, [config, assistenteNome, ideia, escolhas, ideiaDoPrompt, expandindo, disponiveis.carregando, chaveDono, escolhido, puladaAqui]);
 
   /**
    * A imagem aprovada desta etapa — a que as etapas seguintes recebem.
@@ -383,7 +392,8 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     const novos: Record<string, RascunhoGerador> = { [etapaAtual]: { ...atual, escolhido: id } };
     for (const e of pipeline.etapas) {
       const dele = rascunhos[e.chave];
-      const ligados = e.entradas.filter((en) => en.daEtapa === etapaAtual);
+      // Também quem recebe desta por cima de uma etapa pulada.
+      const ligados = e.entradas.filter((en) => passaPor(pipeline, rascunhos, en.daEtapa, etapaAtual));
       if (!dele || !ligados.length) continue;
       const valores = { ...dele.valores };
       for (const en of ligados) if (en.campo in valores) valores[en.campo] = null;
@@ -396,6 +406,54 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     await Promise.all(Object.entries(novos).map(([chave, r]) => geradorApi.salvarRascunho(dono, chave, r))).catch((e) =>
       setErro(`Não consegui guardar a escolha: ${(e as Error).message}`),
     );
+  }
+
+  /**
+   * Pula (ou volta a usar) esta etapa neste shot. Quem recebia por ela passa a
+   * receber o escolhido da etapa de antes (e vice-versa): os campos ligados
+   * são limpos, para pegar a imagem certa no próximo acesso — como no escolher.
+   * Pulando, vai direto para a próxima etapa.
+   */
+  async function pular(sim: boolean) {
+    if (!pipeline || !rascunhos || !config) return;
+    const atual: RascunhoGerador = rascunhos[etapaAtual] ?? {
+      tipo: config.tipo,
+      workflow: config.workflow,
+      valores: config.valores,
+      assistente: assistenteNome,
+      ideia: ideia.trim() ? ideia : null,
+      escolhido: null,
+    };
+    const { pulada: _pulada, ...semPular } = atual;
+    const novos: Record<string, RascunhoGerador> = { [etapaAtual]: sim ? { ...atual, pulada: true } : semPular };
+    const depois = { ...rascunhos, ...novos };
+    for (const e of pipeline.etapas) {
+      const dele = rascunhos[e.chave];
+      if (!dele || e.chave === etapaAtual) continue;
+      const ligados = e.entradas.filter(
+        (en) => passaPor(pipeline, rascunhos, en.daEtapa, etapaAtual) || passaPor(pipeline, depois, en.daEtapa, etapaAtual),
+      );
+      if (!ligados.length) continue;
+      const valores = { ...dele.valores };
+      for (const en of ligados) if (en.campo in valores) valores[en.campo] = null;
+      novos[e.chave] = { ...dele, valores };
+    }
+    setRascunhos((m) => ({ ...(m ?? {}), ...novos }));
+    ultimoSalvo.current = jsonEstavel(novos[etapaAtual]);
+    setErro(null);
+    try {
+      for (const [chave, r] of Object.entries(novos)) await geradorApi.salvarRascunho(dono, chave, r);
+    } catch (e) {
+      // Volta a tela ao que está no banco: mostrar "pulada" sem ter gravado enganaria.
+      setRascunhos(rascunhos);
+      setErro(`Não consegui guardar: ${(e as Error).message}`);
+      return;
+    }
+    if (sim) {
+      const i = pipeline.etapas.findIndex((e) => e.chave === etapaAtual);
+      const proxima = pipeline.etapas[i + 1];
+      if (proxima) setEtapaAtual(proxima.chave);
+    }
   }
 
   /** Leva as configurações de um output ao formulário. `seedAleatoria`: não repete a seed dele. */
@@ -464,6 +522,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
   const todos = outputs.dados ?? [];
   // O "Ver pipeline": o escolhido de cada etapa, na ordem das etapas.
   const doPipeline = (pipeline?.etapas ?? []).flatMap((e, n) => {
+    if (rascunhos?.[e.chave]?.pulada) return [];
     const o = todos.find((x) => x.id === rascunhos?.[e.chave]?.escolhido);
     return o ? [{ o, titulo: `${n + 1} · ${e.nome}` }] : [];
   });
@@ -479,8 +538,26 @@ export function PainelGerador({ dono }: { dono: Dono }) {
    * seria reclamar de um formulário que já está pronto.
    */
   const faltaEscolher = pipeline
-    ? entradasDe(pipeline, etapaAtual).filter((en) => !rascunhos?.[en.daEtapa]?.escolhido && config?.valores[en.campo] == null)
+    ? entradasDe(pipeline, etapaAtual)
+        .filter((en) => !escolhidoPara(en.daEtapa) && config?.valores[en.campo] == null)
+        .map((en) => {
+          // Com a ligada pulada, quem falta escolher é a de antes dela.
+          const fonte = rascunhos ? fonteDe(pipeline, rascunhos, en.daEtapa) : null;
+          return { ...en, nomeDaEtapa: pipeline.etapas.find((e) => e.chave === fonte)?.nome ?? en.nomeDaEtapa };
+        })
     : [];
+  /** Dá para pular esta etapa: pipeline de verdade, e não é a última (pular a última não leva a nada). */
+  const podePular = !!pipeline && temEtapas(pipeline) && pipeline.etapas.at(-1)?.chave !== etapaAtual;
+  /** O texto da etapa pulada: quem recebe o quê no lugar dela. */
+  const textoDaPulada = (() => {
+    if (!pipeline || !rascunhos || !puladaAqui) return "";
+    const i = pipeline.etapas.findIndex((e) => e.chave === etapaAtual);
+    const fonte = fonteDe(pipeline, rascunhos, etapaAtual);
+    const nomeFonte = pipeline.etapas.find((e) => e.chave === fonte)?.nome;
+    const proxima = pipeline.etapas[i + 1]?.nome;
+    if (!nomeFonte) return "Nenhuma etapa antes desta: o campo de imagem da próxima fica para você preencher.";
+    return `${proxima ? `A etapa “${proxima}” recebe` : "Vale"} o escolhido de “${nomeFonte}” no lugar do desta.`;
+  })();
   /** Na galeria, só a fila desta etapa; o acompanhamento segue olhando todas. */
   const naFila = ativas.filter(daEtapa);
 
@@ -492,7 +569,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
         <div className="flex items-center gap-2 border-b border-zinc-800 px-5 py-2.5">
           <Sparkles className="size-4 text-violet-300" />
           <h2 className="font-semibold">Gerador</h2>
-          {config && wfAtual && (
+          {config && wfAtual && !puladaAqui && (
             <div className="ml-auto flex items-center gap-2">
               <SeletorQuantidade valor={quantidade} aoMudar={setQuantidade} />
               <Botao variante="primario" icone={<Play className="size-4" />} carregando={gerando} disabled={expandindo} onClick={gerar}>
@@ -512,7 +589,8 @@ export function PainelGerador({ dono }: { dono: Dono }) {
             }}
             estado={(c) => ({
               outputs: todos.filter((o) => etapaDisto(o) === c).length,
-              escolhida: !!rascunhos?.[c]?.escolhido,
+              escolhida: !!rascunhos?.[c]?.escolhido && !rascunhos?.[c]?.pulada,
+              pulada: !!rascunhos?.[c]?.pulada,
               miniatura: (() => {
                 const o = todos.find((x) => x.id === rascunhos?.[c]?.escolhido);
                 return o ? { tipo: o.tipo, arquivo: o.previa ?? o.arquivo } : undefined;
@@ -540,12 +618,34 @@ export function PainelGerador({ dono }: { dono: Dono }) {
               }
             />
           )}
-          {faltaEscolher.map((en) => (
+          {puladaAqui && (
+            <Vazio
+              icone={<SkipForward />}
+              titulo="Etapa pulada neste shot"
+              texto={textoDaPulada}
+              acao={
+                <Botao icone={<Undo2 className="size-4" />} onClick={() => pular(false)}>
+                  Usar esta etapa de novo
+                </Botao>
+              }
+            />
+          )}
+          {!puladaAqui && podePular && config && (
+            <button
+              type="button"
+              onClick={() => pular(true)}
+              title="Neste shot, a próxima etapa recebe o escolhido da etapa de antes desta"
+              className="-mb-2 flex items-center gap-1.5 self-end text-xs text-zinc-500 hover:text-violet-200"
+            >
+              <SkipForward className="size-3.5" /> Pular esta etapa neste shot
+            </button>
+          )}
+          {!puladaAqui && faltaEscolher.map((en) => (
             <Aviso key={en.campo}>
               Escolha a imagem da etapa <b>{en.nomeDaEtapa}</b> (o “Escolher” no canto do cartão) — é ela que entra aqui.
             </Aviso>
           ))}
-          {config && tiposDaEtapa.length > 0 && (
+          {config && !puladaAqui && tiposDaEtapa.length > 0 && (
             <>
               <div className="grid grid-cols-2 gap-4">
                 {/* Com o tipo fixado pela etapa, o seletor dele só teria uma opção. */}
