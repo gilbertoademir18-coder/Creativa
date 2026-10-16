@@ -261,6 +261,11 @@ as cenas (`SetNull`), nunca as apaga.
   Para saber se a pessoa mexeu, compare com o texto normalizado (a `base` da
   `ModalDocumento`), nunca com o do banco: senão "alterações não salvas" aparece
   sem ninguém tocar.
+- **Salvar sozinho** (`aoAutosalvar` na `ModalDocumento`): 1 s depois de parar de
+  escrever, sem fechar a janela; fechar com algo pendente salva antes. Vale para a
+  **sinopse** do vídeo. **Nunca com `historico`**: na descrição do projeto cada
+  gravação vira uma versão, e salvar a cada pausa encheria o histórico. Se a
+  gravação falha, não tenta de novo sozinho até a pessoa mexer no texto.
 - **Página que troca de registro sem desmontar** (a barra de shots, `/shots/A`
   → `/shots/B`): o `useCarregar` guarda os dados velhos até os novos chegarem,
   e o estado interno fica. Os painéis com estado (Gerador, Referências) ficam

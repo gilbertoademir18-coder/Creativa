@@ -35,6 +35,7 @@ export function ModalDocumento({
   avisos,
   aoFechar,
   aoSalvar,
+  aoAutosalvar,
 }: {
   titulo: string;
   valor: string | null;
@@ -48,7 +49,13 @@ export function ModalDocumento({
    * Recebe o texto (null se ficou vazio) e uma nota do que foi feito ("Restaurada
    * da versão 3"), ou null. Se lançar, a janela mostra o erro e continua aberta.
    */
-  aoSalvar: (texto: string | null, nota: string | null) => Promise<void>;
+  aoSalvar?: (texto: string | null, nota: string | null) => Promise<void>;
+  /**
+   * Salvar sozinho enquanto se escreve (1 s depois de parar), sem fechar a
+   * janela — a sinopse. Ignorado com `historico`: cada gravação da descrição
+   * do projeto vira uma versão, e salvar a cada pausa encheria o histórico.
+   */
+  aoAutosalvar?: (texto: string | null) => Promise<void>;
 }) {
   const [texto, setTexto] = useState(valor ?? "");
   const [erro, setErro] = useState<string | null>(null);
@@ -64,6 +71,10 @@ export function ModalDocumento({
   // editor o reescreveu ao carregar: é com ele que se compara o que a pessoa
   // mexeu. Comparar com o texto do banco acusaria mudança sem ninguém tocar.
   const [base, setBase] = useState(valor ?? "");
+  const automatico = !!aoAutosalvar && !historico;
+  const [salvoEm, setSalvoEm] = useState<Date | null>(null);
+  /** O texto cuja gravação falhou: não tenta de novo sozinho até a pessoa mexer. */
+  const [falhou, setFalhou] = useState<string | null>(null);
 
   /** Mexeu no que está no editor (a atual ou a versão antiga aberta)? */
   const editado = texto.trim() !== base.trim();
@@ -85,8 +96,37 @@ export function ModalDocumento({
       setErro(null);
       setVendo(null);
       setVersoes(null);
+      setSalvoEm(null);
+      setFalhou(null);
     }
   }
+
+  /** Grava o texto de agora; o que se digitar enquanto isso sai na próxima pausa. */
+  async function autosalvar(): Promise<boolean> {
+    const enviado = texto;
+    setSalvando(true);
+    try {
+      await aoAutosalvar!(enviado.trim() || null);
+      setBase(enviado);
+      setSalvoEm(new Date());
+      setErro(null);
+      setFalhou(null);
+      return true;
+    } catch (e) {
+      setErro((e as Error).message);
+      setFalhou(enviado);
+      return false;
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  // Salva sozinho 1 s depois da última mudança.
+  useEffect(() => {
+    if (!automatico || !aberto || !editado || salvando || texto === falhou) return;
+    const t = setTimeout(autosalvar, 1000);
+    return () => clearTimeout(t);
+  });
 
   // A lista de versões carrega a cada abertura: a skill pode ter gravado uma nova.
   const temHistorico = !!historico;
@@ -103,7 +143,12 @@ export function ModalDocumento({
     // `historico` é um objeto novo a cada render; o que importa é abrir.
   }, [aberto, temHistorico]);
 
-  function fechar() {
+  async function fechar() {
+    // No automático, o que falta salvar vai agora — fechar não perde nada.
+    if (automatico) {
+      if (editado && !(await autosalvar()) && !window.confirm("Não consegui salvar a última alteração. Fechar e descartá-la?")) return;
+      return aoFechar();
+    }
     if (alterado && !window.confirm("O texto tem alterações não salvas. Fechar e descartar?")) return;
     aoFechar();
   }
@@ -136,7 +181,7 @@ export function ModalDocumento({
     setErro(null);
     try {
       const nota = vendo ? `Restaurada da versão ${vendo.versao.numero}${editado ? ", com mudanças" : ""}` : null;
-      await aoSalvar(texto.trim() || null, nota);
+      await aoSalvar!(texto.trim() || null, nota);
     } catch (e) {
       setErro((e as Error).message);
     } finally {
@@ -144,7 +189,17 @@ export function ModalDocumento({
     }
   }
 
-  const situacao = vendo
+  const situacao = automatico
+    ? salvando
+      ? "Salvando…"
+      : falhou !== null && texto === falhou
+        ? "Não salvou — mexa no texto para tentar de novo"
+        : editado
+        ? "Alterações — salvando em instantes"
+        : salvoEm
+          ? `Salvo automaticamente às ${salvoEm.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
+          : "Tudo salvo · salva sozinho enquanto você escreve"
+    : vendo
     ? `Versão ${vendo.versao.numero} no editor: salvar a restaura como versão nova`
     : alterado
       ? "Alterações não salvas"
@@ -167,9 +222,11 @@ export function ModalDocumento({
               <Botao variante="fantasma" onClick={fechar}>
                 Fechar
               </Botao>
-              <Botao variante="primario" carregando={salvando} disabled={!alterado} onClick={salvar}>
-                Salvar
-              </Botao>
+              {!automatico && (
+                <Botao variante="primario" carregando={salvando} disabled={!alterado} onClick={salvar}>
+                  Salvar
+                </Botao>
+              )}
             </div>
           </div>
         </div>

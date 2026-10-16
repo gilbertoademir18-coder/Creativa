@@ -189,10 +189,10 @@ function Sinopse({ video, aoMudar }: { video: VideoDetalhe; aoMudar: () => void 
         placeholder="Sinopse, roteiro, o que acontece neste vídeo... Use # para títulos e - para listas."
         aberto={aberta}
         aoFechar={() => setAberta(false)}
-        aoSalvar={async (texto) => {
+        // Salva sozinho enquanto se escreve: a sinopse não tem versões.
+        aoAutosalvar={async (texto) => {
           await videosApi.salvar(video.id, { nome: video.nome, descricao: texto });
           aoMudar();
-          setAberta(false);
         }}
       />
     </Secao>

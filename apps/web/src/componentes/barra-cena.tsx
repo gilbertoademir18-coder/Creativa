@@ -237,10 +237,10 @@ export function BarraCena() {
           placeholder="Sinopse, roteiro, o que acontece neste vídeo... Use # para títulos e - para listas."
           aberto={sinopse}
           aoFechar={() => setSinopse(false)}
-          aoSalvar={async (texto) => {
+          // Salva sozinho enquanto se escreve: a sinopse não tem versões.
+          aoAutosalvar={async (texto) => {
             await videosApi.salvar(video.id, { nome: video.nome, descricao: texto });
             recarregar();
-            setSinopse(false);
           }}
         />
       )}
