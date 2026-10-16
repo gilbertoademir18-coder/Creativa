@@ -339,11 +339,6 @@ function CorpoVisor({
       ) : (
         <div className="flex h-full min-h-0 min-w-0 flex-col gap-5 overflow-y-auto pr-1">
           <div className="flex flex-wrap gap-2">
-            {aoUsar && (
-              <Botao variante="primario" icone={<Wand2 className="size-4" />} onClick={() => aoUsar(o)} title="Leva tipo, workflow, assistente, prompt, seed e o resto para o Gerador">
-                Usar estas configurações
-              </Botao>
-            )}
             <Botao icone={<Star className={`size-4 ${o.favorito ? "fill-amber-400 text-amber-400" : ""}`} />} onClick={favoritar}>
               {o.favorito ? "Favorito" : "Favoritar"}
             </Botao>
@@ -400,14 +395,28 @@ function CorpoVisor({
             </div>
           </details>
 
-          {/* Grudado embaixo do painel, que rola: "aba nova" e "Excluir" à vista em qualquer ponto. */}
-          <div className="sticky bottom-0 mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-zinc-800 bg-zinc-950 py-3">
-            <a href={urlArquivo(mostrado ?? o.arquivo)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-violet-300 hover:underline">
-              <ExternalLink className="size-4" /> Tamanho real numa aba nova
-            </a>
-            <Botao variante="perigo" icone={<Trash className="size-4" />} onClick={() => setExcluindo(true)}>
-              Excluir
-            </Botao>
+          {/* Grudado embaixo do painel, que rola: as ações sobre o output à vista em qualquer ponto.
+              Em cima ficam só as marcações (favoritar, escolher). */}
+          <div className="sticky bottom-0 mt-auto flex flex-col gap-3 border-t border-zinc-800 bg-zinc-950 py-3">
+            {aoUsar && (
+              <Botao
+                variante="primario"
+                icone={<Wand2 className="size-4" />}
+                onClick={() => aoUsar(o)}
+                title="Leva tipo, workflow, assistente, prompt, seed e o resto para o Gerador"
+                className="w-full"
+              >
+                Usar estas configurações
+              </Botao>
+            )}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <a href={urlArquivo(mostrado ?? o.arquivo)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-violet-300 hover:underline">
+                <ExternalLink className="size-4" /> Tamanho real numa aba nova
+              </a>
+              <Botao variante="perigo" icone={<Trash className="size-4" />} onClick={() => setExcluindo(true)}>
+                Excluir
+              </Botao>
+            </div>
           </div>
         </div>
       )}
