@@ -332,6 +332,13 @@ except Exception:
     pass
 bpy.context.view_layer.update()
 
+# So o .blend (o botao "Abrir no Blender" do asset): a cena montada, com a
+# camera e a luz, sem render nenhum.
+if saida.get("soBlend"):
+    bpy.ops.wm.save_as_mainfile(filepath=saida["blend"])
+    print("[creativa] pronto")
+    sys.exit(0)
+
 # --- o mais perto que a camera ve: e o branco do depth ---
 frente = (Vector(cam_d["alvo"]) - Vector(cam_d["pos"])).normalized()
 dists = []

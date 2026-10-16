@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Prisma } from "../generated/prisma/client.ts";
 import { TipoAsset } from "../generated/prisma/enums.ts";
 import { Blockout } from "../geracao/blockout.ts";
+import { blendDoAsset } from "../geracao/blender.ts";
 import { prisma } from "../lib/prisma.ts";
 import { referenciaParaJson } from "./referencias.ts";
 import {
@@ -134,6 +135,19 @@ export async function rotasAssets(app: FastifyInstance) {
     if (blockout && blockout.formato !== esperado) throw new ErroHttp(400, `Este asset é ${esperado === "cenario" ? "um cenário" : "uma personagem"}: o blockout tem de ter formato "${esperado}".`);
     await prisma.asset.update({ where: { id }, data: { blockout: blockout ?? Prisma.DbNull } });
     return { blockout };
+  });
+
+  /** O blockout como .blend, para abrir no Blender. Só lê: o arquivo é montado na hora e não fica em lugar nenhum. */
+  app.get("/:id/blockout.blend", async (req, reply) => {
+    const { id } = validar(z.object({ id: Uuid }), req.params);
+    const asset = await prisma.asset.findUnique({ where: { id }, select: { id: true, nome: true, blockout: true } });
+    if (!asset) throw naoEncontrado("Asset não encontrado.");
+    const arquivo = await blendDoAsset(asset);
+    const nome = `${asset.nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w-]+/g, "-").replace(/^-+|-+$/g, "") || "blockout"}.blend`;
+    return reply
+      .type("application/x-blender")
+      .header("Content-Disposition", `attachment; filename="${nome}"`)
+      .send(arquivo);
   });
 
   /** Recusado (409) enquanto houver referências ou outputs: eles têm arquivo. */

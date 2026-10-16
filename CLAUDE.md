@@ -661,6 +661,10 @@ em 2026-10-14. O `.env` de cada máquina é que muda — o código é o mesmo.
 # O blockout (geometria do primeiro quadro)
 
 Decisão do usuário (2026-10-15): o 3D é **dado no banco, não arquivo .blend**.
+O `.blend` existe só **sob demanda**: o "Baixar .blend" do asset
+(`GET /api/assets/:id/blockout.blend`, `blendDoAsset` em `geracao/blender.ts`)
+monta a cena na hora (`saida.soBlend` no `render.py`: sem render) e não
+grava nada. Mexer no arquivo não muda o blockout — quem muda é a skill.
 
 - `asset.blockout`: a planta do cenário ou o manequim da personagem;
   `cena.marcacao`: o cenário e quem fica onde; a **câmera é de cada shot**,

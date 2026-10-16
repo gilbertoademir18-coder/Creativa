@@ -167,6 +167,52 @@ function chamarBlender(exe: string, pedidoJson: string, id: string): Promise<voi
   });
 }
 
+/**
+ * O blockout de um asset como arquivo .blend, para abrir no Blender: a planta
+ * vazia (cenário) ou o manequim numa sala neutra (personagem), com uma câmera
+ * e a luz. Montado na hora, a partir do banco — o 3D é dado, não arquivo
+ * (decisão de 2026-10-15) —, e nada é gravado: o arquivo nasce numa pasta
+ * temporária e some depois de lido.
+ */
+export async function blendDoAsset(asset: { id: string; nome: string; blockout: unknown }): Promise<Buffer> {
+  const exe = exeDoBlender();
+  if (!exe) throw new ErroHttp(409, "Não achei o Blender nesta máquina. Instale, ou ponha BLENDER_EXE no .env.");
+  const b = asset.blockout as { formato?: string } | null;
+  let cena: Omit<PedidoBlender, "saida" | "render">;
+  if (b?.formato === "cenario") {
+    const cenario = BlockoutCenario.parse(b);
+    const s = cenario.sala;
+    // Do fundo da sala, olhando para a frente; sem sala (área aberta), de longe.
+    const camera = s
+      ? { pos: [0, -s.profundidade / 2 + 0.6, 1.6] as [number, number, number], alvo: [0, s.profundidade / 2, 1.2] as [number, number, number], lente: 24 }
+      : { pos: [0, -14, 1.7] as [number, number, number], alvo: [0, 6, 2] as [number, number, number], lente: 24 };
+    cena = { cenario, personagens: [], pecas: [], camera };
+  } else if (b?.formato === "personagem") {
+    const modelo = BlockoutPersonagem.parse(b);
+    const neutra = BlockoutCenario.parse({ formato: "cenario", sala: { largura: 6, profundidade: 6, altura: 3, teto: false } });
+    cena = {
+      cenario: neutra,
+      // rot 180: de frente para −y, onde fica a câmera.
+      personagens: [{ asset: asset.id, nome: asset.nome, pos: [0, 0], rot: 180, pose: "em_pe", modelo }],
+      pecas: [],
+      camera: { pos: [0, -2.6, 1.1], alvo: [0, 0, modelo.altura / 2], lente: 28 },
+    };
+  } else {
+    throw new ErroHttp(400, "Este asset não tem blockout.");
+  }
+  const pasta = await mkdtemp(path.join(os.tmpdir(), "creativa-blend-"));
+  try {
+    const blend = path.join(pasta, "blockout.blend");
+    const pedido = { ...cena, render: { largura: 1344, altura: 768 }, saida: { soBlend: true, blend } };
+    const json = path.join(pasta, "pedido.json");
+    await writeFile(json, JSON.stringify(pedido));
+    await chamarBlender(exe, json, `blend-${asset.id}-${Date.now()}`);
+    return await readFile(blend);
+  } finally {
+    await rm(pasta, { recursive: true, force: true });
+  }
+}
+
 async function rodar(id: string): Promise<void> {
   const e = await prisma.execucao.findUnique({ where: { id } });
   if (!e || e.status !== "NA_FILA") return; // cancelada enquanto esperava

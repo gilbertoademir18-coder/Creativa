@@ -2,6 +2,7 @@ import { useCarregar } from "../hooks.ts";
 import { assetsApi } from "../api.ts";
 import type { Asset, Cena } from "../tipos.ts";
 import { BotaoCopiar } from "./outputs.tsx";
+import { Download } from "lucide-react";
 import { Secao } from "./ui.tsx";
 
 /*
@@ -79,6 +80,15 @@ export function PainelBlockoutAsset({ asset }: { asset: Asset }) {
             {(b.formato === "cenario" ? resumoCenario(b) : resumoPersonagem(b)).join(" · ")}
           </p>
           <Json valor={b} />
+          {/* Montado na hora pelo Blender da máquina da API (leva uns segundos). */}
+          <a
+            href={`/api/assets/${asset.id}/blockout.blend`}
+            download
+            title="Monta a cena no Blender a partir destes dados e baixa o .blend — com câmera e luz. Mexer no arquivo não muda o blockout do Creativa."
+            className="flex w-fit items-center gap-2 rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-200 transition-colors hover:border-violet-500/60 hover:text-white"
+          >
+            <Download className="size-4 text-zinc-400" /> Baixar .blend para abrir no Blender
+          </a>
         </div>
       )}
     </Secao>
