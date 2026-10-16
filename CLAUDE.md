@@ -359,6 +359,17 @@ as cenas (`SetNull`), nunca as apaga.
   "Ver o que vai para a LLM" no Gerador (`POST /api/assistentes/:id/previa`,
   só lê) mostra as instruções, o pedido e quais seções e fichas entraram.
   Mexeu no que vai à LLM? Mexa em `montarPedido`, e a prévia acompanha.
+  **Opções da ideia** (`assistente.opcoes`, 2026-10-15): grupos de escolha
+  (Câmera, Plano, Luz...) que o Gerador mostra como pílulas embaixo da ideia,
+  **uma por grupo**; a dica depois do "=" é o termo que a LLM recebe ("zoom in
+  lento = slow push-in"). As escolhas são **anexadas à ideia** num bloco
+  "Escolhas (siga-as):" (`ideiaComEscolhas` em `apps/web/src/opcoes-ideia.ts`) —
+  a API e o `montarPedido` não sabem delas, o output guarda o texto inteiro
+  como ideia, e "Usar estas configurações" separa de volta (`separarIdeia`).
+  No `.md` do assistente moram no cabeçalho: `opcoes:` com uma linha
+  `  - Grupo: a | b = dica` por grupo (a página Assistentes e o `creativa.mjs`
+  leem e escrevem). O assistente da edição da placa não tem plano/ângulo/luz:
+  vêm da placa e da câmera, e brigariam com elas.
   **O storyboard da cena pesa mais que a ideia** (gemma 12B, 2026-10-15): com
   "1. … Lia aponta para algo no céu" no storyboard, a Lia apontava em ~70% das
   expansões mesmo com a ideia sem isso; sem a frase, 0 de 4. Nem regra no

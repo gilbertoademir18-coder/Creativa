@@ -433,6 +433,10 @@ model Assistente {
   workflows  String[] @default([])
   /// O markdown com as instruções.
   instrucoes String
+  /// As opções da ideia: grupos de escolha (Câmera, Plano, Luz...) que o
+  /// Gerador mostra como pílulas embaixo da ideia — uma por grupo. A escolhida
+  /// vai à LLM junto com a ideia. [{ grupo, opcoes: [{ rotulo, dica? }] }]
+  opcoes     Json?
   criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz
   editadoEm  DateTime @updatedAt @map("editado_em") @db.Timestamptz
 

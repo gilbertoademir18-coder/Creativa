@@ -6,6 +6,7 @@ import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
 import { AreaTexto, Aviso, BarraFiltros, Botao, Cabecalho, Campo, Carregando, Entrada, Etiqueta, Vazio } from "../componentes/ui.tsx";
 import { useCarregar, useFiltros } from "../hooks.ts";
 import { formatarData } from "../rotulos.ts";
+import { escreverOpcoes, lerOpcoes } from "../opcoes-ideia.ts";
 import type { Assistente, WorkflowResumo } from "../tipos.ts";
 
 /**
@@ -124,21 +125,29 @@ export function PaginaAssistentes() {
  * (`---\nname: ...\ndescription: ...\n---`): o nome e a descrição vêm dele,
  * e as instruções são o resto.
  */
-function lerMarkdown(texto: string, nomeArquivo: string): { nome: string; descricao: string; instrucoes: string } {
+function lerMarkdown(texto: string, nomeArquivo: string): { nome: string; descricao: string; instrucoes: string; opcoes: string } {
   const m = texto.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
   const cabecalho = m?.[1] ?? "";
   const campo = (k: string) => cabecalho.match(new RegExp(`^${k}\\s*:\\s*(.+)$`, "mi"))?.[1]?.trim().replace(/^["']|["']$/g, "") ?? "";
+  // "opcoes:" seguido de linhas "  - Grupo: a | b = dica" (uma por grupo).
+  const opcoes = cabecalho.match(/^opcoes\s*:\s*\r?\n((?:[ \t]+-.*(?:\r?\n|$))+)/m)?.[1] ?? "";
   return {
     nome: campo("name") || campo("nome") || nomeArquivo.replace(/\.(md|txt)$/i, ""),
     descricao: campo("description") || campo("descricao"),
     instrucoes: (m ? m[2]! : texto).trim(),
+    opcoes: opcoes
+      .split(/\r?\n/)
+      .map((l) => l.trim().replace(/^-\s*/, ""))
+      .filter(Boolean)
+      .join("\n"),
   };
 }
 
 /** O .md para baixar, no mesmo formato que a importação entende. */
-function escreverMarkdown(a: { nome: string; descricao: string; instrucoes: string }): string {
+function escreverMarkdown(a: { nome: string; descricao: string; instrucoes: string; opcoes: string }): string {
   const linha = (t: string) => t.replace(/\r?\n/g, " ");
-  return `---\nname: ${linha(a.nome)}\ndescription: ${linha(a.descricao)}\n---\n\n${a.instrucoes.trim()}\n`;
+  const opcoes = a.opcoes.trim() ? `opcoes:\n${a.opcoes.trim().split(/\r?\n/).map((l) => `  - ${l.trim()}`).join("\n")}\n` : "";
+  return `---\nname: ${linha(a.nome)}\ndescription: ${linha(a.descricao)}\n${opcoes}---\n\n${a.instrucoes.trim()}\n`;
 }
 
 function FormAssistente({
@@ -157,6 +166,9 @@ function FormAssistente({
   const [projetoId, setProjetoId] = useState(assistente ? (assistente.projetoId ?? "") : projetoInicial);
   const [marcados, setMarcados] = useState<string[]>(assistente?.workflows ?? []);
   const [instrucoes, setInstrucoes] = useState(assistente?.instrucoes ?? "");
+  // As opções da ideia, no formato de linhas que se edita à mão (opcoes-ideia.ts).
+  const [opcoes, setOpcoes] = useState(escreverOpcoes(assistente?.opcoes));
+  const opcoesLidas = lerOpcoes(opcoes);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
@@ -167,13 +179,14 @@ function FormAssistente({
   async function importar(f: File) {
     const lido = lerMarkdown(await f.text(), f.name);
     setInstrucoes(lido.instrucoes);
+    if (lido.opcoes) setOpcoes(lido.opcoes);
     // Nome e descrição só se ainda estiverem vazios: não atropela o que foi digitado.
     if (!nome.trim()) setNome(lido.nome);
     if (!descricao.trim() && lido.descricao) setDescricao(lido.descricao);
   }
 
   function exportar() {
-    const blob = new Blob([escreverMarkdown({ nome, descricao, instrucoes })], { type: "text/markdown;charset=utf-8" });
+    const blob = new Blob([escreverMarkdown({ nome, descricao, instrucoes, opcoes })], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -195,7 +208,19 @@ function FormAssistente({
           e.preventDefault();
           setSalvando(true);
           setErro(null);
-          const dados: AssistenteNovo = { nome, descricao: descricao || null, projetoId: projetoId || null, workflows: marcados, instrucoes };
+          if (opcoesLidas.erro) {
+            setErro(`Opções da ideia — ${opcoesLidas.erro}`);
+            setSalvando(false);
+            return;
+          }
+          const dados: AssistenteNovo = {
+            nome,
+            descricao: descricao || null,
+            projetoId: projetoId || null,
+            workflows: marcados,
+            instrucoes,
+            opcoes: opcoesLidas.grupos.length ? opcoesLidas.grupos : null,
+          };
           try {
             if (assistente) await assistentesApi.salvar(assistente.id, dados);
             else await assistentesApi.criar(dados);
@@ -231,6 +256,20 @@ function FormAssistente({
             ))}
             <p className="text-xs text-zinc-500">Nenhum marcado: aparece em todos os workflows que têm assistente.</p>
           </div>
+          <Campo
+            rotulo="Opções da ideia"
+            dica={`Uma linha por grupo; o Gerador mostra cada grupo como pílulas, uma escolha por grupo. Depois de "=", a dica que a LLM recebe junto.`}
+          >
+            <AreaTexto
+              value={opcoes}
+              onChange={(e) => setOpcoes(e.target.value)}
+              rows={5}
+              spellCheck={false}
+              className="font-mono text-xs"
+              placeholder={"Câmera: parada | zoom in lento = slow push-in | zoom out lento = slow pull-out\nRitmo: lento | normal | agitado"}
+            />
+            {opcoesLidas.erro && <p className="text-xs text-amber-300">{opcoesLidas.erro}</p>}
+          </Campo>
         </div>
 
         <div className="flex min-w-0 flex-col gap-2">

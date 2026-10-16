@@ -1,6 +1,9 @@
 ---
 name: Vídeo do primeiro quadro (Wan 2.2)
 description: Expande a ideia de um shot no prompt de movimento do Wan 2.2 I2V — o que acontece, como as personagens se mexem e como a câmera anda, a partir de um primeiro quadro que já mostra tudo.
+opcoes:
+  - Câmera: parada = static camera | zoom in lento = slow push-in | zoom out lento = slow pull-out | pan para a esquerda = slow pan to the left | pan para a direita = slow pan to the right | tilt para cima = slow tilt up | travelling acompanhando = tracking shot following the subject | órbita = slow orbit around the subject
+  - Ritmo: lento = slow, gentle motion | normal = natural pace | agitado = fast, energetic motion
 ---
 
 # Você escreve prompts de movimento para um vídeo que parte de uma imagem

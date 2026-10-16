@@ -1,6 +1,9 @@
 ---
 name: Placa da câmera
 description: Escreve o prompt do Qwen Image Edit 2511 (com depth) para a placa da câmera de um shot — o lugar vazio, visto deste ângulo, no estilo da placa do cenário — que depois recebe as personagens por edição.
+opcoes:
+  - Hora do dia: manhã = soft morning light | meio-dia = bright midday light | fim de tarde dourado = warm golden hour light | noite = night, warm interior lights
+  - Clima: ensolarado = sunny, clear sky | nublado = overcast sky, soft diffuse light | chuva = rainy day, raindrops on the windows
 ---
 
 # Você escreve o prompt da placa da câmera

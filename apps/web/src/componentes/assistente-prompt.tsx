@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import type { AssistenteDisponivel, EstadoLlm, PreviaAssistente } from "../tipos.ts";
 import { Modal } from "./modal.tsx";
+import type { GrupoOpcoes } from "../opcoes-ideia.ts";
 import { AreaTexto, Aviso, Botao, Campo, Carregando, Etiqueta, Seletor } from "./ui.tsx";
 
 /*
@@ -58,6 +59,9 @@ export function BarraAssistente({
   aoMudarIdeia,
   deNovo,
   pendente,
+  opcoes,
+  escolhas,
+  aoMudarEscolhas,
   podeDesfazer,
   aviso,
   erro,
@@ -78,6 +82,10 @@ export function BarraAssistente({
    * uma ideia anterior) ou "nova" (nunca expandida, ou o prompt foi escrito à mão).
    */
   pendente: "mudou" | "nova" | null;
+  /** As opções da ideia do assistente: uma fileira de pílulas por grupo, uma escolha em cada. */
+  opcoes: GrupoOpcoes[] | null;
+  escolhas: Record<string, string>;
+  aoMudarEscolhas: (e: Record<string, string>) => void;
   podeDesfazer: boolean;
   aviso: string | null;
   erro: string | null;
@@ -107,11 +115,43 @@ export function BarraAssistente({
           className={pendente && !expandindo ? "ring-1 ring-amber-500/70" : undefined}
         />
       </Campo>
+      {!!opcoes?.length && (
+        <div className="flex flex-col gap-1.5">
+          {opcoes.map((g) => (
+            <div key={g.grupo} className="flex flex-wrap items-center gap-1.5">
+              <span className="w-24 shrink-0 text-xs text-zinc-400">{g.grupo}</span>
+              {g.opcoes.map((o) => {
+                const marcada = escolhas[g.grupo] === o.rotulo;
+                return (
+                  <button
+                    key={o.rotulo}
+                    type="button"
+                    disabled={expandindo}
+                    title={o.dica ? `A LLM recebe: ${o.dica}` : undefined}
+                    onClick={() => {
+                      // Uma por grupo; clicar na marcada desmarca.
+                      const novas = { ...escolhas };
+                      if (marcada) delete novas[g.grupo];
+                      else novas[g.grupo] = o.rotulo;
+                      aoMudarEscolhas(novas);
+                    }}
+                    className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors disabled:opacity-60 ${
+                      marcada ? "border-violet-500 bg-violet-600 text-white" : "border-zinc-700 text-zinc-300 hover:border-violet-500/60 hover:text-zinc-100"
+                    }`}
+                  >
+                    {o.rotulo}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      )}
       {pendente && !expandindo && (
         <p className="-mt-1 flex items-center gap-1.5 text-xs text-amber-300">
           <TriangleAlert className="size-3.5 shrink-0" />
           {pendente === "mudou"
-            ? "A ideia mudou — o prompt embaixo ainda é o da ideia anterior. Expanda para atualizar."
+            ? "A ideia ou as escolhas mudaram — o prompt embaixo ainda é o de antes. Expanda para atualizar."
             : "Esta ideia ainda não virou prompt — o que está embaixo não saiu dela. Expanda para usar a ideia."}
         </p>
       )}

@@ -1,3 +1,4 @@
+import type { GrupoOpcoes } from "./opcoes-ideia.ts";
 import type {
   Asset,
   AssetDetalhe,
@@ -105,6 +106,7 @@ export type AssistenteNovo = {
   nome: string;
   descricao: string | null;
   projetoId: string | null;
+  opcoes?: GrupoOpcoes[] | null;
   workflows: string[];
   instrucoes: string;
 };

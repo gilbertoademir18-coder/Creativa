@@ -1,3 +1,4 @@
+import type { GrupoOpcoes } from "./opcoes-ideia.ts";
 /**
  * Os formatos que a API devolve. Datas chegam como texto ISO.
  */
@@ -213,13 +214,15 @@ export type Assistente = {
   /** Chaves dos workflows em que aparece. Vazio: em todos. */
   workflows: string[];
   instrucoes: string;
+  /** As opções da ideia: grupos de escolha que o Gerador mostra como pílulas (opcoes-ideia.ts). */
+  opcoes: GrupoOpcoes[] | null;
   criadoEm: string;
   editadoEm: string;
   projeto: ProjetoRef | null;
 };
 
 /** O que o Gerador lista: os assistentes que valem para o workflow e o projeto do dono. */
-export type AssistenteDisponivel = Pick<Assistente, "id" | "nome" | "descricao" | "projetoId" | "projeto">;
+export type AssistenteDisponivel = Pick<Assistente, "id" | "nome" | "descricao" | "projetoId" | "projeto" | "opcoes">;
 
 /** Exatamente o que uma expansão mandaria à LLM, e um resumo do que entrou (`POST /assistentes/:id/previa`). */
 export type PreviaAssistente = {
@@ -340,6 +343,8 @@ export type RascunhoGerador = {
   escolhido: string | null;
   /** A ideia de onde saiu o prompt atual (null: escrito à mão). Ausente nos rascunhos antigos. */
   ideiaDoPrompt?: string | null;
+  /** As opções da ideia escolhidas, grupo → rótulo. */
+  escolhas?: Record<string, string>;
 };
 
 /*

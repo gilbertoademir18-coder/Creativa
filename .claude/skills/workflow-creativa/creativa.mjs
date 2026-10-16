@@ -70,8 +70,27 @@ function lerMd(arq) {
   const campo = (k) => new RegExp(`^${k}:\\s*(.*)$`, "m").exec(m[1])?.[1].trim().replace(/^["']|["']$/g, "");
   const nome = campo("name");
   if (!nome) sair(`${arq}: o cabeçalho não tem "name".`);
-  return { nome, descricao: campo("description") ?? null, instrucoes: m[2].trim() };
+  // "opcoes:" com uma linha "  - Grupo: a | b = dica" por grupo (as pílulas embaixo da ideia).
+  const blocoOpcoes = /^opcoes:\s*\n((?:[ \t]+-.*(?:\n|$))+)/m.exec(m[1])?.[1] ?? "";
+  const opcoes = blocoOpcoes
+    .split("\n")
+    .map((l) => l.trim().replace(/^-\s*/, ""))
+    .filter(Boolean)
+    .map((l) => {
+      const i = l.indexOf(":");
+      if (i < 1) sair(`${arq}: opção sem grupo antes de ":" — ${l}`);
+      const itens = l.slice(i + 1).split("|").map((o) => o.trim()).filter(Boolean).map((o) => {
+        const igual = o.indexOf("=");
+        return igual < 0 ? { rotulo: o } : { rotulo: o.slice(0, igual).trim(), dica: o.slice(igual + 1).trim() };
+      });
+      return { grupo: l.slice(0, i).trim(), opcoes: itens };
+    });
+  return { nome, descricao: campo("description") ?? null, instrucoes: m[2].trim(), opcoes: opcoes.length ? opcoes : null };
 }
+
+/** As opções de volta no formato do cabeçalho (vazio sem opções). */
+const opcoesNoCabecalho = (os) =>
+  os?.length ? `opcoes:\n${os.map((g) => `  - ${g.grupo}: ${g.opcoes.map((o) => (o.dica ? `${o.rotulo} = ${o.dica}` : o.rotulo)).join(" | ")}`).join("\n")}\n` : "";
 
 function opcao(args, nome) {
   const i = args.indexOf(nome);
@@ -126,7 +145,7 @@ if (comando === "catalogo") {
   const lista = await api("/assistentes");
   const a = lista.find((x) => x.id === busca) ?? lista.find((x) => norm(x.nome) === norm(busca));
   if (!a) sair(`Nenhum assistente "${busca}".`);
-  writeFileSync(arquivo, `---\nname: ${a.nome}\ndescription: ${a.descricao ?? ""}\n---\n\n${a.instrucoes}\n`, "utf8");
+  writeFileSync(arquivo, `---\nname: ${a.nome}\ndescription: ${a.descricao ?? ""}\n${opcoesNoCabecalho(a.opcoes)}---\n\n${a.instrucoes}\n`, "utf8");
   console.log(`"${a.nome}" id ${a.id}  projeto ${a.projeto?.nome ?? "todos"}  workflows [${a.workflows.join(", ")}] → ${arquivo}`);
 } else if (comando === "tipo-salvar") {
   const { id, ...t } = lerJson(args[0]);

@@ -148,6 +148,8 @@ export const RascunhoEtapa = z.object({
    * tela supõe que o prompt saiu da ideia salva, como antes.
    */
   ideiaDoPrompt: z.string().max(10_000).nullable().optional(),
+  /** As opções da ideia escolhidas (grupo → rótulo), do assistente da etapa. */
+  escolhas: z.record(z.string().max(40), z.string().max(60)).optional(),
 });
 export type RascunhoEtapa = z.infer<typeof RascunhoEtapa>;
 

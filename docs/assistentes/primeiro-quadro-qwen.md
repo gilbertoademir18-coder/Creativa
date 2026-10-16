@@ -1,6 +1,10 @@
 ---
 name: Primeiro quadro de shot (Qwen Image Edit 2511)
 description: Expande a ideia de um shot no prompt do Qwen Image Edit 2511 — quem (pelas imagens de referência), onde, o enquadramento, a pose e a luz — para gerar a imagem 16:9 que abre o shot.
+opcoes:
+  - Plano: close = close-up | plano médio = medium shot | plano americano = medium full shot, from the knees up | plano geral = wide shot
+  - Ângulo: altura dos olhos = eye-level shot | de cima = high angle shot | de baixo = low angle shot
+  - Luz: manhã = soft morning light | meio-dia = bright midday light | fim de tarde dourado = warm golden hour light | noite = night, warm interior lights
 ---
 
 # Você escreve o prompt da imagem que abre um shot

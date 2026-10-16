@@ -8,6 +8,7 @@ import { BarraAssistente, limparTextoLlm, SeletorAssistente } from "./assistente
 import { CampoDinamico, SeletorQuantidade, valoresPara } from "./campos-workflow.tsx";
 import { AbasEtapas, alimentaOutra, CHAVE_UNICA, entradasDe, etapaDaVez, etapaDe, PIPELINE_UNICO, temEtapas } from "./etapas.tsx";
 import { CartaoOutput, GruposDeOutputs, VisorOutputs, type Escolha } from "./outputs.tsx";
+import { ideiaComEscolhas, separarIdeia } from "../opcoes-ideia.ts";
 import { Aviso, Botao, Campo, Carregando, Seletor, Vazio } from "./ui.tsx";
 
 /*
@@ -152,6 +153,8 @@ export function PainelGerador({ dono }: { dono: Dono }) {
   const estadoLlm = useCarregar(() => assistentesApi.estado(), []);
   const [assistenteId, setAssistenteId] = useState("");
   const [ideia, setIdeia] = useState("");
+  /** As opções da ideia escolhidas (grupo → rótulo), entre as do assistente. */
+  const [escolhas, setEscolhas] = useState<Record<string, string>>({});
   const [ideiaDoPrompt, setIdeiaDoPrompt] = useState<string | null>(null);
   /** O prompt de antes da última expansão: para onde o "Desfazer" volta. */
   const [promptAnterior, setPromptAnterior] = useState<string | null>(null);
@@ -184,8 +187,9 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     if (!config || !campoAssistivel || !assistenteId) return;
     const chave = campoAssistivel.chave;
     const atual = String(config.valores[chave] ?? "");
-    const base = ideia.trim();
-    if (!base) return setErroAssistente("Escreva sua ideia antes de expandir.");
+    if (!ideia.trim()) return setErroAssistente("Escreva sua ideia antes de expandir.");
+    // A ideia com as escolhas anexadas: é o que a LLM lê e o que o output guarda.
+    const base = ideiaCompleta;
     const controle = new AbortController();
     parar.current = controle;
     setExpandindo(true);
@@ -276,6 +280,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     if (r) {
       porNaTela(ajustar({ tipo: r.tipo, workflow: r.workflow, valores: r.valores }, tiposDaEtapa));
       setIdeia(r.ideia ?? "");
+      setEscolhas(r.escolhas ?? {});
       // O rascunho guarda de que ideia saiu o prompt; nos antigos, que não
       // guardavam, supõe que saiu da ideia salva (sem aviso em tudo de uma vez).
       setIdeiaDoPrompt(r.ideiaDoPrompt !== undefined ? r.ideiaDoPrompt : (r.ideia?.trim() ?? null));
@@ -303,6 +308,9 @@ export function PainelGerador({ dono }: { dono: Dono }) {
    * salvaria "nenhum" por cima do que estava).
    */
   const assistenteNome = disponiveis.dados?.find((a) => a.id === assistenteId)?.nome ?? null;
+  const opcoesDoAssistente = disponiveis.dados?.find((a) => a.id === assistenteId)?.opcoes ?? null;
+  /** A ideia com as escolhas anexadas — o que vai à LLM e o que o aviso compara. */
+  const ideiaCompleta = ideiaComEscolhas(ideia.trim(), escolhas, opcoesDoAssistente);
   useEffect(() => {
     if (!config || expandindo || iniciado.current !== chaveDono) return;
     if (disponiveis.carregando || assistenteDesejado.current !== null) return;
@@ -312,6 +320,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
       valores: config.valores,
       assistente: assistenteNome,
       ideia: ideia.trim() ? ideia : null,
+      escolhas,
       // A escolha é de quem clica no cartão, não do formulário: só passa adiante.
       escolhido,
       // Para o aviso de "a ideia mudou e não foi expandida" sobreviver a um F5.
@@ -334,7 +343,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
       clearTimeout(t);
       if (pendente.current === salvar) pendente.current = null;
     };
-  }, [config, assistenteNome, ideia, ideiaDoPrompt, expandindo, disponiveis.carregando, chaveDono, escolhido]);
+  }, [config, assistenteNome, ideia, escolhas, ideiaDoPrompt, expandindo, disponiveis.carregando, chaveDono, escolhido]);
 
   /**
    * A imagem aprovada desta etapa — a que as etapas seguintes recebem.
@@ -380,7 +389,10 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     }
     porNaTela(ajustar({ tipo: o.tipoGeracao, workflow: o.workflow, valores }, tiposDaEtapa));
     // O assistente e a ideia daquele output também voltam.
-    setIdeia(o.ideia ?? "");
+    // O output guarda a ideia com as escolhas anexadas: separa as duas de volta.
+    const separada = separarIdeia(o.ideia ?? "");
+    setIdeia(separada.ideia);
+    setEscolhas(separada.escolhas);
     setIdeiaDoPrompt(o.ideia);
     setPromptAnterior(null);
     const doOutput = o.assistente ? disponiveis.dados?.find((a) => a.nome === o.assistente) : undefined;
@@ -549,15 +561,18 @@ export function PainelGerador({ dono }: { dono: Dono }) {
                       expandindo={expandindo}
                       ideia={ideia}
                       aoMudarIdeia={setIdeia}
-                      deNovo={ideiaDoPrompt !== null && ideiaDoPrompt === ideia.trim()}
-                      pendente={!ideia.trim() || ideiaDoPrompt === ideia.trim() ? null : ideiaDoPrompt === null ? "nova" : "mudou"}
+                      deNovo={ideiaDoPrompt !== null && ideiaDoPrompt === ideiaCompleta}
+                      pendente={!ideia.trim() || ideiaDoPrompt === ideiaCompleta ? null : ideiaDoPrompt === null ? "nova" : "mudou"}
+                      opcoes={opcoesDoAssistente}
+                      escolhas={escolhas}
+                      aoMudarEscolhas={setEscolhas}
                       podeDesfazer={promptAnterior !== null}
                       aviso={avisoAssistente}
                       erro={erroAssistente}
                       aoExpandir={expandir}
                       aoParar={() => parar.current?.abort()}
                       aoDesfazer={desfazer}
-                      aoPrevia={() => assistentesApi.previa(assistenteId, { ...dono, workflow: config!.workflow, ideia: ideia.trim() })}
+                      aoPrevia={() => assistentesApi.previa(assistenteId, { ...dono, workflow: config!.workflow, ideia: ideiaCompleta })}
                     />
                   )}
                   {/* Campo que o pipeline alimenta: dá para trocar, mas já vem certo. */}

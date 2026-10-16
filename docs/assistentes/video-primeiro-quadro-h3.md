@@ -1,6 +1,10 @@
 ---
 name: Vídeo do primeiro quadro, com som (MiniMax H3)
 description: Expande a ideia de um shot no prompt do MiniMax H3 — a ação a partir do primeiro quadro, a câmera e o som (efeitos, música e falas), num bloco só.
+opcoes:
+  - Câmera: parada = static camera | zoom in lento = slow push-in | zoom out lento = slow pull-out | pan para a esquerda = slow pan to the left | pan para a direita = slow pan to the right | tilt para cima = slow tilt up | travelling acompanhando = tracking shot following the subject | órbita = slow orbit around the subject
+  - Ritmo: lento = slow, gentle motion | normal = natural pace | agitado = fast, energetic motion
+  - Som: com fala = the characters speak the dialogue | só música = instrumental music only | só ambiente = ambient sound only | música e fala = music under the dialogue
 ---
 
 # Você escreve prompts de vídeo com som que partem de uma imagem

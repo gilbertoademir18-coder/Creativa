@@ -6,6 +6,7 @@ import { contextoDoProjeto, personagensCitados } from "../geracao/descricao-proj
 import { lerFila } from "../geracao/execucao.ts";
 import { configComfy } from "../lib/comfyui.ts";
 import { consultarOllama, gerarTexto } from "../lib/ollama.ts";
+import { Prisma } from "../generated/prisma/client.ts";
 import { prisma } from "../lib/prisma.ts";
 import { enquadramentoDoShot } from "../geracao/blockout.ts";
 import { Busca, ErroHttp, FiltroProjeto, naoEncontrado, Nome, TextoOpcional, Uuid, UuidOpcional, validar } from "../lib/validacao.ts";
@@ -19,6 +20,25 @@ import { Busca, ErroHttp, FiltroProjeto, naoEncontrado, Nome, TextoOpcional, Uui
  * Gerador (workflow + projeto do dono) e se expande a ideia.
  */
 
+/**
+ * As opções da ideia: grupos com uma escolha cada (Câmera: parada | zoom in
+ * lento...). A dica, opcional, é o termo que a LLM recebe junto do rótulo —
+ * "zoom in lento" para quem clica, "slow push-in" para o modelo de vídeo.
+ */
+const OpcoesIdeia = z
+  .array(
+    z.object({
+      grupo: z.string().trim().min(1, "o grupo precisa de um nome").max(40, "nome de grupo longo demais"),
+      opcoes: z
+        .array(z.object({ rotulo: z.string().trim().min(1).max(60, "opção longa demais"), dica: z.string().trim().max(200).optional() }))
+        .min(1, "o grupo precisa de pelo menos uma opção")
+        .max(20, "no máximo 20 opções por grupo")
+        .refine((os) => new Set(os.map((o) => o.rotulo)).size === os.length, "duas opções com o mesmo nome no grupo"),
+    }),
+  )
+  .max(12, "no máximo 12 grupos")
+  .refine((gs) => new Set(gs.map((g) => g.grupo)).size === gs.length, "dois grupos com o mesmo nome");
+
 const CorpoAssistente = z.object({
   nome: Nome,
   descricao: TextoOpcional(1000),
@@ -28,7 +48,11 @@ const CorpoAssistente = z.object({
     .default([])
     .transform((ws) => [...new Set(ws)]),
   instrucoes: z.string().trim().min(1, "escreva as instruções").max(100_000, "texto longo demais"),
+  opcoes: OpcoesIdeia.nullish().transform((v) => (v?.length ? v : null)),
 });
+
+/** O que o Prisma grava: sem opções é o null do banco, não o JSON "null". */
+const paraGravar = (d: z.output<typeof CorpoAssistente>) => ({ ...d, opcoes: d.opcoes ?? Prisma.DbNull });
 
 const FiltroAssistentes = z.object({
   projeto: FiltroProjeto,
@@ -259,7 +283,7 @@ export async function rotasAssistentes(app: FastifyInstance) {
     const { projetoId } = await contextoDoDono(d.asset, d.shot);
     const lista = await prisma.assistente.findMany({
       where: queValem(workflow, projetoId),
-      select: { id: true, nome: true, descricao: true, projetoId: true, ...comProjeto },
+      select: { id: true, nome: true, descricao: true, projetoId: true, opcoes: true, ...comProjeto },
       orderBy: { nome: "asc" },
     });
     // Os do projeto primeiro: são os mais específicos.
@@ -276,14 +300,14 @@ export async function rotasAssistentes(app: FastifyInstance) {
   app.post("/", async (req, reply) => {
     const dados = validar(CorpoAssistente, req.body);
     await conferirWorkflows(dados.workflows);
-    return reply.code(201).send(await prisma.assistente.create({ data: dados, include: comProjeto }));
+    return reply.code(201).send(await prisma.assistente.create({ data: paraGravar(dados), include: comProjeto }));
   });
 
   app.put("/:id", async (req) => {
     const { id } = validar(z.object({ id: Uuid }), req.params);
     const dados = validar(CorpoAssistente, req.body);
     await conferirWorkflows(dados.workflows);
-    return prisma.assistente.update({ where: { id }, data: dados, include: comProjeto });
+    return prisma.assistente.update({ where: { id }, data: paraGravar(dados), include: comProjeto });
   });
 
   /** Os outputs guardam o nome do assistente, não o id: apagar não mexe neles. */
