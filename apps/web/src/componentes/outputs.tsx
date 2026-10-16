@@ -162,11 +162,12 @@ function BotaoExcluirRapido({ aoExcluir, className = "" }: { aoExcluir: () => Pr
       onClick={clicar}
       disabled={excluindo}
       title={erro ?? (armado ? "Clique de novo para excluir — o arquivo vai junto" : "Excluir")}
-      className={`flex h-8 items-center gap-1.5 rounded-full px-2 text-xs font-medium backdrop-blur transition-opacity ${
+      // Parado, é um círculo como a estrela; armado, cresce para caber o "Excluir?".
+      className={`flex h-8 min-w-8 items-center justify-center gap-1.5 rounded-full text-xs font-medium backdrop-blur transition-opacity ${
         armado || erro
           ? "bg-red-600 px-2.5 text-white hover:bg-red-500"
           : "bg-black/60 text-zinc-200 opacity-0 group-hover:opacity-100 hover:bg-black/85 hover:text-red-300"
-      }`}
+      } ${className}`}
     >
       {excluindo ? <LoaderCircle className="size-4 animate-spin" /> : <Trash className="size-4" />}
       {armado && !excluindo && "Excluir?"}
