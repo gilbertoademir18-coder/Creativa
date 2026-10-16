@@ -693,7 +693,13 @@ Decisão do usuário (2026-10-15): o 3D é **dado no banco, não arquivo .blend*
   personagens, e a altura e inclinação da câmera) e o **cenário da marcação**
   (nome, descrição e as `notas` da planta). Sem isso, a placa de um pátio
   saía com a sala de aula do exemplo do assistente (2026-10-15). Geometria
-  gerada antes disso não tem a medição: gere de novo. O que
+  gerada antes disso não tem a medição: gere de novo.
+  **Na placa, o prompt manda mais que o depth quando o depth é fraco**
+  (2026-10-15, Pátio, câmera de cima com 83% de chão): prompt descrevendo a
+  vista da placa do asset ("wide view, the building in the background") = o
+  Qwen copia a placa do asset, ignorando a câmera; prompt dizendo "high-angle
+  shot looking down" e onde fica cada coisa = 3 de 3 obedecem. Câmera baixa,
+  parecida com a da placa do asset, também tende a virar cópia dela. O que
   funcionou: abrir com "seen from behind", sem expressão de quem está de
   costas, e o cabelo de cada uma junto com o lado do quadro.
 - **O caminho que funcionou: placa primeiro, personagens depois**
