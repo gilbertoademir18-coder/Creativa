@@ -338,6 +338,8 @@ export type RascunhoGerador = {
   ideia: string | null;
   /** O output aprovado desta etapa: é ele que as etapas seguintes recebem. */
   escolhido: string | null;
+  /** A ideia de onde saiu o prompt atual (null: escrito à mão). Ausente nos rascunhos antigos. */
+  ideiaDoPrompt?: string | null;
 };
 
 /*

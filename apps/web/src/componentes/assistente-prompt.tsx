@@ -1,4 +1,4 @@
-import { Eye, Square, Undo2, WandSparkles } from "lucide-react";
+import { Eye, Square, TriangleAlert, Undo2, WandSparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import type { AssistenteDisponivel, EstadoLlm, PreviaAssistente } from "../tipos.ts";
@@ -57,6 +57,7 @@ export function BarraAssistente({
   ideia,
   aoMudarIdeia,
   deNovo,
+  pendente,
   podeDesfazer,
   aviso,
   erro,
@@ -72,6 +73,11 @@ export function BarraAssistente({
   aoMudarIdeia: (texto: string) => void;
   /** O prompt atual já saiu desta mesma ideia: expandir agora dá outra versão. */
   deNovo: boolean;
+  /**
+   * A ideia ainda não virou o prompt que está embaixo: "mudou" (o prompt é de
+   * uma ideia anterior) ou "nova" (nunca expandida, ou o prompt foi escrito à mão).
+   */
+  pendente: "mudou" | "nova" | null;
   podeDesfazer: boolean;
   aviso: string | null;
   erro: string | null;
@@ -93,8 +99,22 @@ export function BarraAssistente({
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-violet-500/20 bg-violet-950/20 p-3">
       <Campo rotulo="Sua ideia" dica="Em poucas palavras, em português. O assistente escreve o prompt no campo abaixo; a ideia fica aqui para você ajustar e expandir de novo.">
-        <AreaTexto value={ideia} onChange={(e) => aoMudarIdeia(e.target.value)} rows={3} disabled={expandindo} />
+        <AreaTexto
+          value={ideia}
+          onChange={(e) => aoMudarIdeia(e.target.value)}
+          rows={3}
+          disabled={expandindo}
+          className={pendente && !expandindo ? "ring-1 ring-amber-500/70" : undefined}
+        />
       </Campo>
+      {pendente && !expandindo && (
+        <p className="-mt-1 flex items-center gap-1.5 text-xs text-amber-300">
+          <TriangleAlert className="size-3.5 shrink-0" />
+          {pendente === "mudou"
+            ? "A ideia mudou — o prompt embaixo ainda é o da ideia anterior. Expanda para atualizar."
+            : "Esta ideia ainda não virou prompt — o que está embaixo não saiu dela. Expanda para usar a ideia."}
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         {expandindo ? (
           <>
@@ -113,6 +133,7 @@ export function BarraAssistente({
               onClick={aoExpandir}
               disabled={!!problema || !ideia.trim()}
               title={deNovo ? "Outra versão do prompt, a partir da mesma ideia" : undefined}
+              className={pendente ? "ring-2 ring-amber-400/80 ring-offset-1 ring-offset-zinc-950" : undefined}
             >
               {deNovo ? "Expandir de novo" : "Expandir com o assistente"}
             </Botao>

@@ -141,6 +141,13 @@ export const RascunhoEtapa = z.object({
     .uuid()
     .nullish()
     .transform((v) => v ?? null),
+  /**
+   * A ideia de onde saiu o prompt que está no formulário (null: o prompt foi
+   * escrito à mão). A tela compara com a ideia atual e avisa quando a pessoa
+   * mudou a ideia e não expandiu de novo. Ausente nos rascunhos antigos: aí a
+   * tela supõe que o prompt saiu da ideia salva, como antes.
+   */
+  ideiaDoPrompt: z.string().max(10_000).nullable().optional(),
 });
 export type RascunhoEtapa = z.infer<typeof RascunhoEtapa>;
 

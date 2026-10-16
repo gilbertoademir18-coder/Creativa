@@ -275,8 +275,9 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     if (r) {
       porNaTela(ajustar({ tipo: r.tipo, workflow: r.workflow, valores: r.valores }, tiposDaEtapa));
       setIdeia(r.ideia ?? "");
-      // Com ideia salva, o prompt provavelmente saiu dela (o rascunho não guarda se foi editado à mão depois).
-      setIdeiaDoPrompt(r.ideia);
+      // O rascunho guarda de que ideia saiu o prompt; nos antigos, que não
+      // guardavam, supõe que saiu da ideia salva (sem aviso em tudo de uma vez).
+      setIdeiaDoPrompt(r.ideiaDoPrompt !== undefined ? r.ideiaDoPrompt : (r.ideia?.trim() ?? null));
       assistenteDesejado.current = r.assistente;
       return;
     }
@@ -312,6 +313,8 @@ export function PainelGerador({ dono }: { dono: Dono }) {
       ideia: ideia.trim() ? ideia : null,
       // A escolha é de quem clica no cartão, não do formulário: só passa adiante.
       escolhido,
+      // Para o aviso de "a ideia mudou e não foi expandida" sobreviver a um F5.
+      ideiaDoPrompt,
     };
     const json = jsonEstavel(r);
     if (json === ultimoSalvo.current) return;
@@ -330,7 +333,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
       clearTimeout(t);
       if (pendente.current === salvar) pendente.current = null;
     };
-  }, [config, assistenteNome, ideia, expandindo, disponiveis.carregando, chaveDono, escolhido]);
+  }, [config, assistenteNome, ideia, ideiaDoPrompt, expandindo, disponiveis.carregando, chaveDono, escolhido]);
 
   /**
    * A imagem aprovada desta etapa — a que as etapas seguintes recebem.
@@ -546,6 +549,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
                       ideia={ideia}
                       aoMudarIdeia={setIdeia}
                       deNovo={ideiaDoPrompt !== null && ideiaDoPrompt === ideia.trim()}
+                      pendente={!ideia.trim() || ideiaDoPrompt === ideia.trim() ? null : ideiaDoPrompt === null ? "nova" : "mudou"}
                       podeDesfazer={promptAnterior !== null}
                       aviso={avisoAssistente}
                       erro={erroAssistente}

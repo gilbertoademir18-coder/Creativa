@@ -374,6 +374,10 @@ as cenas (`SetNull`), nunca as apaga.
   onde o Gerador parou: tipo, workflow, valores, assistente (pelo nome) e
   ideia. O Gerador abre por ele (antes do último output) e salva sozinho.
   Rascunho que existe é do usuário: não passe por cima.
+  O rascunho também guarda `ideiaDoPrompt` (a ideia de onde saiu o prompt;
+  null = escrito à mão): com a ideia diferente dela, a caixa da ideia fica
+  âmbar e avisa que falta expandir. Rascunho antigo, sem o campo, supõe que o
+  prompt saiu da ideia salva — para não acender o aviso em tudo de uma vez.
 - **Templates oficiais do ComfyUI** ficam em
   `C:\IA\ComfyUI\python_embeded\Lib\site-packages\comfyui_workflow_templates_json\templates`
   (os `api_*` são serviços pagos). Eles trazem os números certos de cada
