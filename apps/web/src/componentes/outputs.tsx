@@ -298,13 +298,15 @@ function CorpoVisor({
   const escolha = base ? escolhaDe?.(base) : undefined;
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_26rem] gap-6">
-      <div className="flex flex-col gap-2">
-        <div className="relative flex min-h-[50vh] items-center justify-center rounded-lg bg-black">
+    // Altura fixa: a janela não cresce com o painel da direita (que rola por
+    // dentro), e imagens do mesmo tamanho caem sempre no mesmo lugar.
+    <div className="grid h-[78vh] grid-cols-[minmax(0,1fr)_26rem] gap-6">
+      <div className="flex min-h-0 flex-col gap-2">
+        <div className="relative flex min-h-0 flex-1 items-center justify-center rounded-lg bg-zinc-950">
           {base?.tipo === "VIDEO" ? (
-            <video key={base.arquivo} src={urlArquivo(base.arquivo)} controls autoPlay loop className="max-h-[75vh] object-contain" />
+            <video key={base.arquivo} src={urlArquivo(base.arquivo)} controls autoPlay loop className="max-h-full max-w-full object-contain" />
           ) : (
-            mostrado && <img src={urlArquivo(mostrado)} alt="" className="max-h-[75vh] object-contain" />
+            mostrado && <img src={urlArquivo(mostrado)} alt="" className="max-h-full max-w-full object-contain" />
           )}
           {base?.previa && (
             <button
@@ -335,7 +337,7 @@ function CorpoVisor({
       {!o ? (
         <Carregando />
       ) : (
-        <div className="flex max-h-[78vh] min-w-0 flex-col gap-5 overflow-y-auto pr-1">
+        <div className="flex h-full min-h-0 min-w-0 flex-col gap-5 overflow-y-auto pr-1">
           <div className="flex flex-wrap gap-2">
             {aoUsar && (
               <Botao variante="primario" icone={<Wand2 className="size-4" />} onClick={() => aoUsar(o)} title="Leva tipo, workflow, assistente, prompt, seed e o resto para o Gerador">
@@ -375,7 +377,7 @@ function CorpoVisor({
             )}
             {o.largura && <Linha rotulo="Tamanho">{o.largura} × {o.altura}{o.tamanhoBytes !== null && ` · ${formatarBytes(o.tamanhoBytes)}`}</Linha>}
             <Linha rotulo="Gerado em">{formatarData(o.criadoEm)}</Linha>
-            {o.duracaoComfySeg !== null && <Linha rotulo="Levou">{o.duracaoComfySeg}s no ComfyUI</Linha>}
+            {o.duracaoComfySeg !== null && <Linha rotulo="Levou">{o.duracaoComfySeg} s gerando</Linha>}
             {o.assistente && <Linha rotulo="Assistente">{o.assistente}</Linha>}
           </dl>
 
