@@ -1,4 +1,4 @@
-import { Clapperboard, Film, Plus } from "lucide-react";
+import { Clapperboard, Film, Plus, ScrollText } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { cenasApi, videosApi } from "../api.ts";
@@ -7,6 +7,7 @@ import { comNumero, titulo } from "../rotulos.ts";
 import type { Cena, VideoDetalhe } from "../tipos.ts";
 import { BotaoEditarShot } from "./editar-shot.tsx";
 import { ModalPainelCena } from "./painel-cena.tsx";
+import { ModalDocumento } from "./documento-markdown.tsx";
 import { ModalPainelVideo } from "./painel-video.tsx";
 
 /*
@@ -118,6 +119,7 @@ export function BarraCena() {
   const [erro, setErro] = useState<string | null>(null);
   const [painel, setPainel] = useState(false);
   const [painelVideo, setPainelVideo] = useState(false);
+  const [sinopse, setSinopse] = useState(false);
   const [criandoCena, setCriandoCena] = useState(false);
   const [erroCena, setErroCena] = useState<string | null>(null);
 
@@ -128,7 +130,10 @@ export function BarraCena() {
    * leva direto ao shot dele). Trocou de cena ou de vídeo, painel fechado.
    */
   useEffect(() => setPainel(false), [id]);
-  useEffect(() => setPainelVideo(false), [video?.id]);
+  useEffect(() => {
+    setPainelVideo(false);
+    setSinopse(false);
+  }, [video?.id]);
   // A posição da cena no vídeo; fora de vídeo não há irmãs, então vale a ordem.
   const numeroDaCena = video ? video.cenas.findIndex((c) => c.id === id) + 1 : (cena?.ordem ?? 0) + 1;
 
@@ -212,7 +217,32 @@ export function BarraCena() {
             </button>
             {erroCena && <span className="shrink-0 self-center text-sm text-red-400">{erroCena}</span>}
           </nav>
+          {/* Atalho para a sinopse, que também mora no painel do vídeo. Compacto,
+              da altura dos itens da linha: o espaçamento das duas linhas é calibrado. */}
+          <button
+            type="button"
+            onClick={() => setSinopse(true)}
+            title={video.descricao ? "Abrir a sinopse do vídeo" : "Escrever a sinopse do vídeo"}
+            className="flex shrink-0 items-center gap-1.5 rounded-md border border-zinc-700 px-2.5 py-0.5 text-sm text-zinc-300 transition-colors hover:border-violet-500/60 hover:text-white"
+          >
+            <ScrollText className="size-4 text-zinc-500" />
+            Sinopse
+          </button>
         </div>
+      )}
+      {video && (
+        <ModalDocumento
+          titulo={`Sinopse — ${video.nome}`}
+          valor={video.descricao}
+          placeholder="Sinopse, roteiro, o que acontece neste vídeo... Use # para títulos e - para listas."
+          aberto={sinopse}
+          aoFechar={() => setSinopse(false)}
+          aoSalvar={async (texto) => {
+            await videosApi.salvar(video.id, { nome: video.nome, descricao: texto });
+            recarregar();
+            setSinopse(false);
+          }}
+        />
       )}
       <div className={`flex items-center gap-4 px-8 ${video ? "pt-1 pb-2" : "py-2"}`}>
       <button
