@@ -16,13 +16,15 @@
  *     Sem --substituir, não passa por cima do que já existe.
  *
  * Câmera (camera.json: {"pos":[x,y,z], "alvo":[x,y,z], "lente":35, "tamanho":"1344x768"}):
- *   node blockout.mjs previa <shotId> <camera.json> <pasta>
+ *   node blockout.mjs previa <shotId> <camera.json> <pasta> [--marcacao m.json] [--planta p.json]
  *     Monta e renderiza AQUI, sem gravar nada no Creativa: previa.png,
  *     depth.png, relatorio.json e cena.blend na pasta. Avisa quando uma
  *     personagem fica pequena demais no quadro para o depth segurar.
- *   node blockout.mjs previa-asset <assetId> <camera.json> <pasta>
+ *     --marcacao e --planta usam o rascunho em vez do gravado (olhar antes de salvar).
+ *   node blockout.mjs previa-asset <assetId | blockout.json> <camera.json> <pasta>
  *     O mesmo, só com um asset: a planta vazia (cenário) ou o manequim no
  *     centro de uma sala neutra (personagem). Para comparar com a placa ou a capa.
+ *     Com um .json no lugar do id, mostra o rascunho antes de gravar.
  *   node blockout.mjs camera <shotId> <camera.json> [--substituir]
  *     Deixa a câmera no rascunho da etapa de geometria do shot: a pessoa só
  *     clica em Gerar. Sem --substituir, não passa por cima de rascunho.
@@ -202,9 +204,15 @@ if (cmd === "ver") {
   if (!shotId || !arquivoCam || !pasta) sair("Uso: previa <shotId> <camera.json> <pasta>");
   const shot = await api(`/shots/${shotId}`);
   const cena = await api(`/cenas/${shot.cena.id}`);
-  if (!cena.marcacao) sair(`A cena "${cena.nome ?? ""}" não tem marcação. Grave com salvar-cena primeiro.`);
-  const m = cena.marcacao;
-  const cenario = await assetComBlockout(m.cenario);
+  // Rascunhos em arquivo, para acertar olhando antes de gravar.
+  const rascunho = (nome) => {
+    const i = args.indexOf(nome);
+    return i >= 0 && args[i + 1] ? lerJson(args[i + 1]) : null;
+  };
+  const m = rascunho("--marcacao") ?? cena.marcacao;
+  if (!m) sair(`A cena "${cena.nome ?? ""}" não tem marcação. Grave com salvar-cena, ou passe --marcacao <arquivo>.`);
+  const planta = rascunho("--planta");
+  const cenario = planta ? { blockout: planta } : await assetComBlockout(m.cenario);
   const personagens = [];
   for (const p of m.personagens) {
     const a = await assetComBlockout(p.asset);
@@ -213,8 +221,9 @@ if (cmd === "ver") {
   renderizar({ cenario: cenario.blockout, personagens, pecas: m.pecas ?? [] }, lerJson(arquivoCam), pasta);
 } else if (cmd === "previa-asset") {
   const [assetId, arquivoCam, pasta] = args;
-  if (!assetId || !arquivoCam || !pasta) sair("Uso: previa-asset <assetId> <camera.json> <pasta>");
-  const a = await assetComBlockout(assetId);
+  if (!assetId || !arquivoCam || !pasta) sair("Uso: previa-asset <assetId | blockout.json> <camera.json> <pasta>");
+  // Um .json é o rascunho ainda não gravado: dá para acertar a planta olhando, antes do salvar-asset.
+  const a = assetId.endsWith(".json") ? { id: "rascunho", nome: "rascunho", blockout: lerJson(assetId) } : await assetComBlockout(assetId);
   const neutra = { formato: "cenario", sala: { largura: 6, profundidade: 6, altura: 3, teto: false }, aberturas: [], paineis: [], pecas: [], fileiras: [] };
   const cena =
     a.blockout.formato === "cenario"

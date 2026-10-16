@@ -124,6 +124,11 @@ def peca(n, p):
     elif t == "cilindro":
         x, y, z = p["pos"]
         cilindro(p.get("nome") or f"cilindro_{n}", (x, y, z + p["altura"] / 2), p["raio"], p["altura"], material(p.get("material", "movel"), p.get("cor")))
+    elif t == "esfera":
+        # pos e a base (o ponto mais baixo), como nas outras pecas
+        x, y, z = p["pos"]
+        esc = p.get("escala", [1, 1, 1])
+        esfera(p.get("nome") or f"esfera_{n}", (x, y, z + p["raio"] * esc[2]), p["raio"], material(p.get("material", "planta"), p.get("cor")), escala=esc)
     elif t == "carteira":
         carteira(n, p["pos"], p.get("rot", 0))
     elif t == "cadeira":
@@ -338,6 +343,16 @@ for o in cena.objects:
         v = world_to_camera_view(cena, cam, mundo_p)
         if 0 <= v.x <= 1 and 0 <= v.y <= 1 and v.z > 0:
             dists.append((mundo_p - cam.location).dot(frente))
+# O chao fica de fora da conta acima (o externo tem 200 m: o bound_box nao diz
+# nada). Mas em cena aberta e ele o mais perto: sem isto, o chao da borda de
+# baixo estourava em branco. O ponto do chao que a borda de baixo do quadro ve:
+for canto in cam.data.view_frame(scene=cena):
+    if canto.y > 0:
+        continue  # so os dois cantos de baixo
+    raio_dir = (cam.matrix_world.to_3x3() @ canto).normalized()
+    if raio_dir.z < -1e-4:
+        t_chao = -cam.location.z / raio_dir.z
+        dists.append((raio_dir * t_chao).dot(frente))
 perto = max(0.1, min(dists) * 0.9) if dists else 0.5
 LONGE = 120.0  # o que passa disso (o ceu) fica preto
 

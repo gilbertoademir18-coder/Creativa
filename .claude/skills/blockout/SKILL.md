@@ -65,8 +65,13 @@ Mostra ✓/✗ de cada cenário, personagem e cena, e os ids dos shots.
    `origem` da primeira, `passo` [x, y], linhas andam para −y). Medidas reais:
    sala de aula ~8 × 10 × 3,2 m, carteira ~0,6 × 0,45 m com o tampo a 0,73 m.
    Deixe **corredores** de pelo menos 0,8 m — é onde as personagens vão ficar.
-3. Confira com `previa-asset <assetId> camera.json <pasta>` numa câmera parecida
-   com a da placa, e **olhe a prévia ao lado da placa**. Ajuste até bater.
+3. Confira com `previa-asset planta.json camera.json <pasta>` (o rascunho, antes
+   de gravar) numa câmera parecida com a da placa, e **olhe a prévia ao lado da
+   placa**. Ajuste até bater.
+   **Cena aberta** (pátio, rua): sem `sala` — só o chão e as peças. Prédios
+   são caixas; **copa de árvore são várias `esfera`s** sobrepostas e achatadas
+   (`escala` [1,1,0,7]): cilindros empilhados viram um bolo de andares no depth.
+   O céu fica preto (infinito), como num depth de verdade.
 4. `salvar-asset <assetId> planta.json`.
 
 ## 3. O manequim da personagem
@@ -97,11 +102,19 @@ móveis (o manequim tem ~0,5 m de largura), e virado para onde a ação pede.
 
 ## 5. A câmera de cada shot
 
+**Câmera "de cima" pela frente mostra só chão atrás da personagem.** Ponha a
+câmera de lado (3/4), para o fundo ter o que há no cenário (árvore, bancos,
+prédio).
+
 1. Traduza o pedido em `camera.json`: `pos` [x, y, z], `alvo` [x, y, z] (para
    onde aponta) e `lente` (24 mm abre a sala; 35–50 mm aproxima).
-2. **`previa <shotId> camera.json <pasta>`** e olhe a prévia. O relatório diz
+2. **`previa <shotId> camera.json <pasta>`** e olhe a prévia (com
+   `--marcacao m.json` e `--planta p.json`, testa os rascunhos sem gravar). O relatório diz
    quanto do quadro cada personagem ocupa:
    - **≥ 60%** da altura do quadro: é o tamanho que funcionou (plano médio, ~70%).
+   - Isso pesa para o workflow **com geometria** (depth com gente). No caminho
+     "placa primeiro", o depth é o da sala vazia e a personagem entra colada:
+     ~55% basta.
    - **< 45%**: o depth **não segura** a personagem (plano geral, ~30%, falhou
      0 de 9). A sala obedece, ela vai para o centro. Diga isso ao usuário e
      proponha aproximar a câmera — ou usar o workflow de primeiro quadro **sem**

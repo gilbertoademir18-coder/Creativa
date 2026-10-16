@@ -679,6 +679,11 @@ Decisão do usuário (2026-10-15): o 3D é **dado no banco, não arquivo .blend*
   depth + ControlNet a 2,5 = fundo de pixels. O `render.py` põe chão, árvores e
   prédios lá fora (`exterior` da planta) e grava o depth em **disparidade**
   (1/distância), não mais em mist linear.
+- **Cena aberta** (o Pátio da Escola, 2026-10-15): planta sem `sala`, prédios
+  em caixas e a copa da árvore em `esfera`s (peça criada para isso: copa de
+  cilindros empilhados vira bolo de andares). O branco do depth sai do ponto
+  mais perto que a câmera vê, **chão incluído** (a borda de baixo do quadro):
+  sem o chão na conta, a frente do pátio estourava em branco.
 - **O prompt tem de concordar com a câmera.** Depth de costas + prompt pedindo
   rostos = as duas viradas de frente, gente a mais. O relatório da geometria
   (lado, de frente/perfil/costas) fica no output, e o assistente do primeiro

@@ -52,6 +52,19 @@ const Peca = z.discriminatedUnion("tipo", [
     material: Material.default("movel"),
     cor: Cor.optional(),
   }),
+  /**
+   * Bola (achatável pela escala): a copa de uma árvore, um arbusto. Em cena
+   * aberta, copa feita de cilindros empilhados vira "bolo de andares" no depth.
+   */
+  z.object({
+    tipo: z.literal("esfera"),
+    nome: z.string().max(80).optional(),
+    pos: Vec3,
+    raio: Medida,
+    escala: z.tuple([Medida, Medida, Medida]).default([1, 1, 1]),
+    material: Material.default("planta"),
+    cor: Cor.optional(),
+  }),
   /** Carteira escolar: tampo com pés e a cadeira atrás (−y), virada para +y. */
   z.object({ tipo: z.literal("carteira"), nome: z.string().max(80).optional(), pos: Vec2, rot: Numero.default(0) }),
   /** Mesa: tampo na altura dada, com quatro pés. */
