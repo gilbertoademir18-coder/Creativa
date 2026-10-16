@@ -116,35 +116,35 @@ export function BarraAssistente({
         />
       </Campo>
       {!!opcoes?.length && (
-        <div className="flex flex-col gap-1.5">
-          {opcoes.map((g) => (
-            <div key={g.grupo} className="flex flex-wrap items-center gap-1.5">
-              <span className="w-24 shrink-0 text-xs text-zinc-400">{g.grupo}</span>
-              {g.opcoes.map((o) => {
-                const marcada = escolhas[g.grupo] === o.rotulo;
-                return (
-                  <button
-                    key={o.rotulo}
-                    type="button"
-                    disabled={expandindo}
-                    title={o.dica ? `A LLM recebe: ${o.dica}` : undefined}
-                    onClick={() => {
-                      // Uma por grupo; clicar na marcada desmarca.
-                      const novas = { ...escolhas };
-                      if (marcada) delete novas[g.grupo];
-                      else novas[g.grupo] = o.rotulo;
-                      aoMudarEscolhas(novas);
-                    }}
-                    className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors disabled:opacity-60 ${
-                      marcada ? "border-violet-500 bg-violet-600 text-white" : "border-zinc-700 text-zinc-300 hover:border-violet-500/60 hover:text-zinc-100"
-                    }`}
-                  >
-                    {o.rotulo}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+        // Um select por grupo, lado a lado: os chips viravam uma parede quando o grupo tinha muitas opções.
+        <div className="grid grid-cols-3 gap-x-3 gap-y-2">
+          {opcoes.map((g) => {
+            const escolhida = g.opcoes.find((o) => o.rotulo === escolhas[g.grupo]);
+            return (
+              <label key={g.grupo} className="flex min-w-0 flex-col gap-1">
+                <span className="text-xs text-zinc-400">{g.grupo}</span>
+                <Seletor
+                  value={escolhida?.rotulo ?? ""}
+                  disabled={expandindo}
+                  title={escolhida?.dica ? `A LLM recebe: ${escolhida.dica}` : undefined}
+                  onChange={(e) => {
+                    const novas = { ...escolhas };
+                    if (e.target.value) novas[g.grupo] = e.target.value;
+                    else delete novas[g.grupo];
+                    aoMudarEscolhas(novas);
+                  }}
+                  className={escolhida ? "text-zinc-100 ring-1 ring-violet-500/70" : "text-zinc-400"}
+                >
+                  <option value="">—</option>
+                  {g.opcoes.map((o) => (
+                    <option key={o.rotulo} value={o.rotulo}>
+                      {o.rotulo}
+                    </option>
+                  ))}
+                </Seletor>
+              </label>
+            );
+          })}
         </div>
       )}
       {pendente && !expandindo && (

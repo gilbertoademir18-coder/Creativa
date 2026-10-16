@@ -361,7 +361,7 @@ as cenas (`SetNull`), nunca as apaga.
   só lê) mostra as instruções, o pedido e quais seções e fichas entraram.
   Mexeu no que vai à LLM? Mexa em `montarPedido`, e a prévia acompanha.
   **Opções da ideia** (`assistente.opcoes`, 2026-10-15): grupos de escolha
-  (Câmera, Plano, Luz...) que o Gerador mostra como pílulas embaixo da ideia,
+  (Câmera, Plano, Luz...) que o Gerador mostra como selects embaixo da ideia (um por grupo, três por linha — os chips viravam uma parede),
   **uma por grupo**; a dica depois do "=" é o termo que a LLM recebe ("zoom in
   lento = slow push-in"). As escolhas são **anexadas à ideia** num bloco
   "Escolhas (siga-as):" (`ideiaComEscolhas` em `apps/web/src/opcoes-ideia.ts`) —
