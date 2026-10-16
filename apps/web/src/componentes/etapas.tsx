@@ -1,7 +1,9 @@
-import { Check, Dot, GalleryHorizontal } from "lucide-react";
+import { Check, ChevronRight, GalleryHorizontal, Maximize2 } from "lucide-react";
+import { Fragment } from "react";
 import { pipelinesApi } from "../api.ts";
 import { useCarregar } from "../hooks.ts";
-import type { PipelineResolvido } from "../tipos.ts";
+import type { PipelineResolvido, TipoOutput } from "../tipos.ts";
+import { Miniatura } from "./midia.tsx";
 import { Seletor } from "./ui.tsx";
 
 /*
@@ -112,11 +114,18 @@ export function SeletorPipeline({
   );
 }
 
-export type EstadoEtapa = { outputs: number; escolhida: boolean };
+export type EstadoEtapa = {
+  outputs: number;
+  escolhida: boolean;
+  /** A miniatura do escolhido (a prévia, quando houver): o que a etapa entregou. */
+  miniatura?: { tipo: TipoOutput; arquivo: string };
+};
 
 /**
- * A fileira de etapas, no topo do Gerador. O ponto de cada uma diz em que pé
- * está: vazia, com outputs, ou já com a imagem escolhida.
+ * A trilha do pipeline, no topo do Gerador: um cartão por etapa, com a
+ * miniatura do escolhido dela, ligados por setas — dá para ver de relance o
+ * que já está pronto e como ficou. Clicar no cartão abre a etapa; o botão de
+ * ampliar, na miniatura, abre o "Ver pipeline" naquela etapa.
  */
 export function AbasEtapas({
   pipeline,
@@ -129,48 +138,78 @@ export function AbasEtapas({
   atual: string;
   aoTrocar: (chave: string) => void;
   estado: (chave: string) => EstadoEtapa;
-  /** O "Ver pipeline" no fim das abas: os escolhidos de cada etapa, em sequência. Ausente: sem nada escolhido. */
-  aoVerPipeline?: () => void;
+  /** O "Ver pipeline": os escolhidos de cada etapa, em sequência (aberto na etapa dada). Ausente: nada escolhido. */
+  aoVerPipeline?: (chave?: string) => void;
 }) {
   if (!temEtapas(pipeline)) return null;
   return (
-    <div className="flex items-stretch gap-1 border-b border-zinc-800 px-3 pt-1" title={`Pipeline: ${pipeline.nome}`}>
+    <div className="flex items-center gap-1.5 border-b border-zinc-800 px-4 py-3" title={`Pipeline: ${pipeline.nome}`}>
       {pipeline.etapas.map((e, n) => {
-        const { outputs, escolhida } = estado(e.chave);
+        const { outputs, escolhida, miniatura } = estado(e.chave);
         const aqui = e.chave === atual;
         return (
-          <button
-            key={e.chave}
-            type="button"
-            onClick={() => aoTrocar(e.chave)}
-            aria-current={aqui}
-            className={`-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm transition-colors ${
-              aqui ? "border-violet-500 text-zinc-100" : "border-transparent text-zinc-500 hover:text-zinc-300"
-            }`}
-          >
-            <span className="font-mono text-xs text-zinc-600 tabular-nums">{n + 1}</span>
-            {e.nome}
-            {escolhida ? (
-              <span title="Imagem escolhida">
-                <Check className="size-3.5 text-violet-400" />
-              </span>
-            ) : outputs ? (
-              <span className="text-xs text-zinc-600 tabular-nums">{outputs}</span>
-            ) : (
-              <Dot className="size-3.5 text-zinc-700" />
-            )}
-          </button>
+          <Fragment key={e.chave}>
+            {n > 0 && <ChevronRight className="size-4 shrink-0 text-zinc-600" />}
+            <div className="group relative min-w-0 max-w-32 flex-1">
+              <button
+                type="button"
+                onClick={() => aoTrocar(e.chave)}
+                aria-current={aqui}
+                className={`flex w-full flex-col gap-1 rounded-lg border p-1 text-left transition-colors ${
+                  aqui ? "border-violet-500 bg-violet-950/40" : "border-zinc-800 hover:border-zinc-600"
+                }`}
+              >
+                <span className="relative block aspect-video w-full overflow-hidden rounded-md bg-zinc-950">
+                  {miniatura ? (
+                    <Miniatura tipo={miniatura.tipo} arquivo={miniatura.arquivo} ajuste="contain" />
+                  ) : (
+                    <span className="flex h-full items-center justify-center px-1 text-center text-[11px] leading-tight text-zinc-600">
+                      {outputs ? `${outputs} output${outputs > 1 ? "s" : ""}, nenhum escolhido` : "vazia"}
+                    </span>
+                  )}
+                  {escolhida && (
+                    <span className="absolute top-1 left-1 flex size-4 items-center justify-center rounded-full bg-violet-600" title="Escolhida">
+                      <Check className="size-3 text-white" />
+                    </span>
+                  )}
+                </span>
+                <span className={`flex items-center gap-1 px-0.5 text-xs ${aqui ? "text-zinc-100" : "text-zinc-400"}`}>
+                  <span className="font-mono text-[11px] text-zinc-600 tabular-nums">{n + 1}</span>
+                  <span className="truncate">{e.nome}</span>
+                  {outputs > 0 && (
+                    <span className="ml-auto shrink-0 text-[11px] text-zinc-600 tabular-nums" title={`${outputs} output${outputs > 1 ? "s" : ""} nesta etapa`}>
+                      {outputs}
+                    </span>
+                  )}
+                </span>
+              </button>
+              {miniatura && aoVerPipeline && (
+                <button
+                  type="button"
+                  onClick={() => aoVerPipeline(e.chave)}
+                  title="Ver no pipeline (← → passam pelas etapas)"
+                  className="absolute top-2 right-2 flex size-6 items-center justify-center rounded-full bg-black/60 text-zinc-200 opacity-0 backdrop-blur transition-opacity group-hover:opacity-100 hover:bg-black/85"
+                >
+                  <Maximize2 className="size-3.5" />
+                </button>
+              )}
+            </div>
+          </Fragment>
         );
       })}
       {aoVerPipeline && (
         <button
           type="button"
-          onClick={aoVerPipeline}
+          onClick={() => aoVerPipeline()}
           title="Os escolhidos de cada etapa, um depois do outro (← →)"
-          className="-mb-px ml-auto flex items-center gap-1.5 border-b-2 border-transparent px-3 py-2 text-sm text-violet-300 transition-colors hover:text-violet-200"
+          className="ml-auto flex shrink-0 flex-col items-center justify-center gap-1 self-stretch rounded-lg border border-zinc-800 px-2.5 text-[11px] leading-tight text-violet-300 transition-colors hover:border-violet-500/60 hover:bg-violet-950/40 hover:text-violet-200"
         >
-          <GalleryHorizontal className="size-4" />
-          Ver pipeline
+          <GalleryHorizontal className="size-5" />
+          <span className="text-center">
+            Ver
+            <br />
+            pipeline
+          </span>
         </button>
       )}
     </div>

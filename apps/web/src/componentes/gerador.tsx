@@ -499,8 +499,16 @@ export function PainelGerador({ dono }: { dono: Dono }) {
             estado={(c) => ({
               outputs: todos.filter((o) => etapaDisto(o) === c).length,
               escolhida: !!rascunhos?.[c]?.escolhido,
+              miniatura: (() => {
+                const o = todos.find((x) => x.id === rascunhos?.[c]?.escolhido);
+                return o ? { tipo: o.tipo, arquivo: o.previa ?? o.arquivo } : undefined;
+              })(),
             })}
-            aoVerPipeline={doPipeline.length ? () => setVendoPipeline(doPipeline[0]!.o.id) : undefined}
+            aoVerPipeline={
+              doPipeline.length
+                ? (chave) => setVendoPipeline((chave && rascunhos?.[chave]?.escolhido) || doPipeline[0]!.o.id)
+                : undefined
+            }
           />
         )}
         <div className="flex max-h-[calc(100vh-12rem)] flex-col gap-5 overflow-y-auto p-5">
