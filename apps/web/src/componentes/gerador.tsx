@@ -3,11 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { assistentesApi, geradorApi, outputsApi, type Dono } from "../api.ts";
 import { useCarregar } from "../hooks.ts";
-import type { Execucao, OutputDetalhe, PipelineResolvido, RascunhoGerador, TipoCatalogo } from "../tipos.ts";
+import type { Execucao, Output, OutputDetalhe, PipelineResolvido, RascunhoGerador, TipoCatalogo } from "../tipos.ts";
 import { BarraAssistente, limparTextoLlm, SeletorAssistente } from "./assistente-prompt.tsx";
 import { CampoDinamico, SeletorQuantidade, valoresPara } from "./campos-workflow.tsx";
 import { AbasEtapas, alimentaOutra, CHAVE_UNICA, entradasDe, etapaDe, PIPELINE_UNICO, temEtapas } from "./etapas.tsx";
-import { CartaoOutput, GruposDeOutputs, VisorOutputs } from "./outputs.tsx";
+import { CartaoOutput, GruposDeOutputs, VisorOutputs, type Escolha } from "./outputs.tsx";
 import { Aviso, Botao, Campo, Carregando, Seletor, Vazio } from "./ui.tsx";
 
 /*
@@ -102,6 +102,15 @@ export function PainelGerador({ dono }: { dono: Dono }) {
   /** O output aprovado desta etapa, se alguma adiante come a imagem dela. */
   const escolhido = rascunhos?.[etapaAtual]?.escolhido ?? null;
   const podeEscolher = !!pipeline && alimentaOutra(pipeline, etapaAtual);
+  // O "Escolher" de um output, no cartão e no visor: é a imagem que a etapa seguinte recebe.
+  const escolhaDe = (o: Output): Escolha | undefined =>
+    podeEscolher
+      ? {
+          escolhida: escolhido === o.id,
+          rotulo: "Escolher — é esta que a próxima etapa recebe",
+          aoEscolher: () => escolher(escolhido === o.id ? null : o.id),
+        }
+      : undefined;
 
   /*
    * As imagens que vêm de outra etapa (o `entradas` do pipeline): o campo
@@ -599,15 +608,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
                   await outputsApi.favoritar(o.id, !o.favorito);
                   outputs.recarregar();
                 }}
-                escolha={
-                  podeEscolher
-                    ? {
-                        escolhida: escolhido === o.id,
-                        rotulo: "Escolher — é esta que a próxima etapa recebe",
-                        aoEscolher: () => escolher(escolhido === o.id ? null : o.id),
-                      }
-                    : undefined
-                }
+                escolha={escolhaDe(o)}
               />
             )}
           />
@@ -629,6 +630,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
         aoMudar={setAbertoId}
         aoFechar={() => setAbertoId(null)}
         aoAlterar={outputs.recarregar}
+        escolha={escolhaDe}
         aoUsar={(o) => {
           setAbertoId(null);
           aplicar(o);

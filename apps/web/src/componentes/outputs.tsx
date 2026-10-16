@@ -23,6 +23,9 @@ export const GRADE_OUTPUTS = "grid grid-cols-[repeat(auto-fill,minmax(300px,1fr)
  * Gerador, as gerações ainda na fila). Sem favorito, é uma grade só, sem
  * títulos. A ordem do visor (← →) segue a mesma: favoritos primeiro.
  */
+/** "Escolher" de um output numa etapa: é a imagem que a etapa seguinte recebe. */
+export type Escolha = { escolhida: boolean; rotulo: string; aoEscolher: () => void };
+
 export function GruposDeOutputs({
   outputs,
   cartao,
@@ -80,7 +83,7 @@ export function CartaoOutput({
    * etapa seguinte recebe. Diferente do favorito — favoritas são quantas se
    * quiser, escolhida é uma e tem consequência.
    */
-  escolha?: { escolhida: boolean; rotulo: string; aoEscolher: () => void };
+  escolha?: Escolha;
 }) {
   return (
     <div
@@ -143,6 +146,8 @@ function BotaoFavorito({ favorito, aoMudar, className = "" }: { favorito: boolea
  *
  * `aoUsar`: devolve as configurações ao Gerador (ou leva até ele).
  * `aoAlterar`: favoritou ou excluiu — quem abriu recarrega a lista.
+ * `escolha`: num Gerador com etapas, o mesmo "Escolher" do cartão — a imagem
+ * que a etapa seguinte recebe. Fora dele (página Outputs), não aparece.
  */
 export function VisorOutputs({
   outputs,
@@ -152,6 +157,7 @@ export function VisorOutputs({
   aoUsar,
   aoAlterar,
   mostrarDono,
+  escolha,
 }: {
   outputs: Output[];
   abertoId: string | null;
@@ -160,6 +166,7 @@ export function VisorOutputs({
   aoUsar: (o: OutputDetalhe) => void;
   aoAlterar: () => void;
   mostrarDono?: boolean;
+  escolha?: (o: Output) => Escolha | undefined;
 }) {
   return (
     <Modal aberto={!!abertoId} titulo="Output" largura="enorme" aoFechar={aoFechar}>
@@ -172,6 +179,7 @@ export function VisorOutputs({
           aoUsar={aoUsar}
           aoAlterar={aoAlterar}
           mostrarDono={mostrarDono}
+          escolha={escolha}
         />
       )}
     </Modal>
@@ -186,6 +194,7 @@ function CorpoVisor({
   aoUsar,
   aoAlterar,
   mostrarDono,
+  escolha: escolhaDe,
 }: {
   outputs: Output[];
   abertoId: string;
@@ -194,6 +203,7 @@ function CorpoVisor({
   aoUsar: (o: OutputDetalhe) => void;
   aoAlterar: () => void;
   mostrarDono?: boolean;
+  escolha?: (o: Output) => Escolha | undefined;
 }) {
   const { dados: o, erro, setDados } = useCarregar(() => outputsApi.ler(abertoId), [abertoId]);
   const [excluindo, setExcluindo] = useState(false);
@@ -232,6 +242,7 @@ function CorpoVisor({
   // A imagem da lista já aparece enquanto os metadados chegam.
   const base = o ?? outputs[i];
   const mostrado = base ? (base.previa && !verArquivo ? base.previa : base.arquivo) : null;
+  const escolha = base ? escolhaDe?.(base) : undefined;
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_26rem] gap-6">
@@ -279,6 +290,16 @@ function CorpoVisor({
             <Botao icone={<Star className={`size-4 ${o.favorito ? "fill-amber-400 text-amber-400" : ""}`} />} onClick={favoritar}>
               {o.favorito ? "Favorito" : "Favoritar"}
             </Botao>
+            {escolha && (
+              <Botao
+                variante={escolha.escolhida ? "primario" : undefined}
+                icone={<Check className="size-4" />}
+                onClick={escolha.aoEscolher}
+                title={escolha.escolhida ? `Desmarcar — ${escolha.rotulo} fica sem imagem` : escolha.rotulo}
+              >
+                {escolha.escolhida ? "Escolhida" : "Escolher"}
+              </Botao>
+            )}
           </div>
 
           <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
