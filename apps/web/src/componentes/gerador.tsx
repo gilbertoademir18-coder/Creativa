@@ -571,6 +571,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
                   <CampoDinamico
                     campo={c}
                     dono={dono}
+                    irmaos={wfAtual?.campos.filter((x) => x.tipo === "imagem").map((x) => ({ campo: x, valor: config.valores[x.chave] }))}
                     valor={config.valores[c.chave]}
                     aoMudar={(v) => setConfig({ ...config, valores: { ...config.valores, [c.chave]: v } })}
                   />

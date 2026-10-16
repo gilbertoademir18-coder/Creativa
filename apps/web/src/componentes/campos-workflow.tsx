@@ -45,14 +45,17 @@ export function CampoDinamico({
   valor,
   aoMudar,
   dono = null,
+  irmaos,
 }: {
   campo: CampoWorkflow;
   valor: unknown;
   aoMudar: (v: unknown) => void;
   dono?: Dono | null;
+  /** Os campos de imagem do formulário, com os valores: o "Ver" de um campo passa para os outros. */
+  irmaos?: { campo: CampoWorkflow; valor: unknown }[];
 }) {
   if (c.tipo === "texto") return <CampoTexto campo={c} valor={String(valor ?? "")} aoMudar={aoMudar} />;
-  if (c.tipo === "imagem") return <CampoImagem campo={c} valor={valor} aoMudar={aoMudar} dono={dono} />;
+  if (c.tipo === "imagem") return <CampoImagem campo={c} valor={valor} aoMudar={aoMudar} dono={dono} irmaos={irmaos} />;
   if (c.tipo === "opcoes" || c.tipo === "tamanho") {
     // Pela posição: a opção pode valer um número, e o <select> só fala texto.
     const opcoes: { valor: string | number; rotulo: string }[] = c.opcoes;

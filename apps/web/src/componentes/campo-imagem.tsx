@@ -1,10 +1,11 @@
 import { ExternalLink, Eye, ImagePlus, Star, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { geradorApi, urlArquivo, type Dono } from "../api.ts";
 import { useCarregar } from "../hooks.ts";
 import type { CampoWorkflow, ImagemDisponivel, RefImagem } from "../tipos.ts";
 import { Miniatura } from "./midia.tsx";
 import { Modal } from "./modal.tsx";
+import { BotaoSeta } from "./outputs.tsx";
 import { Aviso, Botao, Campo, Carregando, Pilulas, Vazio } from "./ui.tsx";
 
 /*
@@ -22,18 +23,45 @@ export function CampoImagem({
   valor,
   aoMudar,
   dono,
+  irmaos,
 }: {
   campo: Extract<CampoWorkflow, { tipo: "imagem" }>;
   valor: unknown;
   aoMudar: (v: RefImagem | null) => void;
   /** De quem é o Gerador. null: o "Testar" do cadastro, que vê as imagens de todos os projetos. */
   dono: Dono | null;
+  /** Os campos de imagem do formulário (este incluso): o "Ver" passa de um para outro. */
+  irmaos?: { campo: CampoWorkflow; valor: unknown }[];
 }) {
   const imagens = useCarregar(() => geradorApi.imagens(dono), [dono?.assetId, dono?.shotId]);
   const [escolhendo, setEscolhendo] = useState(false);
-  const [vendo, setVendo] = useState(false);
+  /** A chave do campo que o "Ver" está mostrando (null: fechado). */
+  const [vendo, setVendo] = useState<string | null>(null);
   const ref = valor && typeof valor === "object" ? (valor as RefImagem) : null;
   const atual = ref ? imagens.dados?.find((i) => mesma(ref, i)) : undefined;
+
+  // Os campos com imagem, na ordem do formulário: é por eles que as setas passam.
+  // A lista de imagens é a mesma para todos os campos, então este resolve os vizinhos.
+  const comImagem = (irmaos ?? [{ campo: c, valor }]).flatMap(({ campo, valor: v }) => {
+    const r = v && typeof v === "object" ? (v as RefImagem) : null;
+    const img = r ? imagens.dados?.find((i) => mesma(r, i)) : undefined;
+    return img ? [{ chave: campo.chave, rotulo: campo.rotulo, img }] : [];
+  });
+  const i = comImagem.findIndex((x) => x.chave === vendo);
+  const mostrado = i >= 0 ? comImagem[i] : undefined;
+  const ir = (delta: number) => {
+    const proximo = comImagem[i + delta];
+    if (proximo) setVendo(proximo.chave);
+  };
+  useEffect(() => {
+    if (!mostrado) return;
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") ir(-1);
+      if (e.key === "ArrowRight") ir(1);
+    };
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  });
 
   return (
     <Campo
@@ -59,7 +87,7 @@ export function CampoImagem({
               {atual.origem === "referencia" ? "Referência" : "Output"} · {atual.dono.nome}
             </span>
             <div className="flex gap-2">
-              <Botao variante="fantasma" icone={<Eye className="size-4" />} onClick={() => setVendo(true)}>
+              <Botao variante="fantasma" icone={<Eye className="size-4" />} onClick={() => setVendo(c.chave)}>
                 Ver
               </Botao>
               <Botao variante="fantasma" onClick={() => setEscolhendo(true)}>
@@ -80,28 +108,41 @@ export function CampoImagem({
           <ImagePlus className="size-5" /> Escolher imagem
         </button>
       )}
-      {atual && (
+      {mostrado && (
         <Modal
-          aberto={vendo}
-          titulo={c.rotulo}
+          aberto
+          titulo={mostrado.rotulo}
           largura="enorme"
-          aoFechar={() => setVendo(false)}
+          aoFechar={() => setVendo(null)}
           rodape={
             <div className="flex items-center justify-between gap-3">
               <span className="min-w-0 truncate text-sm text-zinc-400">
-                <span className="text-zinc-200">{atual.nome}</span> · {atual.origem === "referencia" ? "Referência" : "Output"} de {atual.dono.nome}
+                {comImagem.length > 1 && (
+                  <span className="mr-3 tabular-nums">
+                    <b className="text-zinc-300">{i + 1}</b> de {comImagem.length} · ← →
+                  </span>
+                )}
+                <span className="text-zinc-200">{mostrado.img.nome}</span> · {mostrado.img.origem === "referencia" ? "Referência" : "Output"} de{" "}
+                {mostrado.img.dono.nome}
               </span>
               <div className="flex shrink-0 items-center gap-3">
-                <a href={urlArquivo(atual.arquivo)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-violet-300 hover:underline">
+                <a
+                  href={urlArquivo(mostrado.img.arquivo)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-violet-300 hover:underline"
+                >
                   <ExternalLink className="size-4" /> Tamanho real numa aba nova
                 </a>
-                <Botao onClick={() => setVendo(false)}>Fechar</Botao>
+                <Botao onClick={() => setVendo(null)}>Fechar</Botao>
               </div>
             </div>
           }
         >
-          <div className="flex min-h-[50vh] items-center justify-center rounded-lg bg-zinc-950">
-            <img src={urlArquivo(atual.arquivo)} alt={atual.nome} className="max-h-[75vh] object-contain" />
+          <div className="relative flex min-h-[50vh] items-center justify-center rounded-lg bg-zinc-950">
+            <img key={mostrado.chave} src={urlArquivo(mostrado.img.arquivo)} alt={mostrado.img.nome} className="max-h-[75vh] object-contain" />
+            {i > 0 && <BotaoSeta lado="esquerda" rotulo="Imagem do campo anterior" onClick={() => ir(-1)} />}
+            {i < comImagem.length - 1 && <BotaoSeta lado="direita" rotulo="Imagem do próximo campo" onClick={() => ir(1)} />}
           </div>
         </Modal>
       )}

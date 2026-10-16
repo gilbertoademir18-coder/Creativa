@@ -511,13 +511,13 @@ export function BotaoCopiar({ texto, className = "" }: { texto: string; classNam
   );
 }
 
-function BotaoSeta({ lado, onClick }: { lado: "esquerda" | "direita"; onClick: () => void }) {
+export function BotaoSeta({ lado, onClick, rotulo }: { lado: "esquerda" | "direita"; onClick: () => void; rotulo?: string }) {
   const Icone = lado === "esquerda" ? ChevronLeft : ChevronRight;
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={lado === "esquerda" ? "Output anterior" : "Próximo output"}
+      aria-label={rotulo ?? (lado === "esquerda" ? "Output anterior" : "Próximo output")}
       className={`absolute top-1/2 flex size-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-zinc-100 backdrop-blur hover:bg-black/85 ${lado === "esquerda" ? "left-3" : "right-3"}`}
     >
       <Icone className="size-7" />
