@@ -126,13 +126,27 @@ export async function rotasGerador(app: FastifyInstance) {
   app.put("/rascunho", { bodyLimit: 2 * 1024 * 1024 }, async (req) => {
     const { assetId, shotId, etapa, rascunho } = validar(PedidoRascunho, req.body);
     const pipeline = await pipelineDe({ assetId, shotId });
-    const etapas = encaixarNoPipeline(await rascunhoCru(assetId, shotId), pipeline);
-    if (rascunho) etapas[etapa] = rascunho;
-    else delete etapas[etapa];
-    const vazio = Object.keys(etapas).length === 0;
-    const data = { rascunhoGerador: vazio ? Prisma.DbNull : ({ etapas } as Prisma.InputJsonObject) };
-    if (assetId) await prisma.asset.update({ where: { id: assetId }, data, select: { id: true } });
-    else await prisma.shot.update({ where: { id: shotId! }, data, select: { id: true } });
+    /*
+     * Ler, trocar uma etapa e gravar tudo de volta — com a linha travada
+     * (FOR UPDATE) até o fim. Escolher numa etapa grava duas de uma vez (a
+     * escolha e o campo limpo na etapa que a come); sem a trava, as duas liam
+     * o rascunho antes de qualquer uma gravar, e a última devolvia a escolha
+     * antiga: o "Escolher" não durava um F5 (2026-10-16).
+     */
+    const etapas = await prisma.$transaction(async (tx) => {
+      const linhas = assetId
+        ? await tx.$queryRaw<{ r: unknown }[]>`SELECT rascunho_gerador AS r FROM asset WHERE id = ${assetId}::uuid FOR UPDATE`
+        : await tx.$queryRaw<{ r: unknown }[]>`SELECT rascunho_gerador AS r FROM shot WHERE id = ${shotId}::uuid FOR UPDATE`;
+      if (!linhas.length) throw new ErroHttp(404, assetId ? "Asset não encontrado." : "Shot não encontrado.");
+      const etapas = encaixarNoPipeline(linhas[0]!.r ?? null, pipeline);
+      if (rascunho) etapas[etapa] = rascunho;
+      else delete etapas[etapa];
+      const vazio = Object.keys(etapas).length === 0;
+      const data = { rascunhoGerador: vazio ? Prisma.DbNull : ({ etapas } as Prisma.InputJsonObject) };
+      if (assetId) await tx.asset.update({ where: { id: assetId }, data, select: { id: true } });
+      else await tx.shot.update({ where: { id: shotId! }, data, select: { id: true } });
+      return etapas;
+    });
     return { rascunhos: etapas };
   });
 

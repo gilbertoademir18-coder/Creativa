@@ -354,6 +354,11 @@ as cenas (`SetNull`), nunca as apaga.
     elas pegarem a nova; fora isso, o campo só é preenchido quando está vazio
     — trocar a imagem à mão continua valendo. O aviso de "escolha a imagem"
     só aparece com o campo vazio: com ele preenchido não falta nada.
+  - **O rascunho se grava com a linha travada** (`PUT /api/gerador/rascunho`,
+    `SELECT ... FOR UPDATE` numa transação): ele lê o JSON inteiro, troca uma
+    etapa e grava tudo de volta, e escolher grava duas etapas de uma vez. Sem
+    a trava, a segunda gravação devolvia a escolha antiga (2026-10-16). Quem
+    escrever outra rota que mexa no `rascunho_gerador` faça igual.
   - **O rascunho tem dois formatos.** O novo é `{ etapas: { <chave>: {...} } }`;
     o de antes dos pipelines tem `tipo` na raiz e `lerRascunhos` o trata como
     o da etapa única, que `encaixarNoPipeline` passa para a primeira etapa do
