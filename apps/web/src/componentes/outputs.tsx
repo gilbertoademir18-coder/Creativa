@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, ChevronRight, Copy, ExternalLink, Star, Trash, Wand2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Copy, ExternalLink, LoaderCircle, Star, Trash, Wand2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { outputsApi, urlArquivo } from "../api.ts";
 import { useCarregar } from "../hooks.ts";
@@ -72,12 +72,15 @@ export function CartaoOutput({
   mostrarDono,
   aoAbrir,
   aoFavoritar,
+  aoExcluir,
   escolha,
 }: {
   o: Output;
   mostrarDono?: boolean;
   aoAbrir: () => void;
   aoFavoritar: () => void;
+  /** A lixeira do cartão: dois cliques, sem janela (o arquivo vai junto). */
+  aoExcluir?: () => Promise<void>;
   /**
    * Só no Gerador de uma etapa que alimenta outra: marcar qual imagem a
    * etapa seguinte recebe. Diferente do favorito — favoritas são quantas se
@@ -100,6 +103,7 @@ export function CartaoOutput({
           aoMudar={aoFavoritar}
           className={`absolute top-2 right-2 ${o.favorito ? "" : "opacity-0 group-hover:opacity-100"}`}
         />
+        {aoExcluir && <BotaoExcluirRapido aoExcluir={aoExcluir} className="absolute right-2 bottom-2" />}
         {escolha && (
           <button
             type="button"
@@ -124,6 +128,50 @@ export function CartaoOutput({
         </span>
       </button>
     </div>
+  );
+}
+
+/**
+ * Excluir em dois cliques, no próprio cartão: o primeiro arma (o botão vira
+ * "Excluir?" em vermelho), o segundo apaga. Sem o segundo em 3 s, desarma —
+ * rápido para limpar a galeria, sem apagar nada com um clique perdido.
+ */
+function BotaoExcluirRapido({ aoExcluir, className = "" }: { aoExcluir: () => Promise<void>; className?: string }) {
+  const [armado, setArmado] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  useEffect(() => {
+    if (!armado) return;
+    const t = setTimeout(() => setArmado(false), 3000);
+    return () => clearTimeout(t);
+  }, [armado]);
+  async function clicar() {
+    if (!armado) return setArmado(true);
+    setExcluindo(true);
+    try {
+      await aoExcluir();
+    } catch (e) {
+      setErro((e as Error).message);
+      setExcluindo(false);
+      setArmado(false);
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={clicar}
+      disabled={excluindo}
+      title={erro ?? (armado ? "Clique de novo para excluir — o arquivo vai junto" : "Excluir")}
+      className={`flex h-8 items-center gap-1.5 rounded-full px-2 text-xs font-medium backdrop-blur transition-opacity ${
+        armado || erro
+          ? "bg-red-600 px-2.5 text-white hover:bg-red-500"
+          : "bg-black/60 text-zinc-200 opacity-0 group-hover:opacity-100 hover:bg-black/85 hover:text-red-300"
+      }`}
+    >
+      {excluindo ? <LoaderCircle className="size-4 animate-spin" /> : <Trash className="size-4" />}
+      {armado && !excluindo && "Excluir?"}
+      {erro && !armado && "Erro"}
+    </button>
   );
 }
 

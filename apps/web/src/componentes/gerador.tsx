@@ -613,6 +613,12 @@ export function PainelGerador({ dono }: { dono: Dono }) {
                   outputs.recarregar();
                 }}
                 escolha={escolhaDe(o)}
+                aoExcluir={async () => {
+                  await outputsApi.apagar(o.id);
+                  // Era a escolhida desta etapa: a seguinte não pode ficar apontando para o nada.
+                  if (escolhido === o.id) await escolher(null);
+                  outputs.recarregar();
+                }}
               />
             )}
           />

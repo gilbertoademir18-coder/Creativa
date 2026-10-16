@@ -90,6 +90,10 @@ export function PaginaOutputs() {
                   await outputsApi.favoritar(o.id, !o.favorito);
                   recarregar();
                 }}
+                aoExcluir={async () => {
+                  await outputsApi.apagar(o.id);
+                  recarregar();
+                }}
               />
             )}
           />
