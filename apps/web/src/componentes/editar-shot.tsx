@@ -19,13 +19,17 @@ export function BotaoEditarShot({
   cena,
   shotId,
   aoMudar,
+  aberto,
+  setAberto,
 }: {
   cena: Cena | null;
   /** O shot aceso na barra (vem da URL). */
   shotId: string | undefined;
   aoMudar: () => void;
+  /** Quem guarda o aberto é a barra: clicar de novo no shot aceso também abre. */
+  aberto: boolean;
+  setAberto: (aberto: boolean) => void;
 }) {
-  const [aberto, setAberto] = useState(false);
   // Pelo mesmo motivo da barra: o botão nunca desmonta, então trocar de shot
   // tem de fechar o modal — senão ele ressurge sozinho ao voltar à página.
   useEffect(() => setAberto(false), [shotId]);

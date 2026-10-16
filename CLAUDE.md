@@ -179,6 +179,9 @@ as cenas (`SetNull`), nunca as apaga.
   nome**, na barra — o botão ao lado do nome que já abria o mesmo painel era
   repetição. O nome ganha sublinhado pontilhado no hover para se anunciar
   clicável.
+  **Clicar de novo na cena ou no shot aceso** (nas abas da barra) também
+  edita: a cena abre o painel dela, o shot abre o "Editar shot". O aceso já
+  está aberto, então o clique não teria outro sentido.
 - **A cena é uma barra, não uma página.** Em todo shot, embaixo da barra do
   projeto, a `BarraCena` (`componentes/barra-cena.tsx`) mostra o nome da cena e
   os shots dela. É **neutra** de propósito: a violeta é o projeto, a cinza é a

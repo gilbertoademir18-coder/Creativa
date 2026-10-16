@@ -118,6 +118,7 @@ export function BarraCena() {
   const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [painel, setPainel] = useState(false);
+  const [editarShot, setEditarShot] = useState(false);
   const [painelVideo, setPainelVideo] = useState(false);
   const [sinopse, setSinopse] = useState(false);
   const [criandoCena, setCriandoCena] = useState(false);
@@ -197,6 +198,13 @@ export function BarraCena() {
               <Link
                 key={c.id}
                 to={caminhoDaCena(c)}
+                // A cena acesa já está aberta: clicar de novo edita (o painel dela).
+                onClick={(e) => {
+                  if (c.id !== id) return;
+                  e.preventDefault();
+                  setPainel(true);
+                }}
+                title={c.id === id ? "Editar esta cena" : undefined}
                 className={`shrink-0 rounded-md px-2.5 py-0.5 text-sm transition-colors ${
                   c.id === id ? "bg-zinc-700/60 font-medium text-zinc-100" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
                 }`}
@@ -261,6 +269,13 @@ export function BarraCena() {
           <Link
             key={s.id}
             to={`/shots/${s.id}`}
+            // O shot aceso já está aberto: clicar de novo edita.
+            onClick={(e) => {
+              if (s.id !== shotAtivo) return;
+              e.preventDefault();
+              setEditarShot(true);
+            }}
+            title={s.id === shotAtivo ? "Editar este shot" : undefined}
             className={`shrink-0 rounded-md px-2.5 py-1 text-sm transition-colors ${
               s.id === shotAtivo ? "bg-violet-600/20 font-medium text-violet-200" : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
             }`}
@@ -280,7 +295,7 @@ export function BarraCena() {
         </button>
         {erro && <span className="shrink-0 self-center text-sm text-red-400">{erro}</span>}
       </nav>
-      <BotaoEditarShot cena={cena} shotId={shotAtivo} aoMudar={recarregar} />
+      <BotaoEditarShot cena={cena} shotId={shotAtivo} aoMudar={recarregar} aberto={editarShot} setAberto={setEditarShot} />
       </div>
       {/* Os painéis não têm botão: quem abre é o nome, na linha de cima. */}
       <ModalPainelVideo video={video} aberto={painelVideo} aoFechar={() => setPainelVideo(false)} aoMudar={recarregar} />
