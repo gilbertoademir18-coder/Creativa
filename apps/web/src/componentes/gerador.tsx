@@ -6,7 +6,7 @@ import { useCarregar } from "../hooks.ts";
 import type { Execucao, Output, OutputDetalhe, PipelineResolvido, RascunhoGerador, TipoCatalogo } from "../tipos.ts";
 import { BarraAssistente, limparTextoLlm, SeletorAssistente } from "./assistente-prompt.tsx";
 import { CampoDinamico, SeletorQuantidade, valoresPara } from "./campos-workflow.tsx";
-import { AbasEtapas, alimentaOutra, CHAVE_UNICA, entradasDe, etapaDe, PIPELINE_UNICO, temEtapas } from "./etapas.tsx";
+import { AbasEtapas, alimentaOutra, CHAVE_UNICA, entradasDe, etapaDaVez, etapaDe, PIPELINE_UNICO, temEtapas } from "./etapas.tsx";
 import { CartaoOutput, GruposDeOutputs, VisorOutputs, type Escolha } from "./outputs.tsx";
 import { Aviso, Botao, Campo, Carregando, Seletor, Vazio } from "./ui.tsx";
 
@@ -77,7 +77,8 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     if (!r) return;
     setPipeline(r.pipeline);
     setRascunhos(r.rascunhos);
-    setEtapaAtual((a) => (r.pipeline.etapas.some((e) => e.chave === a) ? a : r.pipeline.etapas[0]!.chave));
+    // Ao entrar no shot (ou no F5), abre a etapa em que ele está; depois, a aba é de quem clica.
+    setEtapaAtual((a) => (r.pipeline.etapas.some((e) => e.chave === a) ? a : etapaDaVez(r.pipeline, r.rascunhos)));
   }, [salvo.dados, salvo.erro]);
 
   const [config, setConfig] = useState<Config | null>(null);
