@@ -1,4 +1,4 @@
-import { ImagePlus, Star, X } from "lucide-react";
+import { ExternalLink, Eye, ImagePlus, Star, X } from "lucide-react";
 import { useState } from "react";
 import { geradorApi, urlArquivo, type Dono } from "../api.ts";
 import { useCarregar } from "../hooks.ts";
@@ -31,6 +31,7 @@ export function CampoImagem({
 }) {
   const imagens = useCarregar(() => geradorApi.imagens(dono), [dono?.assetId, dono?.shotId]);
   const [escolhendo, setEscolhendo] = useState(false);
+  const [vendo, setVendo] = useState(false);
   const ref = valor && typeof valor === "object" ? (valor as RefImagem) : null;
   const atual = ref ? imagens.dados?.find((i) => mesma(ref, i)) : undefined;
 
@@ -58,6 +59,9 @@ export function CampoImagem({
               {atual.origem === "referencia" ? "Referência" : "Output"} · {atual.dono.nome}
             </span>
             <div className="flex gap-2">
+              <Botao variante="fantasma" icone={<Eye className="size-4" />} onClick={() => setVendo(true)}>
+                Ver
+              </Botao>
               <Botao variante="fantasma" onClick={() => setEscolhendo(true)}>
                 Trocar
               </Botao>
@@ -75,6 +79,31 @@ export function CampoImagem({
         >
           <ImagePlus className="size-5" /> Escolher imagem
         </button>
+      )}
+      {atual && (
+        <Modal
+          aberto={vendo}
+          titulo={c.rotulo}
+          largura="enorme"
+          aoFechar={() => setVendo(false)}
+          rodape={
+            <div className="flex items-center justify-between gap-3">
+              <span className="min-w-0 truncate text-sm text-zinc-400">
+                <span className="text-zinc-200">{atual.nome}</span> · {atual.origem === "referencia" ? "Referência" : "Output"} de {atual.dono.nome}
+              </span>
+              <div className="flex shrink-0 items-center gap-3">
+                <a href={urlArquivo(atual.arquivo)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-violet-300 hover:underline">
+                  <ExternalLink className="size-4" /> Tamanho real numa aba nova
+                </a>
+                <Botao onClick={() => setVendo(false)}>Fechar</Botao>
+              </div>
+            </div>
+          }
+        >
+          <div className="flex min-h-[50vh] items-center justify-center rounded-lg bg-zinc-950">
+            <img src={urlArquivo(atual.arquivo)} alt={atual.nome} className="max-h-[75vh] object-contain" />
+          </div>
+        </Modal>
       )}
       <EscolherImagem
         titulo={`Escolher imagem — ${c.rotulo}`}
