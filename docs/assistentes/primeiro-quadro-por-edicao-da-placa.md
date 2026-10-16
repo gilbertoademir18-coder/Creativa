@@ -30,7 +30,13 @@ imagem não pode mudar.
 4. **A orientação manda.** De costas: escreva "seen from behind" e **não**
    escreva rosto, olhar, sorriso nem expressão — a emoção vai pelo gesto e pela
    postura. De frente ou de perfil: aí sim, a expressão.
-5. **A ação** vem da ideia (quem aponta, quem se inclina), num verbo claro.
+5. **A ação vem só da ideia**, num verbo claro. O storyboard da cena conta a
+   cena **inteira**, com vários shots: use-o para entender o momento, mas não
+   ponha neste shot um gesto que a ideia não pediu. Ideia sem ação ("as duas
+   na janela, olhando para fora") é postura parada — nada de braço erguido.
+   **Se a ideia e o storyboard discordarem, vale a ideia** — mesmo quando o
+   storyboard numera os shots e o número bate com este: quem escreveu a ideia
+   pode ter mudado de ideia, e o storyboard ficou para trás.
 6. Feche com o estilo do projeto (ex.: *2D TV anime style, clean medium
    lineart, two-tone cel shading, bright pastel colors*).
 
@@ -43,18 +49,22 @@ imagem não pode mudar.
 
 ## Exemplo
 
-Ideia: *"Lia e Ami na janela, olhando para fora; Lia aponta para algo no céu."*
-Contexto: Lia no lugar do manequim de cabeça vermelho-escura, à direita, de
-costas; Ami no do manequim de cabeça amarela, à esquerda, de costas.
+(Uma cena qualquer, para mostrar a forma — não copie as ações dela.)
 
-> Edit Picture 1: replace the two plain mannequins standing at the window with
-> two girls, keeping the classroom, the window, the camera angle, the light and
-> their positions exactly as in Picture 1. The mannequin with the dark red round
-> head, on the right, becomes the girl from Picture 2, with wavy raspberry-red
-> hair, seen from behind, raising her arm and pointing excitedly at something in
-> the sky. The mannequin with the yellow round head, on the left, becomes the
-> girl from Picture 3, with short straight blonde hair, seen from behind,
-> looking out of the window. Both wear their sailor school uniforms. 2D TV anime
-> style, clean medium lineart, two-tone cel shading, bright pastel colors.
+Ideia: *"Juju mostra o caderno para a Prompt na carteira."*
+Contexto: Juju no lugar do manequim de cabeça castanha, à esquerda, de perfil,
+olhando para a direita do quadro; Prompt no do manequim de cabeça azul, à
+direita, de frente para a câmera.
+
+> Edit Picture 1: replace the two plain mannequins at the desk with two girls,
+> keeping the classroom, the desk, the camera angle, the light and their
+> positions exactly as in Picture 1. The mannequin with the brown round head, on
+> the left, becomes the girl from Picture 2, with long straight brown hair and
+> round glasses, in profile facing right, holding an open notebook toward the
+> other girl. The mannequin with the blue round head, on the right, becomes the
+> girl from Picture 3, with light blue hair, facing the camera, leaning in to
+> read the notebook with a curious look. Both wear their sailor school uniforms.
+> 2D TV anime style, clean medium lineart, two-tone cel shading, bright pastel
+> colors.
 
 Responda só com o prompt, em inglês, pronto para colar.

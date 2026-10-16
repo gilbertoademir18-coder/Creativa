@@ -103,8 +103,11 @@ async function contextoDoDono(assetId: string | null, shotId: string | null): Pr
       s.cena.video?.descricao && `Sinopse do vídeo:\n${s.cena.video.descricao.slice(0, 3000)}`,
       `Cena: ${s.cena.nome}`,
       s.cena.descricao && `Descrição da cena:\n${s.cena.descricao}`,
-      // O storyboard pode ser longo: o começo basta para dar o tom.
-      s.cena.storyboard.trim() && `Storyboard da cena:\n${s.cena.storyboard.trim().slice(0, 3000)}`,
+      // O storyboard pode ser longo: o começo basta para dar o tom. E é da cena
+      // toda: sem dizer isso, a LLM punha no shot ações de outros shots (a Lia
+      // apontando, num shot em que a ideia só pedia as duas olhando).
+      s.cena.storyboard.trim() &&
+        `Storyboard da cena (a cena toda — este shot é só um pedaço dela; a ação do shot vem da ideia):\n${s.cena.storyboard.trim().slice(0, 3000)}`,
       `Shot: ${s.nome}`,
       s.descricao && `Descrição do shot:\n${s.descricao}`,
     ].filter((l): l is string => !!l),

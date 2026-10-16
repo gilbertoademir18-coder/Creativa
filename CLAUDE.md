@@ -359,6 +359,12 @@ as cenas (`SetNull`), nunca as apaga.
   "Ver o que vai para a LLM" no Gerador (`POST /api/assistentes/:id/previa`,
   só lê) mostra as instruções, o pedido e quais seções e fichas entraram.
   Mexeu no que vai à LLM? Mexa em `montarPedido`, e a prévia acompanha.
+  **O storyboard da cena pesa mais que a ideia** (gemma 12B, 2026-10-15): com
+  "1. … Lia aponta para algo no céu" no storyboard, a Lia apontava em ~70% das
+  expansões mesmo com a ideia sem isso; sem a frase, 0 de 4. Nem regra no
+  assistente nem um lembrete da ideia no fim do pedido resolveram. Ação de um
+  shot mora na ideia ou na **descrição do shot**; storyboard desatualizado
+  contamina — avise o usuário quando os dois discordarem.
 - **Tipos de geração e workflows são cadastros do usuário** (páginas Tipos de
   geração e Workflows; tabelas `tipo_geracao` e `workflow`) — não existe mais
   workflow em código. Como dados do usuário, **não crie nem edite** registros
