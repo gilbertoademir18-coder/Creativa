@@ -45,6 +45,16 @@ export const EtapaPipeline = z.object({
     .max(200)
     .nullish()
     .transform((t) => t || null),
+  /**
+   * O workflow com que a etapa abre quando ainda não tem rascunho nem output.
+   * É só o ponto de partida: a etapa fixa o tipo, nunca o workflow — dá para
+   * trocar no Gerador (o Wan e o MiniMax na mesma etapa de vídeo).
+   */
+  workflowPadrao: z
+    .string()
+    .max(200)
+    .nullish()
+    .transform((t) => t || null),
   /** Os campos de imagem que já vêm preenchidos com o escolhido de outra etapa. */
   entradas: z
     .array(Entrada)
@@ -83,7 +93,7 @@ export const PIPELINE_UNICO: PipelineResolvido = {
   chave: CHAVE_UNICA,
   nome: "Geração única",
   descricao: "Uma geração só, sem etapas.",
-  etapas: [{ chave: CHAVE_UNICA, nome: "Geração única", tipoGeracao: null, entradas: [] }],
+  etapas: [{ chave: CHAVE_UNICA, nome: "Geração única", tipoGeracao: null, workflowPadrao: null, entradas: [] }],
 };
 
 /** As etapas como estão no banco (JSON), validadas. */

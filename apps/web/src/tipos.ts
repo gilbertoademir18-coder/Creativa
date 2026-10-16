@@ -364,6 +364,8 @@ export type EtapaPipeline = {
   nome: string;
   /** O tipo de geração da etapa. Vazio (só num pipeline de uma etapa): todos. */
   tipoGeracao: string | null;
+  /** O workflow com que a etapa abre sem rascunho nem output (dá para trocar). Vazio: o primeiro do tipo. */
+  workflowPadrao?: string | null;
   entradas: EntradaDeEtapa[];
 };
 

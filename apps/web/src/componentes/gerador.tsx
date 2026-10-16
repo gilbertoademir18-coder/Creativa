@@ -266,7 +266,8 @@ export function PainelGerador({ dono }: { dono: Dono }) {
   /** O rascunho esperando os 800 ms: sair do dono antes disso salva na hora (no dono certo). */
   const pendente = useRef<(() => void) | null>(null);
   useEffect(() => () => pendente.current?.(), []);
-  const vazio = () => porNaTela(ajustar({ tipo: "", workflow: "", valores: {} }, tiposDaEtapa));
+  // Sem rascunho nem output: o workflow padrão da etapa, se o pipeline marcou um.
+  const vazio = () => porNaTela(ajustar({ tipo: etapa?.tipoGeracao ?? "", workflow: etapa?.workflowPadrao ?? "", valores: {} }, tiposDaEtapa));
   useEffect(() => {
     if (!catalogo.dados || !outputs.dados || !pipeline || !rascunhos || iniciado.current === chaveDono) return;
     const r = rascunhos[etapaAtual];

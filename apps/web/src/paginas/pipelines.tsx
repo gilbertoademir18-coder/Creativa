@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowRight, ArrowUp, GitBranch, Plus, Trash, X } from "lucide-react";
 import { useState } from "react";
-import { pipelinesApi, tiposGeracaoApi, type PipelineNovo } from "../api.ts";
+import { pipelinesApi, tiposGeracaoApi, workflowsApi, type PipelineNovo } from "../api.ts";
 import { ConfirmarExclusao, Modal } from "../componentes/modal.tsx";
 import { AreaTexto, Aviso, Botao, Cabecalho, Campo, Carregando, Entrada, Etiqueta, Seletor, Vazio } from "../componentes/ui.tsx";
 import { useCarregar } from "../hooks.ts";
@@ -166,6 +166,7 @@ function FormPipeline({
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const campos = useCarregar(() => pipelinesApi.camposDeImagem(), []);
+  const workflows = useCarregar(() => workflowsApi.listar(), []);
 
   const mexer = (n: number, f: (e: EtapaPipeline) => EtapaPipeline) => setEtapas((l) => l.map((e, i) => (i === n ? f(e) : e)));
 
@@ -247,7 +248,7 @@ function FormPipeline({
                 </div>
                 <div className="flex-1">
                   <Campo rotulo="Tipo de geração" dica={etapas.length > 1 ? undefined : "Vazio: a etapa oferece todos os tipos."}>
-                    <Seletor value={e.tipoGeracao ?? ""} onChange={(ev) => mexer(n, (x) => ({ ...x, tipoGeracao: ev.target.value || null }))}>
+                    <Seletor value={e.tipoGeracao ?? ""} onChange={(ev) => mexer(n, (x) => ({ ...x, tipoGeracao: ev.target.value || null, workflowPadrao: null }))}>
                       {etapas.length === 1 && <option value="">Todos</option>}
                       {tipos.map((t) => (
                         <option key={t.chave} value={t.chave}>
@@ -257,6 +258,22 @@ function FormPipeline({
                     </Seletor>
                   </Campo>
                 </div>
+                {e.tipoGeracao && (
+                  <div className="flex-1">
+                    <Campo rotulo="Workflow padrão" dica="Com que a etapa abre. Dá para trocar no Gerador.">
+                      <Seletor value={e.workflowPadrao ?? ""} onChange={(ev) => mexer(n, (x) => ({ ...x, workflowPadrao: ev.target.value || null }))}>
+                        <option value="">O primeiro do tipo</option>
+                        {(workflows.dados ?? [])
+                          .filter((w) => w.tipoGeracao.chave === e.tipoGeracao)
+                          .map((w) => (
+                            <option key={w.chave} value={w.chave}>
+                              {w.nome}
+                            </option>
+                          ))}
+                      </Seletor>
+                    </Campo>
+                  </div>
+                )}
                 <div className="flex pb-1.5">
                   <BotaoIcone titulo="Subir" disabled={n === 0} onClick={() => mover(n, n - 1)}>
                     <ArrowUp className="size-4" />

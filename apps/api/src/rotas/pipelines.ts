@@ -42,6 +42,19 @@ async function conferirTipos(etapas: z.infer<typeof Etapas>) {
   const tipos = await prisma.tipoGeracao.findMany({ where: { chave: { in: chaves } }, select: { chave: true, nome: true, shot: true } });
   const faltando = chaves.filter((c) => !tipos.some((t) => t.chave === c));
   if (faltando.length) throw new ErroHttp(400, `Tipo de geração não encontrado: ${faltando.join(", ")}.`);
+  // O workflow padrão tem de existir e ser do tipo da etapa.
+  const padroes = etapas.filter((e) => e.workflowPadrao);
+  if (padroes.length) {
+    const wfs = await prisma.workflow.findMany({
+      where: { chave: { in: padroes.map((e) => e.workflowPadrao!) } },
+      select: { chave: true, tipoGeracao: { select: { chave: true } } },
+    });
+    for (const e of padroes) {
+      const w = wfs.find((x) => x.chave === e.workflowPadrao);
+      if (!w) throw new ErroHttp(400, `Workflow não encontrado: ${e.workflowPadrao}.`);
+      if (w.tipoGeracao.chave !== e.tipoGeracao) throw new ErroHttp(400, `O workflow padrão da etapa “${e.nome}” não é do tipo dela.`);
+    }
+  }
   const foraDoShot = tipos.filter((t) => !t.shot);
   if (foraDoShot.length) {
     throw new ErroHttp(

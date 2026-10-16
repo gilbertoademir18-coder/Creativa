@@ -340,6 +340,9 @@ as cenas (`SetNull`), nunca as apaga.
   - A etapa **fixa um tipo de geração, nunca um workflow**: assim a etapa
     "Vídeo" aceita tanto o Wan quanto o MiniMax, e dá para comparar os dois no
     mesmo shot. Com o tipo fixo, o seletor de tipo some do Gerador.
+    A etapa pode ter um **workflow padrão** (`workflowPadrao`, 2026-10-16):
+    só o ponto de partida de quando a etapa não tem rascunho nem output — dá
+    para trocar no Gerador. A API confere que ele é do tipo da etapa.
   - **Output e execução guardam a chave da etapa** (como já guardam as de tipo
     e workflow). Quem é de antes dos pipelines tem a etapa nula e cai na etapa
     **pelo tipo de geração** (`etapaDe`, em `componentes/etapas.tsx`) — por
