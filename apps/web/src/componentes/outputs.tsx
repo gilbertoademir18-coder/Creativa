@@ -337,7 +337,7 @@ function CorpoVisor({
       {!o ? (
         <Carregando />
       ) : (
-        <div className="flex h-full min-h-0 min-w-0 flex-col gap-5 overflow-y-auto pr-1">
+        <div className="flex h-full min-h-0 min-w-0 flex-col gap-5 overflow-y-auto pr-4">
           <div className="flex flex-wrap gap-2">
             <Botao icone={<Star className={`size-4 ${o.favorito ? "fill-amber-400 text-amber-400" : ""}`} />} onClick={favoritar}>
               {o.favorito ? "Favorito" : "Favoritar"}
