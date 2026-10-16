@@ -71,6 +71,8 @@ const PedidoExpandir = z
     shotId: UuidOpcional,
     workflow: z.string().min(1),
     ideia: z.string().trim().min(1, "escreva a ideia antes de expandir").max(10_000, "ideia longa demais"),
+    /** O output no campo de geometria (ou de manequins) do workflow: é dele que sai o enquadramento. */
+    geometria: UuidOpcional,
   })
   .refine((d) => !!d.assetId !== !!d.shotId, "o Gerador é de um asset ou de um shot");
 
@@ -248,9 +250,9 @@ async function montarPedido(id: string, p: z.output<typeof PedidoExpandir>) {
   const temCampo = (chave: string) => w.campos.some((c) => c.tipo === "imagem" && c.chave === chave);
   const comManequins = temCampo("manequins");
   const comGeometria = comManequins || (temCampo("geometria") && temCampo("personagem_1"));
-  const enquadramento = p.shotId && comGeometria ? await enquadramentoDoShot(p.shotId, comManequins) : null;
+  const enquadramento = p.shotId && comGeometria ? await enquadramentoDoShot(p.shotId, comManequins, p.geometria) : null;
   // A placa (só "geometria") e o primeiro quadro também: o que a câmera vê.
-  const vista = p.shotId && (comManequins || temCampo("geometria")) ? await vistaDoShot(p.shotId) : null;
+  const vista = p.shotId && (comManequins || temCampo("geometria")) ? await vistaDoShot(p.shotId, p.geometria) : null;
   const contexto = [...(dono.projeto ? [`Projeto: ${dono.projeto.nome}`] : []), ...doProjeto, ...dono.linhas, ...[vista, enquadramento].filter((l): l is string => !!l)];
   const usuario = [`Ideia: ${p.ideia}`, "", "Contexto (use o que servir à ideia):", ...contexto.map((l) => `- ${l}`)].join("\n");
 

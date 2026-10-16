@@ -294,7 +294,7 @@ export const assistentesApi = {
   /** A LLM local (Ollama) está no ar, com o modelo baixado? */
   estado: () => api<EstadoLlm>("/assistentes/estado"),
   /** O que a expansão mandaria à LLM — sem chamar a LLM. */
-  previa: (id: string, pedido: Dono & { workflow: string; ideia: string }) =>
+  previa: (id: string, pedido: Dono & { workflow: string; ideia: string; geometria?: string | null }) =>
     api<PreviaAssistente>(`/assistentes/${id}/previa`, { method: "POST", corpo: pedido }),
   /**
    * Expande a ideia no prompt completo. O texto chega em pedaços
@@ -303,7 +303,7 @@ export const assistentesApi = {
    */
   expandir: async (
     id: string,
-    pedido: Dono & { workflow: string; ideia: string },
+    pedido: Dono & { workflow: string; ideia: string; geometria?: string | null },
     eventos: { aoComecar?: (comfyOcupado: boolean) => void; aoPedaco: (texto: string) => void },
     sinal?: AbortSignal,
   ): Promise<string> => {

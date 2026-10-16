@@ -186,9 +186,19 @@ type GeometriaEnviada = {
   personagens?: { nome: string; modelo?: { cabelo?: { cor?: string } } }[];
 };
 
-/** A geometria escolhida em qualquer etapa do shot (o output com prévia e relatório). */
-async function geometriaDoShot(shotId: string): Promise<GeometriaEnviada | null> {
+/**
+ * A geometria de um shot (o output com prévia e relatório): a que está no
+ * campo do workflow (`outputId`), se for deste shot; senão, a escolhida em
+ * qualquer etapa. O campo vem primeiro porque é com ele que a imagem é
+ * gerada: lendo só a escolhida, a pessoa que gerou uma geometria nova e a pôs
+ * no campo sem escolhê-la recebia o prompt da câmera velha (2026-10-16).
+ */
+async function geometriaDoShot(shotId: string, outputId?: string | null): Promise<GeometriaEnviada | null> {
   const { prisma } = await import("../lib/prisma.ts");
+  if (outputId) {
+    const doCampo = await prisma.output.findFirst({ where: { id: outputId, shotId, previa: { not: null } }, select: { grafoEnviado: true } });
+    if (doCampo) return doCampo.grafoEnviado as GeometriaEnviada | null;
+  }
   const shot = await prisma.shot.findUnique({ where: { id: shotId }, select: { rascunhoGerador: true } });
   const etapas = (shot?.rascunhoGerador as { etapas?: Record<string, { escolhido?: string | null }> } | null)?.etapas ?? {};
   const ids = Object.values(etapas).map((e) => e.escolhido).filter((x): x is string => !!x);
@@ -204,8 +214,8 @@ async function geometriaDoShot(shotId: string): Promise<GeometriaEnviada | null>
  * escreveu janelas e carteiras (2026-10-15). Geometria de antes da medição
  * (sem `vista` no relatório): null — gere a geometria de novo.
  */
-export async function vistaDoShot(shotId: string): Promise<string | null> {
-  const rel = (await geometriaDoShot(shotId))?.relatorio;
+export async function vistaDoShot(shotId: string, geometria?: string | null): Promise<string | null> {
+  const rel = (await geometriaDoShot(shotId, geometria))?.relatorio;
   if (!rel?.vista?.length) return null;
   const c = rel.camera;
   const angulo = !c
@@ -241,8 +251,8 @@ type NoQuadro = { nome: string; alturaNoQuadro: number; lado: string; virada: st
  * primeiro, personagens depois"). Aí o texto diz qual manequim — pela cor
  * da cabeça — vira cada personagem.
  */
-export async function enquadramentoDoShot(shotId: string, manequins = false): Promise<string | null> {
-  const enviado = await geometriaDoShot(shotId);
+export async function enquadramentoDoShot(shotId: string, manequins = false, geometria?: string | null): Promise<string | null> {
+  const enviado = await geometriaDoShot(shotId, geometria);
   const rel = enviado?.relatorio;
   const corDe = (nome: string) => enviado?.personagens?.find((p) => p.nome === nome)?.modelo?.cabelo?.cor;
   const ps = (rel?.personagens ?? []).filter((p) => p.dentro);

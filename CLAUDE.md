@@ -693,7 +693,10 @@ Decisão do usuário (2026-10-15): o 3D é **dado no banco, não arquivo .blend*
   personagens, e a altura e inclinação da câmera) e o **cenário da marcação**
   (nome, descrição e as `notas` da planta). Sem isso, a placa de um pátio
   saía com a sala de aula do exemplo do assistente (2026-10-15). Geometria
-  gerada antes disso não tem a medição: gere de novo.
+  gerada antes disso não tem a medição: gere de novo. A geometria lida é a **do campo** do workflow
+  (`geometria` ou `manequins`, que o Gerador manda na expansão); só sem ela
+  vale a escolhida — lendo só a escolhida, quem gerava uma geometria nova e a
+  punha no campo recebia o prompt da câmera velha.
   **Na placa, o prompt manda mais que o depth quando o depth é fraco**
   (2026-10-15, Pátio, câmera de cima com 83% de chão): prompt descrevendo a
   vista da placa do asset ("wide view, the building in the background") = o

@@ -35,6 +35,19 @@ import { Aviso, Botao, Campo, Carregando, Seletor, Vazio } from "./ui.tsx";
 type Config = { tipo: string; workflow: string; valores: Record<string, unknown> };
 
 /**
+ * O output de geometria no campo do workflow (a placa usa "geometria"; o
+ * primeiro quadro por edição, "manequins"): o assistente descreve a câmera
+ * dele, e não a da geometria escolhida, que pode ser outra.
+ */
+function geometriaDoCampo(valores: Record<string, unknown>): string | null {
+  for (const chave of ["geometria", "manequins"]) {
+    const v = valores[chave] as { origem?: string; id?: string } | null | undefined;
+    if (v?.origem === "output" && v.id) return v.id;
+  }
+  return null;
+}
+
+/**
  * Acerta a configuração com o catálogo: tipo que não serve para o dono cai
  * para o primeiro, workflow que não é do tipo cai para o primeiro dele, e os
  * campos ganham os padrões que faltam.
@@ -203,7 +216,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
     try {
       await assistentesApi.expandir(
         assistenteId,
-        { ...dono, workflow: config.workflow, ideia: base },
+        { ...dono, workflow: config.workflow, ideia: base, geometria: geometriaDoCampo(config.valores) },
         {
           aoComecar: (comfyOcupado) => {
             if (comfyOcupado) setAvisoAssistente("O ComfyUI está gerando: o assistente divide a placa com ele e vai mais devagar.");
@@ -590,7 +603,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
                       aoExpandir={expandir}
                       aoParar={() => parar.current?.abort()}
                       aoDesfazer={desfazer}
-                      aoPrevia={() => assistentesApi.previa(assistenteId, { ...dono, workflow: config!.workflow, ideia: ideiaCompleta })}
+                      aoPrevia={() => assistentesApi.previa(assistenteId, { ...dono, workflow: config!.workflow, ideia: ideiaCompleta, geometria: geometriaDoCampo(config!.valores) })}
                     />
                   )}
                   {/* Campo que o pipeline alimenta: dá para trocar, mas já vem certo. */}
