@@ -177,6 +177,53 @@ export function nomeDaCor(hex: string): string {
   return l < 0.38 && base !== "castanha" ? `${base}-escura` : base;
 }
 
+/** O que a câmera vê, sem as personagens: a fração do quadro de cada peça (o render.py mede). */
+type NaVista = { nome: string; fracao: number; onde: string };
+
+/** O pedido ao Blender da geometria escolhida do shot, com o relatório dele. null: nenhuma escolhida. */
+type GeometriaEnviada = {
+  relatorio?: { personagens?: NoQuadro[]; vista?: NaVista[]; camera?: { altura: number; inclinacao: number; lente: number } };
+  personagens?: { nome: string; modelo?: { cabelo?: { cor?: string } } }[];
+};
+
+/** A geometria escolhida em qualquer etapa do shot (o output com prévia e relatório). */
+async function geometriaDoShot(shotId: string): Promise<GeometriaEnviada | null> {
+  const { prisma } = await import("../lib/prisma.ts");
+  const shot = await prisma.shot.findUnique({ where: { id: shotId }, select: { rascunhoGerador: true } });
+  const etapas = (shot?.rascunhoGerador as { etapas?: Record<string, { escolhido?: string | null }> } | null)?.etapas ?? {};
+  const ids = Object.values(etapas).map((e) => e.escolhido).filter((x): x is string => !!x);
+  if (!ids.length) return null;
+  const o = await prisma.output.findFirst({ where: { id: { in: ids }, previa: { not: null } }, orderBy: { criadoEm: "desc" }, select: { grafoEnviado: true } });
+  return (o?.grafoEnviado as GeometriaEnviada | null) ?? null;
+}
+
+/**
+ * O que a câmera da geometria escolhida vê, sem as personagens, para o
+ * assistente da placa (e do primeiro quadro). A LLM não enxerga o depth: sem
+ * isto ela descrevia a sala do exemplo do assistente — num pátio aberto,
+ * escreveu janelas e carteiras (2026-10-15). Geometria de antes da medição
+ * (sem `vista` no relatório): null — gere a geometria de novo.
+ */
+export async function vistaDoShot(shotId: string): Promise<string | null> {
+  const rel = (await geometriaDoShot(shotId))?.relatorio;
+  if (!rel?.vista?.length) return null;
+  const c = rel.camera;
+  const angulo = !c
+    ? null
+    : c.inclinacao <= -35
+      ? "bem de cima, olhando quase para o chão"
+      : c.inclinacao <= -10
+        ? "de cima, olhando para baixo"
+        : c.inclinacao >= 10
+          ? "de baixo, olhando para cima"
+          : "na altura dos olhos";
+  return [
+    "O que esta câmera vê (medido na geometria do shot, sem as personagens). A geometria já está travada pelo depth: descreva o lugar como esta lista diz, e não ponha no quadro o que não está nela:",
+    ...(c ? [`- Câmera ${angulo} (${Math.abs(Math.round(c.inclinacao))}°, a ${c.altura.toFixed(1).replace(".", ",")} m do chão), lente de ${c.lente} mm.`] : []),
+    ...rel.vista.map((v) => `- ${v.nome}: ${Math.round(v.fracao * 100)}% do quadro, ${v.onde}.`),
+  ].join("\n");
+}
+
 /** O que o render.py mede de cada personagem, no relatório que fica no output. */
 type NoQuadro = { nome: string; alturaNoQuadro: number; lado: string; virada: string; cortada: boolean; dentro: boolean };
 
@@ -195,13 +242,7 @@ type NoQuadro = { nome: string; alturaNoQuadro: number; lado: string; virada: st
  * da cabeça — vira cada personagem.
  */
 export async function enquadramentoDoShot(shotId: string, manequins = false): Promise<string | null> {
-  const { prisma } = await import("../lib/prisma.ts");
-  const shot = await prisma.shot.findUnique({ where: { id: shotId }, select: { rascunhoGerador: true } });
-  const etapas = (shot?.rascunhoGerador as { etapas?: Record<string, { escolhido?: string | null }> } | null)?.etapas ?? {};
-  const ids = Object.values(etapas).map((e) => e.escolhido).filter((x): x is string => !!x);
-  if (!ids.length) return null;
-  const o = await prisma.output.findFirst({ where: { id: { in: ids }, previa: { not: null } }, orderBy: { criadoEm: "desc" }, select: { grafoEnviado: true } });
-  const enviado = o?.grafoEnviado as { relatorio?: { personagens?: NoQuadro[] }; personagens?: { nome: string; modelo?: { cabelo?: { cor?: string } } }[] } | null;
+  const enviado = await geometriaDoShot(shotId);
   const rel = enviado?.relatorio;
   const corDe = (nome: string) => enviado?.personagens?.find((p) => p.nome === nome)?.modelo?.cabelo?.cor;
   const ps = (rel?.personagens ?? []).filter((p) => p.dentro);

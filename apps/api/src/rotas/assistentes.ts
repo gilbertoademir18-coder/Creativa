@@ -8,7 +8,8 @@ import { configComfy } from "../lib/comfyui.ts";
 import { consultarOllama, gerarTexto } from "../lib/ollama.ts";
 import { Prisma } from "../generated/prisma/client.ts";
 import { prisma } from "../lib/prisma.ts";
-import { enquadramentoDoShot } from "../geracao/blockout.ts";
+import { enquadramentoDoShot, vistaDoShot } from "../geracao/blockout.ts";
+import { nomeDoShot } from "../lib/rotulos.ts";
 import { Busca, ErroHttp, FiltroProjeto, naoEncontrado, Nome, TextoOpcional, Uuid, UuidOpcional, validar } from "../lib/validacao.ts";
 
 /**
@@ -118,6 +119,13 @@ async function contextoDoDono(assetId: string | null, shotId: string | null): Pr
     },
   });
   if (!s) throw new ErroHttp(400, "Shot não encontrado.");
+  // O cenário da cena (o da marcação do blockout): sem ele a LLM não sabe
+  // onde a cena se passa, e a placa de um pátio saía com a sala do exemplo.
+  const idCenario = (s.cena.marcacao as { cenario?: string } | null)?.cenario;
+  const cenario = idCenario
+    ? await prisma.asset.findUnique({ where: { id: idCenario }, select: { nome: true, descricao: true, blockout: true } })
+    : null;
+  const notasDaPlanta = (cenario?.blockout as { notas?: string } | null)?.notas;
   return {
     projetoId: s.cena.projetoId,
     projeto: s.cena.projeto,
@@ -132,7 +140,10 @@ async function contextoDoDono(assetId: string | null, shotId: string | null): Pr
       // apontando, num shot em que a ideia só pedia as duas olhando).
       s.cena.storyboard.trim() &&
         `Storyboard da cena (a cena toda — este shot é só um pedaço dela; a ação do shot vem da ideia):\n${s.cena.storyboard.trim().slice(0, 3000)}`,
-      `Shot: ${s.nome}`,
+      cenario && `Cenário da cena: ${cenario.nome}`,
+      cenario?.descricao && `Descrição do cenário:\n${cenario.descricao}`,
+      notasDaPlanta && `Planta do cenário (o blockout):\n${notasDaPlanta}`,
+      `Shot: ${nomeDoShot(s)}`,
       s.descricao && `Descrição do shot:\n${s.descricao}`,
     ].filter((l): l is string => !!l),
   };
@@ -238,7 +249,9 @@ async function montarPedido(id: string, p: z.output<typeof PedidoExpandir>) {
   const comManequins = temCampo("manequins");
   const comGeometria = comManequins || (temCampo("geometria") && temCampo("personagem_1"));
   const enquadramento = p.shotId && comGeometria ? await enquadramentoDoShot(p.shotId, comManequins) : null;
-  const contexto = [...(dono.projeto ? [`Projeto: ${dono.projeto.nome}`] : []), ...doProjeto, ...dono.linhas, ...(enquadramento ? [enquadramento] : [])];
+  // A placa (só "geometria") e o primeiro quadro também: o que a câmera vê.
+  const vista = p.shotId && (comManequins || temCampo("geometria")) ? await vistaDoShot(p.shotId) : null;
+  const contexto = [...(dono.projeto ? [`Projeto: ${dono.projeto.nome}`] : []), ...doProjeto, ...dono.linhas, ...[vista, enquadramento].filter((l): l is string => !!l)];
   const usuario = [`Ideia: ${p.ideia}`, "", "Contexto (use o que servir à ideia):", ...contexto.map((l) => `- ${l}`)].join("\n");
 
   const [extra, nomes] = await Promise.all([

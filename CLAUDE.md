@@ -688,7 +688,12 @@ Decisão do usuário (2026-10-15): o 3D é **dado no banco, não arquivo .blend*
   rostos = as duas viradas de frente, gente a mais. O relatório da geometria
   (lado, de frente/perfil/costas) fica no output, e o assistente do primeiro
   quadro recebe o enquadramento e regras de escrita (`enquadramentoDoShot` em
-  `geracao/blockout.ts`) quando o workflow tem o campo `geometria`. O que
+  `geracao/blockout.ts`) quando o workflow tem o campo `geometria`. Recebe também **o que a câmera vê** (`vistaDoShot`:
+  o `render.py` mede, por raios, quanto do quadro cada peça ocupa, sem as
+  personagens, e a altura e inclinação da câmera) e o **cenário da marcação**
+  (nome, descrição e as `notas` da planta). Sem isso, a placa de um pátio
+  saía com a sala de aula do exemplo do assistente (2026-10-15). Geometria
+  gerada antes disso não tem a medição: gere de novo. O que
   funcionou: abrir com "seen from behind", sem expressão de quem está de
   costas, e o cabelo de cada uma junto com o lado do quadro.
 - **O caminho que funcionou: placa primeiro, personagens depois**

@@ -15,11 +15,12 @@ personagens são postas nela por edição — por isso aqui **não há ninguém*
 
 ## Como escrever
 
-1. Comece pelo lugar, nomeado pela referência: *"The empty classroom from
-   Picture 1, …"*.
-2. Diga **o que esta câmera vê**, pelo que a ideia e a cena contam: para que
-   parede ela olha (as janelas, a lousa, a porta), o que aparece em primeiro
-   plano (uma carteira no canto) e o que se vê lá fora (árvores, prédios, céu).
+1. Comece pelo lugar — o **cenário da cena**, que vem no contexto —, nomeado
+   pela referência: *"The empty school courtyard from Picture 1, …"*.
+2. Diga **o que esta câmera vê** pela lista "O que esta câmera vê" do contexto
+   (medida no blockout): o ângulo da câmera (de cima, na altura dos olhos), o
+   que ocupa mais o quadro e onde fica cada coisa. Não ponha nada que não
+   esteja na lista: a geometria já está travada.
 3. A **luz** (manhã ensolarada, fim de tarde) e o clima da cena.
 4. Feche com o estilo do projeto e a palavra *scenery*.
 
@@ -31,6 +32,9 @@ personagens são postas nela por edição — por isso aqui **não há ninguém*
 - Não descreva enquadramento de personagem (close, plano médio): é a sala.
 
 ## Exemplo
+
+(Um exemplo de **sala**, só para mostrar a forma. O lugar é sempre o do
+cenário da cena — num pátio, nada de janelas nem carteiras.)
 
 Ideia: *"Lia e Ami na janela da sala de aula, olhando para fora."*
 

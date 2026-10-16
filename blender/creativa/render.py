@@ -386,6 +386,76 @@ for nome, (g, topo) in alturas.items():
         "dentro": 0 <= alto.x <= 1 and base.y < 1 and alto.y > 0,
     })
 
+# --- o que a camera ve, sem as personagens (para o assistente da placa) ---
+# A LLM nao enxerga o depth: sem isto ela inventava a sala do exemplo (num
+# patio, escrevia janelas e carteiras). Uma grade de raios a partir da camera;
+# cada raio conta para a primeira peca que acerta, atravessando personagens e
+# o que nao aparece no render (os cortes das janelas). Quem nao acerta nada e ceu.
+import re
+def nome_legivel(o):
+    while o.parent:
+        o = o.parent
+    n = re.sub(r"\.\d+$", "", o.name)
+    m = re.match(r"^(tronco|copa)_(frente|fundo|esquerda|direita)_\d+$", n)
+    if m:
+        return "árvores lá fora"
+    if re.match(r"^predio_(frente|fundo|esquerda|direita)_\d+$", n):
+        return "prédios lá fora"
+    if n.startswith("parede_"):
+        return "parede " + n[len("parede_"):]
+    fixos = {"chao": "chão", "piso": "piso", "teto": "teto", "chao_externo": "chão lá fora"}
+    if n in fixos:
+        return fixos[n]
+    m = re.match(r"^(carteira|cadeira|mesa|porta|painel|caixa|cilindro|esfera)_\d+$", n)
+    return m.group(1) if m else n
+
+def de_quem(o):
+    while o.parent:
+        o = o.parent
+    return o.name
+
+grafo = bpy.context.evaluated_depsgraph_get()
+COLS, LINS = 64, 36
+quadro = [cam.matrix_world @ v for v in cam.data.view_frame(scene=cena)]
+# view_frame: cantos em ordem (sup. dir., inf. dir., inf. esq., sup. esq.)
+sd, idir, ie, se = quadro
+contagem = {}
+for j in range(LINS):
+    fy = (j + 0.5) / LINS  # 0 = topo
+    for i in range(COLS):
+        fx = (i + 0.5) / COLS  # 0 = esquerda
+        topo = se.lerp(sd, fx)
+        baixo = ie.lerp(idir, fx)
+        alvo_r = topo.lerp(baixo, fy)
+        origem = cam.location.copy()
+        direcao = (alvo_r - origem).normalized()
+        nome = "céu"
+        for _ in range(8):
+            ok, loc, _n, _i, obj, _m = cena.ray_cast(grafo, origem, direcao)
+            if not ok:
+                break
+            original = obj.original if hasattr(obj, "original") else obj
+            if original.hide_render or de_quem(original) in alturas:
+                origem = loc + direcao * 0.01
+                continue
+            nome = nome_legivel(original)
+            break
+        c = contagem.setdefault(nome, [0, 0.0, 0.0])
+        c[0] += 1; c[1] += fx; c[2] += fy
+
+def onde(fx, fy):
+    h = "à esquerda" if fx < 0.36 else "à direita" if fx > 0.64 else "no centro"
+    v = "em cima" if fy < 0.36 else "embaixo" if fy > 0.64 else "no meio"
+    return f"{v}, {h}"
+
+total = COLS * LINS
+relatorio["vista"] = sorted(
+    ({"nome": n, "fracao": round(c[0] / total, 3), "onde": onde(c[1] / c[0], c[2] / c[0])} for n, c in contagem.items() if c[0] / total >= 0.01),
+    key=lambda x: -x["fracao"],
+)
+inclinacao = math.degrees(math.asin(max(-1.0, min(1.0, frente.z))))
+relatorio["camera"] = {"altura": round(cam.location.z, 2), "inclinacao": round(inclinacao, 1), "lente": cam_d["lente"]}
+
 # --- passada 1: a previa ---
 cena.render.image_settings.file_format = "PNG"
 cena.render.image_settings.color_mode = "RGB"
