@@ -207,18 +207,22 @@ export function VisorOutputs({
   aoAlterar,
   mostrarDono,
   escolha,
+  titulo,
 }: {
   outputs: Output[];
   abertoId: string | null;
   aoMudar: (id: string) => void;
   aoFechar: () => void;
-  aoUsar: (o: OutputDetalhe) => void;
+  aoUsar?: (o: OutputDetalhe) => void;
   aoAlterar: () => void;
   mostrarDono?: boolean;
   escolha?: (o: Output) => Escolha | undefined;
+  /** O título da janela para cada output (padrão: "Output") — o "Ver pipeline" mostra a etapa. */
+  titulo?: (o: Output) => string;
 }) {
+  const aberto = outputs.find((o) => o.id === abertoId);
   return (
-    <Modal aberto={!!abertoId} titulo="Output" largura="enorme" aoFechar={aoFechar}>
+    <Modal aberto={!!abertoId} titulo={(aberto && titulo?.(aberto)) || "Output"} largura="enorme" aoFechar={aoFechar}>
       {abertoId && (
         <CorpoVisor
           outputs={outputs}
@@ -249,7 +253,7 @@ function CorpoVisor({
   abertoId: string;
   aoMudar: (id: string) => void;
   aoFechar: () => void;
-  aoUsar: (o: OutputDetalhe) => void;
+  aoUsar?: (o: OutputDetalhe) => void;
   aoAlterar: () => void;
   mostrarDono?: boolean;
   escolha?: (o: Output) => Escolha | undefined;
@@ -333,9 +337,11 @@ function CorpoVisor({
       ) : (
         <div className="flex max-h-[78vh] min-w-0 flex-col gap-5 overflow-y-auto pr-1">
           <div className="flex flex-wrap gap-2">
-            <Botao variante="primario" icone={<Wand2 className="size-4" />} onClick={() => aoUsar(o)} title="Leva tipo, workflow, assistente, prompt, seed e o resto para o Gerador">
-              Usar estas configurações
-            </Botao>
+            {aoUsar && (
+              <Botao variante="primario" icone={<Wand2 className="size-4" />} onClick={() => aoUsar(o)} title="Leva tipo, workflow, assistente, prompt, seed e o resto para o Gerador">
+                Usar estas configurações
+              </Botao>
+            )}
             <Botao icone={<Star className={`size-4 ${o.favorito ? "fill-amber-400 text-amber-400" : ""}`} />} onClick={favoritar}>
               {o.favorito ? "Favorito" : "Favoritar"}
             </Botao>

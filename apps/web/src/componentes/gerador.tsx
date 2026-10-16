@@ -87,6 +87,8 @@ export function PainelGerador({ dono }: { dono: Dono }) {
   const [gerando, setGerando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [abertoId, setAbertoId] = useState<string | null>(null);
+  /** O output aberto no "Ver pipeline" (null: fechado). */
+  const [vendoPipeline, setVendoPipeline] = useState<string | null>(null);
   const formulario = useRef<HTMLDivElement>(null);
   const [params, setParams] = useSearchParams();
 
@@ -446,6 +448,11 @@ export function PainelGerador({ dono }: { dono: Dono }) {
 
   /** A galeria é da etapa: cada compartimento mostra só o que saiu dele. */
   const todos = outputs.dados ?? [];
+  // O "Ver pipeline": o escolhido de cada etapa, na ordem das etapas.
+  const doPipeline = (pipeline?.etapas ?? []).flatMap((e, n) => {
+    const o = todos.find((x) => x.id === rascunhos?.[e.chave]?.escolhido);
+    return o ? [{ o, titulo: `${n + 1} · ${e.nome}` }] : [];
+  });
   const lista = pipeline ? todos.filter((o) => etapaDisto(o) === etapaAtual) : todos;
   /** Outputs do shot que não são de etapa nenhuma deste pipeline (o tipo saiu dele). */
   const foraDasEtapas = pipeline && temEtapas(pipeline) ? todos.filter((o) => etapaDisto(o) === null).length : 0;
@@ -493,6 +500,7 @@ export function PainelGerador({ dono }: { dono: Dono }) {
               outputs: todos.filter((o) => etapaDisto(o) === c).length,
               escolhida: !!rascunhos?.[c]?.escolhido,
             })}
+            aoVerPipeline={doPipeline.length ? () => setVendoPipeline(doPipeline[0]!.o.id) : undefined}
           />
         )}
         <div className="flex max-h-[calc(100vh-12rem)] flex-col gap-5 overflow-y-auto p-5">
@@ -653,6 +661,14 @@ export function PainelGerador({ dono }: { dono: Dono }) {
         )}
       </section>
 
+      <VisorOutputs
+        outputs={doPipeline.map((x) => x.o)}
+        abertoId={vendoPipeline}
+        aoMudar={setVendoPipeline}
+        aoFechar={() => setVendoPipeline(null)}
+        aoAlterar={outputs.recarregar}
+        titulo={(o) => doPipeline.find((x) => x.o.id === o.id)?.titulo ?? "Output"}
+      />
       <VisorOutputs
         outputs={lista}
         abertoId={abertoId}

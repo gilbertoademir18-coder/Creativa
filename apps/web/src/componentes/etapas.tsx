@@ -1,4 +1,4 @@
-import { Check, Dot } from "lucide-react";
+import { Check, Dot, GalleryHorizontal } from "lucide-react";
 import { pipelinesApi } from "../api.ts";
 import { useCarregar } from "../hooks.ts";
 import type { PipelineResolvido } from "../tipos.ts";
@@ -123,11 +123,14 @@ export function AbasEtapas({
   atual,
   aoTrocar,
   estado,
+  aoVerPipeline,
 }: {
   pipeline: PipelineResolvido;
   atual: string;
   aoTrocar: (chave: string) => void;
   estado: (chave: string) => EstadoEtapa;
+  /** O "Ver pipeline" no fim das abas: os escolhidos de cada etapa, em sequência. Ausente: sem nada escolhido. */
+  aoVerPipeline?: () => void;
 }) {
   if (!temEtapas(pipeline)) return null;
   return (
@@ -159,6 +162,17 @@ export function AbasEtapas({
           </button>
         );
       })}
+      {aoVerPipeline && (
+        <button
+          type="button"
+          onClick={aoVerPipeline}
+          title="Os escolhidos de cada etapa, um depois do outro (← →)"
+          className="-mb-px ml-auto flex items-center gap-1.5 border-b-2 border-transparent px-3 py-2 text-sm text-violet-300 transition-colors hover:text-violet-200"
+        >
+          <GalleryHorizontal className="size-4" />
+          Ver pipeline
+        </button>
+      )}
     </div>
   );
 }
