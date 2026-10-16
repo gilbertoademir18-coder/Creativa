@@ -575,6 +575,16 @@ O que isso muda nas escolhas:
   com o mesmo assistente. O workflow H3 `int8_convrot` + 8 passos foi
   removido do Creativa em 2026-10-12 (os outputs dele ficaram).
   LTX 2.5 ficou de fora: o repositório é *gated* no Hugging Face.
+- **Personagem que entra em cena depois do primeiro quadro: MiniMax H3
+  ref2va** (`minimax_h3_ref2va_pruned_fp8_scaled` + LoRA
+  `minimax_h3_ref2v_turbo_4step_v0.1`, testado em 2026-10-16). O FL2V só vê o
+  primeiro quadro: com ele vazio, inventa uma menina qualquer. O ref2va recebe
+  a capa da personagem como `<Picture 1>` (identidade) e a placa vazia como
+  quadro-guia (`MiniMaxH3AddGuide`, `frame_idx` 0 e −1): 2 de 2 com a Lia
+  entrando pela direita, cruzando cantando e saindo pela esquerda,
+  reconhecível, com som, em ~105 s a 864×480. Defeito visto: ela já aparece na
+  borda no quadro 0 (ou ainda no último). O prompt segue o formato do template
+  (`subject_definitions` / `summary` / `audio`). Não precisou de quadro-chave.
 - **Placa de cenário em anime: o mesmo Anima Aesthetic** (2026-10-12), 16:9 e
   **sempre vazia** — decisão do usuário. O vazio se segura nas duas pontas:
   `scenery, no humans` no começo do prompt e pessoas no negativo (cfg 4). A
