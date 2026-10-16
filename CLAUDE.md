@@ -341,7 +341,8 @@ as cenas (`SetNull`), nunca as apaga.
   - **A imagem escolhida de uma etapa é o que a seguinte recebe** (o
     `entradas` do pipeline liga um campo de imagem a uma etapa anterior).
     Escolhida é **uma** e tem consequência; favorito é quantos se queira e não
-    tem. Quem muda a escolha limpa o campo ligado nas etapas que a comem, para
+    tem. A **última etapa também se escolhe** (a versão final do shot), e
+    o shot abre na primeira etapa sem escolhida (`etapaDaVez`). Quem muda a escolha limpa o campo ligado nas etapas que a comem, para
     elas pegarem a nova; fora isso, o campo só é preenchido quando está vazio
     — trocar a imagem à mão continua valendo. O aviso de "escolha a imagem"
     só aparece com o campo vazio: com ele preenchido não falta nada.

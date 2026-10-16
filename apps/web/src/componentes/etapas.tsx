@@ -50,13 +50,13 @@ export const alimentaOutra = (p: PipelineResolvido, chave: string) =>
   p.etapas.some((e) => e.entradas.some((en) => en.daEtapa === chave));
 
 /**
- * A etapa em que o shot está: a primeira que ainda não tem imagem escolhida.
- * Etapa que alimenta outra e já tem a escolhida está feita — passa para a
- * seguinte. Se todas estiverem, a última (o vídeo, que não alimenta ninguém).
- * É a que o Gerador abre ao entrar no shot (ou no F5).
+ * A etapa em que o shot está: a primeira que ainda não tem escolhida. Etapa
+ * com escolhida está feita — passa para a seguinte. Se todas estiverem (até o
+ * vídeo, que também se escolhe), a última. É a que o Gerador abre ao entrar
+ * no shot (ou no F5).
  */
 export function etapaDaVez(p: PipelineResolvido, rascunhos: Record<string, { escolhido?: string | null }>): string {
-  const daVez = p.etapas.find((e) => !(alimentaOutra(p, e.chave) && rascunhos[e.chave]?.escolhido));
+  const daVez = p.etapas.find((e) => !rascunhos[e.chave]?.escolhido);
   return (daVez ?? p.etapas.at(-1)!).chave;
 }
 

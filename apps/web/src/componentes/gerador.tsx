@@ -101,15 +101,17 @@ export function PainelGerador({ dono }: { dono: Dono }) {
   const etapaDisto = (x: { etapa: string | null; tipoGeracao: string }) => (pipeline ? etapaDe(x, pipeline) : CHAVE_UNICA);
   /** O tipo de geração de uma execução, que guarda só o workflow. */
   const tipoDoWorkflow = (w: string) => tipos.find((t) => t.workflows.some((x) => x.chave === w))?.chave ?? "";
-  /** O output aprovado desta etapa, se alguma adiante come a imagem dela. */
+  /** O output aprovado desta etapa: o que as seguintes recebem, ou, na última, a versão final do shot. */
   const escolhido = rascunhos?.[etapaAtual]?.escolhido ?? null;
-  const podeEscolher = !!pipeline && alimentaOutra(pipeline, etapaAtual);
-  // O "Escolher" de um output, no cartão e no visor: é a imagem que a etapa seguinte recebe.
+  // Toda etapa de um pipeline de verdade escolhe — até a última, que não alimenta ninguém.
+  const podeEscolher = !!pipeline && temEtapas(pipeline);
+  const alimenta = !!pipeline && alimentaOutra(pipeline, etapaAtual);
+  // O "Escolher" de um output, no cartão e no visor.
   const escolhaDe = (o: Output): Escolha | undefined =>
     podeEscolher
       ? {
           escolhida: escolhido === o.id,
-          rotulo: "Escolher — é esta que a próxima etapa recebe",
+          rotulo: alimenta ? "Escolher — é esta que a próxima etapa recebe" : "Escolher — a versão final deste shot",
           aoEscolher: () => escolher(escolhido === o.id ? null : o.id),
         }
       : undefined;
