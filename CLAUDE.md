@@ -593,6 +593,20 @@ O que isso muda nas escolhas:
   o campo de guia chama `primeiro_quadro`, como nos outros vídeos, então a
   ligação do pipeline vale igual (com o First Frame pulado, recebe a placa).
   "Termina: Livre" põe o guia final no quadro 0 (repete o do começo, inócuo).
+- **HQ colorida estilo americano: Qwen Image Edit 2511 + Lightning**
+  (2026-10-17, projeto "Testes de HQ"). Shot = quadro, cena = página. Dois
+  workflows no mesmo modelo, para o traço bater: "Personagem de HQ" (texto →
+  ficha de corpo inteiro em fundo branco, sem referência) e "Quadro de HQ"
+  (o grafo do primeiro quadro, com tamanhos de quadro de página). A ficha
+  como Picture 1 deu a personagem reconhecível nos 2 de 2 quadros, sem
+  texto, com o céu vazio pedido para o balão. **Balão e letreiro nunca vêm
+  da IA** (decisão de projeto): o quadro sai limpo e o app põe o texto
+  depois (a diagramação da página ainda não existe). Visto no teste: o
+  "low-angle" foi ignorado; nome da personagem no prompt (a LLM pôs) é
+  proibido no assistente; "character sheet" no prompt faz o Qwen escrever
+  rótulos. A LLM do assistente **não sabe quais campos de imagem estão
+  preenchidos**: o assistente do quadro supõe que toda personagem citada
+  tem referência, na ordem da ideia.
 - **Placa de cenário em anime: o mesmo Anima Aesthetic** (2026-10-12), 16:9 e
   **sempre vazia** — decisão do usuário. O vazio se segura nas duas pontas:
   `scenery, no humans` no começo do prompt e pessoas no negativo (cfg 4). A
@@ -831,5 +845,12 @@ Coisas que já custaram tempo — e o contorno:
 - **Não rode `prettier`:** o projeto não tem configuração dele, e o padrão
   (80 colunas) reformata o arquivo inteiro — o código usa linhas longas.
   Formate à mão, no estilo do arquivo.
+- **O `creativa.mjs` da skill `workflow-creativa` lê o rascunho numa rota
+  que sumiu** (`GET /gerador/rascunho`; desde os pipelines é
+  `GET /gerador/etapas`, que devolve `{ pipeline, rascunhos }` por etapa):
+  os comandos `projeto` e `rascunho` param com "API antiga" mesmo com a API
+  nova. Falta também `projeto-criar`. Editar a skill pede a permissão do
+  usuário (o Claude Code barra autoalteração); até lá, o `PUT
+  /gerador/rascunho` (com `etapa`, padrão `unica`) funciona direto.
 - **`.ps1`:** depois de editar, confira que os 3 primeiros bytes continuam
   `EF BB BF` (o BOM).
