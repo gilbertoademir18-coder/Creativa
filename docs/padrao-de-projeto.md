@@ -76,10 +76,11 @@ regras para a API de dev (`apps/api/package.json` e `server.ts`):
 | Trimly | 3200, 3201, 3210, 8443 (tailnet) |
 | Creativa | 3400, 3401, 3410, 8444 e 8445 (tailnet, a 8445 é do ComfyUI) |
 | NeuroBeat | 3500, 3501, 3510, 8447 (tailnet) |
+| ValeBeijo | 3600, 3601, 3610, 8448 (tailnet) |
 | Compartilhadas | 5432 (PostgreSQL), 8188 (ComfyUI) |
 
-A próxima centena livre é a **3600**, e a próxima porta de tailnet é a
-**8448**. A 3300 não aparece em nenhum projeto, mas também não foi usada por
+A próxima centena livre é a **3700**, e a próxima porta de tailnet é a
+**8449**. A 3300 não aparece em nenhum projeto, mas também não foi usada por
 ninguém de propósito; se quiser usá-la, confira antes:
 
 ```powershell
